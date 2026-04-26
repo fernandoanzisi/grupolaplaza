@@ -8174,8 +8174,13 @@ async function initSupabase() {
 function showLoginScreen() {
   const ls = document.getElementById('login-screen');
   const ap = document.getElementById('app');
-  if (ls) ls.style.display = 'flex';
-  if (ap) ap.style.display = 'none';
+  if (ls) {
+    ls.style.setProperty('display', 'flex', 'important');
+    ls.style.alignItems = 'center';
+    ls.style.justifyContent = 'center';
+  }
+  if (ap) ap.style.setProperty('display', 'none', 'important');
+  document.body.classList.remove('readonly-mode');
 }
 
 function hideLoginScreen() {
