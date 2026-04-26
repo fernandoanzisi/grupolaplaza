@@ -480,6 +480,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 <script>
 const SUPA_URL="https://udneubfilwyufurzbgie.supabase.co";
 const SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkbmV1YmZpbHd5dWZ1cnpiZ2llIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5ODk0ODcsImV4cCI6MjA5MjU2NTQ4N30.ZJrT6Bx8CNu_oRwl4ouCOLi601fHAGI6cf_HverqKzM";
+const SUPA_SERVICE="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkbmV1YmZpbHd5dWZ1cnpiZ2llIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njk4OTQ4NywiZXhwIjoyMDkyNTY1NDg3fQ.qyNmRgRUJWgn00DpaGdoJOhSroKEJRds30wMsLssoaY";
 const supa=supabase.createClient(SUPA_URL,SUPA_KEY);
 let _supaUser=null,_supaRol=null;
 </script>
@@ -8574,10 +8575,32 @@ async function cambiarRol(userId, nuevoRol) {
 }
 
 async function eliminarUsuario(userId) {
-  if (!confirm('¿Eliminar este usuario?')) return;
-  await supa.from('perfiles').delete().eq('id', userId);
-  await cargarListaUsuarios();
-  showToast('✅ Usuario eliminado');
+  if (!confirm('¿Eliminar este usuario? Esta acción no se puede deshacer.')) return;
+  try {
+    // 1. Borrar perfil de la tabla perfiles
+    await supa.from('perfiles').delete().eq('id', userId);
+
+    // 2. Borrar usuario de Supabase Auth usando Admin API con service_role key
+    const r = await fetch(SUPA_URL + '/auth/v1/admin/users/' + userId, {
+      method: 'DELETE',
+      headers: {
+        'apikey':        SUPA_SERVICE,
+        'Authorization': 'Bearer ' + SUPA_SERVICE,
+        'Content-Type':  'application/json',
+      }
+    });
+
+    if (!r.ok && r.status !== 404) {
+      const err = await r.text();
+      console.warn('Auth delete warning:', err);
+    }
+
+    await cargarListaUsuarios();
+    showToast('✅ Usuario eliminado correctamente');
+  } catch(e) {
+    console.error('Error al eliminar:', e);
+    showToast('❌ Error al eliminar: ' + e.message);
+  }
 }
 
 async function crearUsuario() {
