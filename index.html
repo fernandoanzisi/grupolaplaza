@@ -4480,7 +4480,18 @@ function handleFile(input) {
         if (typeof navGo === 'function') navGo('clientes', null);
         return;
       }
-      // 4. Extracto Bancario
+      // 4. Cash Flow
+      if (typeof isCashFlow === 'function' && isCashFlow(wb)) {
+        const result = parseCashFlow(wb);
+        statusEl.innerHTML = '<div class="alert green">✅ Cash Flow importado — ' + result.total.toLocaleString() + ' registros</div>';
+        const logDiv = document.getElementById('import-log');
+        if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
+        showToast('✅ Cash Flow — ' + result.total.toLocaleString() + ' registros');
+        if (typeof renderCashFlow === 'function') renderCashFlow();
+        if (typeof navGo === 'function') navGo('cashflow', null);
+        return;
+      }
+      // 5. Extracto Bancario
       if (typeof isExtractoBancario === 'function' && isExtractoBancario(wb)) {
         const result = parseExtractoBancario(wb);
         const logDiv = document.getElementById('import-log');
@@ -7477,11 +7488,22 @@ let _cliEmp    = 'todos';
 // ─── EXTRACTO BANCARIO — Detección y Parser ──────────────────
 function isExtractoBancario(wb) {
   if (isMinutaDiaria(wb)) return false;
-  return wb.SheetNames.some(s => {
-    const sl = s.toLowerCase().trim();
-    return sl.includes('extracto') || sl.includes('bancario') ||
-           sl.includes('banco') || sl.includes('bancos');
-  });
+  // Detectar por nombre de hoja MÁS específico para no confundir con cashflow
+  const sheetNames = wb.SheetNames.map(s => s.toLowerCase().trim());
+  // Si tiene hojas de cashflow, NO es extracto
+  if (sheetNames.some(s => s.includes('cash flow') || s.includes('cashflow') || s === 'sc' || s === 'rs' || s.includes('tablero') || s.includes('detalle proveedores'))) return false;
+  // Tiene hoja de extracto
+  if (sheetNames.some(s => s.includes('extracto') || s.includes('extractos bancos'))) return true;
+  // Tiene columna 'importe banco' o 'empresa banco' en primera hoja
+  try {
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    if (!ws) return false;
+    const XLSX2 = typeof XLSX !== 'undefined' ? XLSX : null;
+    if (!XLSX2) return false;
+    const rows = XLSX2.utils.sheet_to_json(ws, {header:1, defval:null});
+    const hdr = (rows[0]||[]).map(h => String(h||'').toLowerCase());
+    return hdr.some(h => h.includes('importe banco') || h.includes('empresa banco') || h.includes('saldo banco'));
+  } catch(e) { return false; }
 }
 
 function parseExtractoBancario(wb) {
@@ -7674,6 +7696,75 @@ async function _loadExtractosSupabase() {
     }
     return false;
   } catch(e) { console.error('_loadExtractosSupabase:', e); return false; }
+}
+
+
+// ── Cash Flow detection & parser ─────────────────────────────
+function isCashFlow(wb) {
+  if (isMinutaDiaria(wb)) return false;
+  const sheets = wb.SheetNames.map(s => s.toLowerCase().trim());
+  return sheets.some(s => s.includes('cash flow') || s.includes('cashflow')) ||
+         (sheets.includes('sc') && sheets.includes('rs'));
+}
+
+function parseCashFlow(wb) {
+  const log = []; let total = 0;
+  appState.cfFilas = appState.cfFilas || [];
+
+  // Hoja principal: 'cash flow'
+  const mainSN = wb.SheetNames.find(s => s.toLowerCase().trim().includes('cash flow')) || wb.SheetNames[0];
+  const ws = wb.Sheets[mainSN];
+  if (!ws) { log.push('<span style="color:var(--red)">❌ No se encontró hoja de Cash Flow</span>'); return {log,total}; }
+
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
+  if (rows.length < 3) { log.push('<span style="color:var(--red)">❌ Hoja vacía</span>'); return {log,total}; }
+
+  // Fila 3 = headers de columnas (conceptos)
+  // Fila 4+ = datos con fecha en col 0
+  const hdrRow = rows[2] || [];
+  const conceptos = hdrRow.map(h => String(h||'').trim()).filter(Boolean);
+
+  function parseFecha(v) {
+    if (!v) return '';
+    if (typeof v === 'string' && v.match(/^\d{4}-\d{2}-\d{2}/)) return v.slice(0,10);
+    if (v instanceof Date) return v.toISOString().slice(0,10);
+    if (typeof v === 'number') {
+      try { const d = XLSX.SSF.parse_date_code(v); if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`; } catch(e){}
+    }
+    const s = String(v).trim();
+    if (s.match(/^\d{4}-\d{2}-\d{2}/)) return s.slice(0,10);
+    return s.slice(0,10);
+  }
+
+  const newFilas = [];
+  for (let ri = 3; ri < rows.length; ri++) {
+    const r = rows[ri]; if (!r) continue;
+    const fecha = parseFecha(r[0]);
+    if (!fecha || fecha.length < 8) continue;
+    // Cada columna a partir de 1 es un concepto con su valor
+    for (let ci = 1; ci < r.length; ci++) {
+      const val = parseFloat(r[ci]);
+      if (!val || isNaN(val)) continue;
+      const concepto = hdrRow[ci] ? String(hdrRow[ci]).trim() : '';
+      if (!concepto) continue;
+      // Detectar empresa desde nombre de concepto
+      const cl = concepto.toLowerCase();
+      const emp = cl.includes(' rs') || cl.endsWith('rs') ? 'RS' :
+                  cl.includes(' sc') || cl.endsWith('sc') || cl.includes('saltos') || cl.includes('esmeralda') || cl.includes('pacheco') ? 'SC' : 'GRP';
+      newFilas.push({ fecha, concepto, importe: val, emp, tipo: val >= 0 ? 'ingreso' : 'egreso' });
+      total++;
+    }
+  }
+
+  // Mergear con existentes (no pisar otras fechas)
+  const fechasNuevas = new Set(newFilas.map(f => f.fecha));
+  const prev = (appState.cfFilas||[]).filter(f => !fechasNuevas.has(f.fecha));
+  appState.cfFilas = [...prev, ...newFilas];
+
+  log.push(`<span style="color:var(--green)">✅ Cash Flow "${mainSN}": ${total.toLocaleString()} registros importados</span>`);
+  log.push(`<span style="color:var(--accent)">📅 Período: ${newFilas[0]?.fecha||'?'} → ${newFilas[newFilas.length-1]?.fecha||'?'}</span>`);
+  saveState();
+  return {log, total};
 }
 
 function isCarteraDebo(wb) {
