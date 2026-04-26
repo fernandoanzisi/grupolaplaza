@@ -381,6 +381,16 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .readonly-mode button[onclick*="downloadTemplate"],
 .readonly-mode #btn-consolidado { pointer-events: auto; }
 /* readonly import-zone: handled via JS */
+/* Usuarios: ocultar botones de acción */
+.readonly-mode #nav-excel-btn { display: none !important; }
+.readonly-mode button[onclick*="nuevo"],
+.readonly-mode button[onclick*="Nuevo"],
+.readonly-mode button[onclick*="agregar"],
+.readonly-mode button[onclick*="guardar"],
+.readonly-mode .btn-add,
+.readonly-mode #btn-nueva-trans,
+.readonly-mode #btn-nueva-ob,
+.readonly-mode .import-zone { display: none !important; }
 .readonly-mode #btn-add-goal,
 .readonly-mode #btn-add-reminder,
 .readonly-mode #btn-add-account,
@@ -591,7 +601,7 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('recordatorios',this)"  data-page="recordatorios">🔔 Recordatorios</button>
         </div>
       </div>
-      <button class="nav-tab" onclick="navGo('importar',this)" data-page="importar"><span class="ni">📂</span><span class="nl">Excel</span></button>
+      <button class="nav-tab" id="nav-excel-btn" onclick="navGo('importar',this)" data-page="importar"><span class="ni">📂</span><span class="nl">Excel</span></button>
     </nav>
   </div>
   <div class="topnav-right">
@@ -8279,8 +8289,19 @@ async function doRegister() {
 }
 
 async function doLogout() {
-  document.getElementById('user-menu').style.display = 'none';
+  const menu = document.getElementById('user-menu');
+  if (menu) menu.style.display = 'none';
   await supa.auth.signOut();
+  // Mostrar login inmediatamente sin recargar
+  const ap = document.getElementById('app');
+  if (ap) ap.style.display = 'none';
+  showLoginScreen();
+  // Limpiar campos
+  const liEmail = document.getElementById('li-email');
+  const liPass  = document.getElementById('li-pass');
+  if (liEmail) liEmail.value = '';
+  if (liPass)  liPass.value  = '';
+  document.body.classList.remove('readonly-mode');
 }
 
 // ── Post-login ────────────────────────────────────────────────
@@ -8292,6 +8313,17 @@ async function onLogin(user) {
   // Normalizar rol (por si quedó 'administracion' u otro valor)
   const rolRaw = perfil?.rol || 'usuario';
   _supaRol = (rolRaw === 'admin' || rolRaw === 'administracion' || rolRaw === 'administrator') ? 'admin' : 'usuario';
+
+  // Aplicar modo solo lectura para usuarios (no admins)
+  if (_supaRol !== 'admin') {
+    document.body.classList.add('readonly-mode');
+    const rb = document.getElementById('readonly-badge');
+    if (rb) rb.style.display = 'inline';
+  } else {
+    document.body.classList.remove('readonly-mode');
+    const rb = document.getElementById('readonly-badge');
+    if (rb) rb.style.display = 'none';
+  }
 
   // Actualizar UI topbar
   const nombre = perfil?.nombre || user.email.split('@')[0];
