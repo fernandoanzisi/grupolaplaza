@@ -7044,6 +7044,15 @@ function filterExtractos(tab, btn) {
 }
 
 function renderExtractos() {
+  // Si no hay datos locales, intentar cargar desde Supabase primero
+  if ((!appState.extractoBancario || appState.extractoBancario.length === 0) && _supaUser) {
+    const tbody = document.getElementById('extractos-table-ars');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:32px">⏳ Cargando extractos...</td></tr>';
+    _loadExtractosSupabase().then(loaded => {
+      if (loaded) renderExtractos();
+    });
+    return;
+  }
   // Fuente de datos: appState.extractoBancario (del Excel) o emp.transactions (de Minuta)
   const allData = appState.extractoBancario && appState.extractoBancario.length
     ? appState.extractoBancario
@@ -7610,8 +7619,61 @@ function parseExtractoBancario(wb) {
   if (appState.extractoBancario.length) {
     const dates = appState.extractoBancario.map(m=>m.fecha).filter(Boolean).sort();
     appState.lastExtractoDate = dates[dates.length-1]||'';
+    // Guardar en Supabase (localStorage no soporta 126k filas)
+    _saveExtractosSupabase(appState.extractoBancario).then(ok => {
+      if (ok) { showToast('✅ Extractos guardados en Supabase ('+appState.extractoBancario.length.toLocaleString()+' movimientos)'); }
+      else    { showToast('⚠️ Error al guardar en Supabase — recargá los datos la próxima vez'); }
+    });
   }
   return {log, total};
+}
+
+async function _saveExtractosSupabase(data) {
+  if (!_supaUser || !data || !data.length) return false;
+  try {
+    showToast('⏳ Guardando '+data.length.toLocaleString()+' movimientos en Supabase...');
+    // Borrar existentes
+    await supa.from('extracto_bancario').delete().neq('id', 0);
+    // Insertar en chunks de 500
+    const CHUNK = 500;
+    for (let i = 0; i < data.length; i += CHUNK) {
+      const chunk = data.slice(i, i+CHUNK).map(m => ({
+        fecha: m.fecha, emp_tag: m.empTag||'', banco: m.banco||'',
+        cuenta: m.cuenta||'', detalle: (m.detalle||m.concepto||'').slice(0,200),
+        cat: m.cat||'', importe: m.importe||0, tipo: m.tipo||'ingreso',
+        saldo: m.saldo||null, denominacion: (m.denominacion||'').slice(0,100),
+      }));
+      const { error } = await supa.from('extracto_bancario').insert(chunk);
+      if (error) { console.warn('Supabase chunk error:', error.message); }
+    }
+    return true;
+  } catch(e) { console.error('_saveExtractosSupabase:', e); return false; }
+}
+
+async function _loadExtractosSupabase() {
+  if (!_supaUser) return false;
+  try {
+    let allData = []; let page = 0; const PAGE = 1000;
+    while (true) {
+      const { data, error } = await supa.from('extracto_bancario')
+        .select('*').range(page*PAGE, (page+1)*PAGE-1).order('fecha', {ascending:false});
+      if (error || !data || !data.length) break;
+      allData = allData.concat(data.map(r => ({
+        fecha: r.fecha, empTag: r.emp_tag, banco: r.banco,
+        cuenta: r.cuenta, detalle: r.detalle, cat: r.cat,
+        importe: r.importe, tipo: r.tipo, saldo: r.saldo,
+        denominacion: r.denominacion,
+      })));
+      if (data.length < PAGE) break;
+      page++;
+    }
+    if (allData.length > 0) {
+      appState.extractoBancario = allData;
+      console.log('✅ Extractos desde Supabase:', allData.length);
+      return true;
+    }
+    return false;
+  } catch(e) { console.error('_loadExtractosSupabase:', e); return false; }
 }
 
 function isCarteraDebo(wb) {
