@@ -244,8 +244,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .btn-primary:hover{opacity:0.9;transform:translateY(-1px);}
 .login-err{color:var(--red);font-size:13px;margin-top:10px;display:none;}
 #app{display:none;min-height:100vh;flex-direction:column;}
-.topnav{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
-.topnav-left{display:flex;align-items:center;gap:16px;}
+.topnav{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 8px;height:60px;display:flex;align-items:center;gap:6px;position:sticky;top:0;z-index:100;overflow-x:auto;scrollbar-width:none;white-space:nowrap;}
+.topnav::-webkit-scrollbar{display:none;}
+.topnav-left{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .topnav-logo{font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px;}
 .dot{width:8px;height:8px;background:var(--green);border-radius:50%;animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
@@ -254,7 +255,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .nav-tab{background:none;border:none;color:var(--text2);font-size:13px;font-weight:500;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:var(--font);transition:all 0.2s;white-space:nowrap;}
 .nav-tab:hover{color:var(--text);background:var(--bg3);}
 .nav-tab.active{color:var(--accent);background:rgba(108,143,255,0.12);}
-.topnav-right{display:flex;align-items:center;gap:10px;}
+.topnav-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
 .dolar-pill{background:var(--bg3);border:1px solid var(--border2);border-radius:99px;padding:5px 12px;font-size:12px;font-family:var(--mono);color:var(--text2);display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color 0.2s;}
 .dolar-pill:hover{border-color:var(--accent);}
 .dolar-val{color:var(--green);font-weight:500;}
@@ -571,10 +572,8 @@ let _supaUser=null,_supaRol=null;
 <nav class="topnav">
   <div class="topnav-left">
     <div class="topnav-logo"><span style="display:inline-flex;flex-direction:column;line-height:1.1"><span style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8fa3b8">GRUPO</span><span style="font-size:16px;font-weight:900;letter-spacing:0.5px"><span style="color:#4a9fd4">LA</span> <span style="color:#3aaa2a">PLAZA</span></span></span> <div class="dot"></div></div>
-    <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:0">
-      <button onclick="document.getElementById('main-nav').scrollLeft-=150"
-        style="flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;width:26px;height:26px;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center">&#8249;</button>
-      <nav class="main-nav" id="main-nav" style="overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;user-select:none;flex:1;min-width:0">
+    <div style="display:flex;align-items:center;gap:4px">
+      <nav class="main-nav" id="main-nav" style="overflow-x:visible;user-select:none;display:flex;gap:2px;align-items:center;">
       <button class="nav-tab active" onclick="navGo('dashboard',this)" data-page="dashboard"><span class="ni">📊</span><span class="nl">Dashboard</span></button>
       
       <div class="nav-group" id="grp-dinero">
@@ -612,8 +611,6 @@ let _supaUser=null,_supaRol=null;
       </div>
       <button class="nav-tab" id="nav-excel-btn" onclick="navGo('importar',this)" data-page="importar"><span class="ni">📂</span><span class="nl">Excel</span></button>
     </nav>
-      <button onclick="document.getElementById('main-nav').scrollLeft+=150"
-        style="flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;width:26px;height:26px;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center">&#8250;</button>
     </div>
   </div>
   <div class="topnav-right">
@@ -10508,7 +10505,9 @@ function simularPrestamo() {
   function tryInit() {
     var el = document.getElementById('main-nav');
     if (el) initDragScroll(el);
-    else setTimeout(tryInit, 300);
+    var tn = document.querySelector('.topnav');
+    if (tn) initDragScroll(tn);
+    if (!el) setTimeout(tryInit, 300);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tryInit);
   else setTimeout(tryInit, 500);
