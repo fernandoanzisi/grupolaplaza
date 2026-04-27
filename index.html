@@ -244,7 +244,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .btn-primary:hover{opacity:0.9;transform:translateY(-1px);}
 .login-err{color:var(--red);font-size:13px;margin-top:10px;display:none;}
 #app{display:none;min-height:100vh;flex-direction:column;}
-.topnav{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 8px;height:60px;display:flex;align-items:center;gap:6px;position:sticky;top:0;z-index:100;overflow:hidden;}
+.topnav{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 12px;height:60px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:100;overflow-x:auto;overflow-y:visible;scrollbar-width:none;white-space:nowrap;}
+.topnav::-webkit-scrollbar{display:none;}
 .topnav::-webkit-scrollbar{display:none;}
 #topnav-scroll::-webkit-scrollbar{display:none;}
 .topnav-left{display:flex;align-items:center;gap:8px;flex-shrink:0;}
@@ -570,10 +571,10 @@ let _supaUser=null,_supaRol=null;
 </div>
 
 <div id="app" style="display:none;flex-direction:column">
-<nav class="topnav">
-  <div class="topnav-left">
-    <div class="topnav-logo"><span style="display:inline-flex;flex-direction:column;line-height:1.1"><span style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8fa3b8">GRUPO</span><span style="font-size:16px;font-weight:900;letter-spacing:0.5px"><span style="color:#4a9fd4">LA</span> <span style="color:#3aaa2a">PLAZA</span></span></span> <div class="dot"></div></div>
-    <div id="topnav-scroll" style="display:flex;align-items:center;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;">
+<nav class="topnav" id="topnav-scroll" style="overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;">
+  <div class="topnav-left" style="flex-shrink:0">
+    <div class="topnav-logo" style="flex-shrink:0"><span style="display:inline-flex;flex-direction:column;line-height:1.1"><span style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8fa3b8">GRUPO</span><span style="font-size:16px;font-weight:900;letter-spacing:0.5px"><span style="color:#4a9fd4">LA</span> <span style="color:#3aaa2a">PLAZA</span></span></span> <div class="dot"></div></div>
+    <div style="display:flex;align-items:center;gap:2px;">
       <nav class="main-nav" id="main-nav" style="display:flex;gap:2px;align-items:center;flex-shrink:0;">
       <button class="nav-tab active" onclick="navGo('dashboard',this)" data-page="dashboard"><span class="ni">📊</span><span class="nl">Dashboard</span></button>
       
@@ -614,7 +615,7 @@ let _supaUser=null,_supaRol=null;
     </nav>
     </div>
   </div>
-  <div class="topnav-right">
+  <div class="topnav-right" style="flex-shrink:0">
     
     <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--accent);border-radius:10px;padding:4px 10px">
       <span style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:0.5px">📅 Desde</span>
@@ -10535,7 +10536,7 @@ function simularPrestamo() {
   }
 
   function tryInit() {
-    var sc = document.getElementById('topnav-scroll');
+    var sc = document.querySelector('.topnav');
     if (sc) initDragScroll(sc);
     else setTimeout(tryInit, 300);
   }
