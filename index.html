@@ -14,6 +14,11 @@
 <meta name="description" content="Panel financiero multi-empresa con soporte offline">
 <meta name="msapplication-TileColor" content="#0e0f14">
 <link rel="manifest" href="/manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="La Plaza">
+  <meta name="theme-color" content="#4a9fd4">
 <!-- Apple splash / icons inline SVG encoded -->
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230e0f14'/%3E%3Ctext x='256' y='340' font-size='260' text-anchor='middle' font-family='sans-serif'%3E%F0%9F%92%B0%3C/text%3E%3C/svg%3E">
@@ -4626,8 +4631,9 @@ function handleFile(input) {
           logDiv.style.display = 'block';
         }
         showToast('✅ Minuta Diaria importada — ' + result.totalCount + ' registros de ' + result.dias + ' días');
-        // Auto-guardar empresas en Supabase
+        // Auto-guardar todo en Supabase
         _saveEmpresasSupabase();
+        showToast('☁️ Minuta sincronizada — datos disponibles en todos los dispositivos');
         if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof navGo === 'function') navGo('dashboard', null);
         return;
@@ -7737,7 +7743,12 @@ function parseExtractoBancario(wb) {
   const iFecha  = ci('fecha') >= 0 ? ci('fecha') : 2;
   const iImp    = ci('importe') >= 0 ? ci('importe') : 5;
   const iEmp    = ci('empresa') >= 0 ? ci('empresa') : 13;
-  const iBanco  = ci('banco') >= 0 ? ci('banco') : 12;
+  const iBanco  = (() => { 
+    // Prefer exact 'BANCO' column (col 12), not 'CTA,BANCO' (col 0)
+    const exact = hdr.findIndex(h => h === 'banco');
+    if (exact >= 0) return exact;
+    return ci('banco') >= 0 ? ci('banco') : 12;
+  })();
   const iCuenta = ci('corresponde','corres') >= 0 ? ci('corresponde','corres') : 15;
   const iNroCta = 16;
   const iDetalle= ci('detalle') >= 0 ? ci('detalle') : 11;
@@ -8753,8 +8764,12 @@ async function loadFromSupabase() {
     const { data: stateRows } = await supa.from('app_state').select('valor').eq('clave','main').limit(1);
     const stateRow = stateRows && stateRows.length ? stateRows[0] : null;
     if (stateRow && stateRow.valor) {
-      const saved = stateRow.valor;
-      if (saved.empresas) {
+      // valor puede ser string JSON o objeto (depende de como Supabase devuelve jsonb)
+      let saved = stateRow.valor;
+      if (typeof saved === 'string') {
+        try { saved = JSON.parse(saved); } catch(e) { console.warn('parse error', e); }
+      }
+      if (saved && saved.empresas) {
         appState.empresas = saved.empresas;
         appState.empresas.forEach(e => {
           if (!e.transactions)  e.transactions  = [];
@@ -8768,8 +8783,14 @@ async function loadFromSupabase() {
           if (!e.reminders)     e.reminders     = [];
         });
       }
-      if (saved.cfFilas)      appState.cfFilas      = saved.cfFilas;
-      if (saved.lastMinutaDate) appState.lastMinutaDate = saved.lastMinutaDate;
+      if (saved.cfFilas)          appState.cfFilas          = saved.cfFilas;
+      if (saved.lastMinutaDate)   appState.lastMinutaDate   = saved.lastMinutaDate;
+      if (saved.riesgoData)       appState.riesgoData       = saved.riesgoData;
+      if (saved.tnaFima)          appState.tnaFima          = saved.tnaFima;
+      if (saved.tnaFimaPremium)   appState.tnaFimaPremium   = saved.tnaFimaPremium;
+      if (saved.tnaFimaAhorro)    appState.tnaFimaAhorro    = saved.tnaFimaAhorro;
+      if (saved.tnaFimaDate)      appState.tnaFimaDate      = saved.tnaFimaDate;
+      if (saved.vistaConsolidada !== undefined) appState.vistaConsolidada = saved.vistaConsolidada;
       showSaveIndicator('saved');
     }
 
@@ -8832,12 +8853,18 @@ async function _saveEmpresasSupabase() {
       empresas: appState.empresas,
       cfFilas: appState.cfFilas,
       lastMinutaDate: appState.lastMinutaDate,
+      riesgoData: appState.riesgoData || [],
+      tnaFima: appState.tnaFima,
+      tnaFimaPremium: appState.tnaFimaPremium,
+      tnaFimaAhorro: appState.tnaFimaAhorro,
+      tnaFimaDate: appState.tnaFimaDate,
+      vistaConsolidada: appState.vistaConsolidada,
     };
     const { error } = await supa.from('app_state').upsert({
       clave: 'main', valor: JSON.stringify(stateToSave),
       updated_at: new Date().toISOString(), updated_by: _supaUser.id
     }, { onConflict: 'clave' });
-    if (!error) showToast('☁️ Datos guardados en la nube');
+    if (!error) showToast('☁️ Datos sincronizados correctamente');
     else console.warn('_saveEmpresasSupabase:', error.message);
   } catch(e) { console.error('_saveEmpresasSupabase:', e); }
 }
