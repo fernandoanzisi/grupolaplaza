@@ -755,14 +755,65 @@ let _supaUser=null,_supaRol=null;
 
 <!-- INVERSIONES -->
 <div class="page" id="page-inversiones">
-  <div class="section-header mb"><h2>📈 Inversiones — Fima</h2></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+    <h2 style="font-size:20px;font-weight:800;margin:0">📈 Inversiones — FIMA</h2>
+    <div id="inv-result-count" style="font-size:11px;color:var(--text3)"></div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card mb" style="padding:12px 16px">
+    <div style="display:grid;grid-template-columns:2fr repeat(4,1fr) auto;gap:10px;align-items:end;flex-wrap:wrap">
+      <div>
+        <input type="text" id="inv-search" placeholder="🔍 Buscar fondo, empresa..." oninput="renderInvestments()"
+          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Empresa</div>
+        <select id="inv-f-empresa" onchange="renderInvestments()"
+          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:11px;color:var(--text);outline:none">
+          <option value="">Todas</option>
+          <option value="Rio">🔵 Rio Salado</option>
+          <option value="Cipolletti">🟢 Serv. Cipolletti</option>
+          <option value="Plaza">🟡 La Plaza</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Fondo</div>
+        <select id="inv-f-fondo" onchange="renderInvestments()"
+          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:11px;color:var(--text);outline:none">
+          <option value="">Todos</option>
+          <option value="premium">FIMA Premium</option>
+          <option value="ahorro">FIMA Ahorro</option>
+          <option value="dolar">FIMA USD</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Ordenar</div>
+        <select id="inv-sort" onchange="renderInvestments()"
+          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:11px;color:var(--text);outline:none">
+          <option value="cap_desc">Capital ↓</option>
+          <option value="cap_asc">Capital ↑</option>
+          <option value="rend_desc">Rendimiento ↓</option>
+          <option value="fecha_desc">Fecha ↓</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end">
+        <button onclick="invLimpiar()" style="width:100%;padding:7px 8px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text3);font-size:11px;cursor:pointer">✕ Limpiar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="grid-4 mb" id="inv-stats"></div>
   <div class="grid-2 mb">
     <div class="card"><div class="card-title">📈 Rendimiento Fima Premium — 12 meses</div><div class="chart-wrap-tall"><canvas id="chart-fima"></canvas></div></div>
     <div class="card"><div class="card-title">🔑 TNA histórica anual</div><div class="chart-wrap-tall"><canvas id="chart-fima-anual"></canvas></div></div>
   </div>
-  <div class="card"><div class="card-title">💼 Mi cartera Fima</div>
-    <div class="table-wrap"><table><thead><tr><th>Fondo</th><th>Empresa</th><th>Capital</th><th>Valor actual</th><th>Ganancia</th><th>Rend. %</th><th>TNA</th><th>Plazo</th></tr></thead><tbody id="inv-table"></tbody></table></div>
+  <div class="card"><div class="card-title">💼 Mi cartera FIMA</div>
+    <div class="table-wrap"><table><thead><tr><th>Fondo</th><th>Empresa</th><th>Capital</th><th>Valor actual</th><th>Ganancia</th><th>Rend. %</th><th>TNA</th><th>Plazo</th><th>Fecha</th></tr></thead><tbody id="inv-table"></tbody></table></div>
+    <div id="inv-footer" style="padding:10px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);display:flex;justify-content:space-between">
+      <span id="inv-footer-count"></span>
+      <span id="inv-footer-total" style="font-family:var(--mono);font-weight:700;color:var(--green)"></span>
+    </div>
   </div>
 </div>
 
@@ -3222,10 +3273,20 @@ function renderReminders() {
 
 // ==================== INVESTMENTS ====================
 const fimaFunds=[{name:'Fima Premium',initial:200000,current:320000,tna:18.75,plazo:'Inmediato'},{name:'Fima Ahorro Plus',initial:100000,current:138000,tna:65.2,plazo:'72hs'}];
+function invLimpiar() {
+  ['inv-search'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['inv-f-empresa','inv-f-fondo','inv-sort'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='inv-sort'?'cap_desc':'';});
+  renderInvestments();
+}
+
 function renderInvestments() {
   const emp = empresa();
+  const search   = (document.getElementById('inv-search')?.value||'').toLowerCase();
+  const fEmpresa = document.getElementById('inv-f-empresa')?.value||'';
+  const fFondo   = document.getElementById('inv-f-fondo')?.value||'';
+  const sortVal  = document.getElementById('inv-sort')?.value||'cap_desc';
+
   // Usar investments del estado, fallback a datos hardcoded FIMA si vacío
-  // Mostrar inversiones del día seleccionado
   const invDate = activeDateFilter || appState.lastMinutaDate || '';
   let allInv = (emp.investments && emp.investments.length > 0)
     ? emp.investments
@@ -3252,6 +3313,38 @@ function renderInvestments() {
       ? allInv.filter(i => !i.fecha || i.fecha === invDate)
       : allInv;
   }
+
+  // Apply search/empresa/fondo filters
+  if (search) {
+    invData = invData.filter(f =>
+      (f.fondo||f.name||'').toLowerCase().includes(search) ||
+      (f.empresa||'').toLowerCase().includes(search)
+    );
+  }
+  if (fEmpresa) {
+    invData = invData.filter(f => (f.empresa||'').includes(fEmpresa));
+  }
+  if (fFondo) {
+    invData = invData.filter(f => {
+      const nombre = (f.fondo||f.name||'').toUpperCase();
+      if (fFondo==='premium') return !nombre.includes('AHORR') && (f.moneda||'')!=='USD' && !nombre.includes('RENTA');
+      if (fFondo==='ahorro')  return nombre.includes('AHORR');
+      if (fFondo==='dolar')   return (f.moneda||'')==='USD' || nombre.includes('RENTA');
+      return true;
+    });
+  }
+  // Sort
+  invData.sort((a,b) => {
+    if (sortVal==='cap_desc')  return (b.capital||0)-(a.capital||0);
+    if (sortVal==='cap_asc')   return (a.capital||0)-(b.capital||0);
+    if (sortVal==='rend_desc') return (b.rendDia||0)-(a.rendDia||0);
+    if (sortVal==='fecha_desc')return (b.fecha||'').localeCompare(a.fecha||'');
+    return 0;
+  });
+
+  // Update count
+  const cntEl = document.getElementById('inv-result-count');
+  if (cntEl) cntEl.textContent = invData.length.toLocaleString('es-AR') + ' inversiones encontradas';
 
   // Stats por empresa
   const byEmp = {};
