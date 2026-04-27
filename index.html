@@ -250,6 +250,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .dot{width:8px;height:8px;background:var(--green);border-radius:50%;animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 .nav-tabs{display:flex;gap:4px;}
+#main-nav::-webkit-scrollbar{display:none;}
 .nav-tab{background:none;border:none;color:var(--text2);font-size:13px;font-weight:500;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:var(--font);transition:all 0.2s;white-space:nowrap;}
 .nav-tab:hover{color:var(--text);background:var(--bg3);}
 .nav-tab.active{color:var(--accent);background:rgba(108,143,255,0.12);}
@@ -568,7 +569,10 @@ let _supaUser=null,_supaRol=null;
 <nav class="topnav">
   <div class="topnav-left">
     <div class="topnav-logo"><span style="display:inline-flex;flex-direction:column;line-height:1.1"><span style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8fa3b8">GRUPO</span><span style="font-size:16px;font-weight:900;letter-spacing:0.5px"><span style="color:#4a9fd4">LA</span> <span style="color:#3aaa2a">PLAZA</span></span></span> <div class="dot"></div></div>
-    <nav class="main-nav" id="main-nav">
+    <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:0">
+      <button onclick="document.getElementById('main-nav').scrollLeft-=150"
+        style="flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;width:26px;height:26px;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center">&#8249;</button>
+      <nav class="main-nav" id="main-nav" style="overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;user-select:none;flex:1;min-width:0">
       <button class="nav-tab active" onclick="navGo('dashboard',this)" data-page="dashboard"><span class="ni">📊</span><span class="nl">Dashboard</span></button>
       
       <div class="nav-group" id="grp-dinero">
@@ -606,6 +610,9 @@ let _supaUser=null,_supaRol=null;
       </div>
       <button class="nav-tab" id="nav-excel-btn" onclick="navGo('importar',this)" data-page="importar"><span class="ni">📂</span><span class="nl">Excel</span></button>
     </nav>
+      <button onclick="document.getElementById('main-nav').scrollLeft+=150"
+        style="flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;width:26px;height:26px;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center">&#8250;</button>
+    </div>
   </div>
   <div class="topnav-right">
     
@@ -2318,50 +2325,58 @@ async function fetchDolar() {
   const blueEl = document.getElementById('nav-blue');
   if (blueEl) blueEl.textContent = '...';
 
-  const APIS = [
-    // API 1: dolarapi.com
-    async () => {
-      const r = await fetch('https://dolarapi.com/v1/dolares', {cache:'no-store'});
-      if (!r.ok) throw new Error('dolarapi ' + r.status);
+  // Usar allorigins como proxy para evitar CORS desde Vercel
+  async function fetchProxy(url) {
+    const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+    const r = await fetch(proxy, {cache:'no-store'});
+    if (!r.ok) throw new Error('proxy ' + r.status);
+    return await r.json();
+  }
+
+  let ok = false;
+
+  // Intento 1: dolarapi.com directo
+  try {
+    const r = await fetch('https://dolarapi.com/v1/dolares', {cache:'no-store'});
+    if (r.ok) {
       const data = await r.json();
       data.forEach(d => {
         const c = (d.casa||'').toLowerCase();
-        if (c==='oficial')              dolar.oficial = {compra:d.compra, venta:d.venta};
-        else if (c==='blue')            dolar.blue    = {compra:d.compra, venta:d.venta};
-        else if (c==='bolsa'||c==='mep')dolar.mep     = {compra:d.compra||d.venta, venta:d.venta};
-        else if (c==='contadoliqui'||c==='ccl') dolar.ccl = {compra:d.compra||d.venta, venta:d.venta};
+        if (c==='oficial')               dolar.oficial = {compra:d.compra, venta:d.venta};
+        else if (c==='blue')             dolar.blue    = {compra:d.compra, venta:d.venta};
+        else if (c==='bolsa'||c==='mep') dolar.mep     = {compra:d.compra||d.venta, venta:d.venta};
       });
-    },
-    // API 2: bluelytics
-    async () => {
-      const r = await fetch('https://api.bluelytics.com.ar/v2/latest', {cache:'no-store'});
-      if (!r.ok) throw new Error('bluelytics ' + r.status);
-      const d = await r.json();
-      if (d.blue)   dolar.blue   = {compra:d.blue.value_buy,   venta:d.blue.value_sell};
-      if (d.oficial)dolar.oficial= {compra:d.oficial.value_buy, venta:d.oficial.value_sell};
-    },
-    // API 3: ambito via allorigins proxy
-    async () => {
-      const url = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://mercados.ambito.com//dolar/informal/variacion');
-      const r = await fetch(url, {cache:'no-store'});
-      if (!r.ok) throw new Error('ambito ' + r.status);
-      const d = await r.json();
-      if (d.venta) dolar.blue = {compra: parseFloat(d.compra?.replace(',','.')||0), venta: parseFloat(d.venta.replace(',','.'))};
-    },
-  ];
+      ok = true;
+    }
+  } catch(e) {}
 
-  let ok = false;
-  for (const api of APIS) {
-    if (ok) break;
-    try { await api(); ok = true; } catch(e) { console.warn('fetchDolar fallback:', e.message); }
+  // Intento 2: dolarapi via proxy
+  if (!ok) {
+    try {
+      const data = await fetchProxy('https://dolarapi.com/v1/dolares');
+      if (Array.isArray(data)) {
+        data.forEach(d => {
+          const c = (d.casa||'').toLowerCase();
+          if (c==='oficial')               dolar.oficial = {compra:d.compra, venta:d.venta};
+          else if (c==='blue')             dolar.blue    = {compra:d.compra, venta:d.venta};
+          else if (c==='bolsa'||c==='mep') dolar.mep     = {compra:d.compra||d.venta, venta:d.venta};
+        });
+        ok = true;
+      }
+    } catch(e) {}
+  }
+
+  // Intento 3: bluelytics via proxy
+  if (!ok) {
+    try {
+      const d = await fetchProxy('https://api.bluelytics.com.ar/v2/latest');
+      if (d.blue)    dolar.blue    = {compra:d.blue.value_buy,    venta:d.blue.value_sell};
+      if (d.oficial) dolar.oficial = {compra:d.oficial.value_buy, venta:d.oficial.value_sell};
+      ok = true;
+    } catch(e) {}
   }
 
   updateDolarUI();
-
-  if (blueEl) {
-    const v = dolar.blue?.venta || dolar.oficial?.venta;
-    blueEl.textContent = v ? '$ ' + fmtARS(v) : '— s/d';
-  }
 }
 
 // fmt() and fmtNum() defined in import block above
@@ -10450,6 +10465,44 @@ function simularPrestamo() {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', tryInit);
   } else { tryInit(); }
+})();
+</script>
+<script>
+// ── Drag-to-scroll en la barra de pestañas ───────────────────
+(function() {
+  function initDragScroll(el) {
+    if (!el) return;
+    let active = false, startX = 0, scrollLeft = 0, moved = false;
+
+    el.addEventListener('mousedown', function(e) {
+      if (e.button !== 0) return;
+      active = true; moved = false;
+      startX = e.clientX;
+      scrollLeft = el.scrollLeft;
+      document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mouseup', function() {
+      active = false;
+      document.body.style.userSelect = '';
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!active) return;
+      var dx = startX - e.clientX;
+      if (Math.abs(dx) > 4) moved = true;
+      el.scrollLeft = scrollLeft + dx;
+    });
+    el.addEventListener('click', function(e) {
+      if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
+    }, true);
+  }
+
+  function tryInit() {
+    var el = document.getElementById('main-nav');
+    if (el) initDragScroll(el);
+    else setTimeout(tryInit, 300);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tryInit);
+  else setTimeout(tryInit, 500);
 })();
 </script>
 </body>
