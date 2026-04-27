@@ -244,7 +244,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .btn-primary:hover{opacity:0.9;transform:translateY(-1px);}
 .login-err{color:var(--red);font-size:13px;margin-top:10px;display:none;}
 #app{display:none;min-height:100vh;flex-direction:column;}
-.topnav{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 8px;height:60px;display:flex;align-items:center;gap:6px;position:sticky;top:0;z-index:100;overflow:visible;}
+.topnav{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 8px;height:60px;display:flex;align-items:center;gap:6px;position:sticky;top:0;z-index:100;overflow:hidden;}
 .topnav::-webkit-scrollbar{display:none;}
 #topnav-scroll::-webkit-scrollbar{display:none;}
 .topnav-left{display:flex;align-items:center;gap:8px;flex-shrink:0;}
@@ -455,7 +455,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .nav-group { position:relative; }
 .nav-group.open .nav-arrow { transform:rotate(180deg); opacity:1; }
 .nav-group.open .nav-group-trigger { color:var(--accent); background:rgba(108,143,255,0.12); }
-.nav-dropdown { position:absolute; top:calc(100% + 6px); left:0; background:var(--card); border:1px solid var(--border2); border-radius:12px; padding:6px; display:none; flex-direction:column; gap:2px; min-width:185px; box-shadow:0 12px 40px rgba(0,0,0,0.5); z-index:500; }
+.nav-dropdown { position:fixed; top:60px; background:var(--card); border:1px solid var(--border2); border-radius:12px; padding:6px; display:none; flex-direction:column; gap:2px; min-width:185px; box-shadow:0 12px 40px rgba(0,0,0,0.5); z-index:500; }
 .nav-group.open .nav-dropdown { display:flex; }
 .nav-dd-item { background:none; border:none; color:var(--text2); font-size:13px; font-weight:500; padding:9px 14px; border-radius:8px; cursor:pointer; font-family:var(--font); text-align:left; transition:all 0.15s; white-space:nowrap; width:100%; }
 .nav-dd-item:hover { color:var(--text); background:var(--bg3); }
@@ -610,7 +610,7 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('recordatorios',this)"  data-page="recordatorios">🔔 Recordatorios</button>
         </div>
       </div>
-      <button class="nav-tab" id="nav-excel-btn" onclick="navGo('importar',this)" data-page="importar"><span class="ni">📂</span><span class="nl">Excel</span></button>
+      <button class="nav-tab" id="nav-excel-btn" style="display:none" onclick="navGo('importar',this)" data-page="importar"><span class="ni">📂</span><span class="nl">Excel</span></button>
     </nav>
     </div>
   </div>
@@ -2325,27 +2325,28 @@ async function fetchDolar() {
   const blueEl = document.getElementById('nav-blue');
   if (blueEl) blueEl.textContent = '...';
 
-  function xhrGet(url) {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', url, true);
-      xhr.timeout = 6000;
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try { resolve(JSON.parse(xhr.responseText)); }
-          catch(e) { reject(e); }
-        } else reject(new Error(xhr.status));
-      };
-      xhr.onerror = xhr.ontimeout = () => reject(new Error('network'));
-      xhr.send();
+  // Intentar fetch con diferentes métodos
+  async function tryUrl(url) {
+    const r = await fetch(url, {
+      method: 'GET',
+      headers: {'Accept': 'application/json'},
+      mode: 'cors',
+      cache: 'no-store',
     });
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
   }
+
+  const URLS = [
+    'https://dolarapi.com/v1/dolares',
+    'https://api.bluelytics.com.ar/v2/latest',
+  ];
 
   let ok = false;
 
-  // 1. dolarapi.com
-  if (!ok) try {
-    const data = await xhrGet('https://dolarapi.com/v1/dolares');
+  // Intento 1: dolarapi.com
+  try {
+    const data = await tryUrl('https://dolarapi.com/v1/dolares');
     if (Array.isArray(data)) {
       data.forEach(d => {
         const c = (d.casa||'').toLowerCase();
@@ -2355,26 +2356,35 @@ async function fetchDolar() {
       });
       ok = true;
     }
-  } catch(e) { console.warn('dolarapi:', e.message); }
+  } catch(e) { console.warn('dolarapi fail:', e.message); }
 
-  // 2. bluelytics
+  // Intento 2: bluelytics
   if (!ok) try {
-    const d = await xhrGet('https://api.bluelytics.com.ar/v2/latest');
-    if (d && d.blue) {
+    const d = await tryUrl('https://api.bluelytics.com.ar/v2/latest');
+    if (d?.blue) {
       dolar.blue    = {compra:d.blue.value_buy,    venta:d.blue.value_sell};
       dolar.oficial = {compra:d.oficial.value_buy, venta:d.oficial.value_sell};
       ok = true;
     }
-  } catch(e) { console.warn('bluelytics:', e.message); }
+  } catch(e) { console.warn('bluelytics fail:', e.message); }
 
-  // 3. criptoya
+  // Intento 3: proxy cors.sh
   if (!ok) try {
-    const d = await xhrGet('https://criptoya.com/api/dolar');
-    if (d && d.blue) {
-      dolar.blue = {compra:parseFloat(d.blue.compra||0), venta:parseFloat(d.blue.venta||d.blue)};
-      ok = true;
+    const r = await fetch('https://cors.sh/https://dolarapi.com/v1/dolares', {
+      headers: {'x-cors-api-key': 'temp_d6d9f5b3c8e4a7f2b1c0e9d8f7a6b5c4'}
+    });
+    if (r.ok) {
+      const data = await r.json();
+      if (Array.isArray(data)) {
+        data.forEach(d => {
+          const c = (d.casa||'').toLowerCase();
+          if (c==='oficial') dolar.oficial = {compra:d.compra, venta:d.venta};
+          else if (c==='blue') dolar.blue  = {compra:d.compra, venta:d.venta};
+        });
+        ok = true;
+      }
     }
-  } catch(e) { console.warn('criptoya:', e.message); }
+  } catch(e) { console.warn('proxy fail:', e.message); }
 
   updateDolarUI();
   if (blueEl) {
@@ -4114,17 +4124,23 @@ function parseMinutaDiaria(wb) {
     // Cada fecha de la Minuta guarda sus valores en diaHistory[fecha]
     // Esto permite ver datos históricos al cambiar el filtro de fecha
     const _snapRS = {
-      b50: oRS?oRS.diaB50||0:0, rsCart: oRS?oRS.diaRSCart||0:0,
-      i40: oRS?oRS.diaI40||0:0, usd:    oRS?oRS.diaUSD||0:0,
-      b37: oRS?oRS.diaB37||0:0, b46:    oRS?oRS.diaB46||0:0,
-      rendPrem: oRS?oRS.diaRendPremRS||0:0, rendAhorr: oRS?oRS.diaRendAhorrRS||0:0,
-      c71: oRS?oRS.diaC71||0:0,
+      b50:oRS?oRS.diaB50||0:0, b26:oRS?oRS.diaB26||0:0, b33:oRS?oRS.diaB33||0:0,
+      b34:oRS?oRS.diaB34||0:0, b35:oRS?oRS.diaB35||0:0, b37:oRS?oRS.diaB37||0:0,
+      b38:oRS?oRS.diaB38||0:0, b39:oRS?oRS.diaB39||0:0, b40:oRS?oRS.diaB40||0:0,
+      b41:oRS?oRS.diaB41||0:0, b42:oRS?oRS.diaB42||0:0, b43:oRS?oRS.diaB43||0:0,
+      b44:oRS?oRS.diaB44||0:0, b45:oRS?oRS.diaB45||0:0, b46:oRS?oRS.diaB46||0:0,
+      usd:oRS?oRS.diaUSD||0:0, rsCart:oRS?oRS.diaRSCart||0:0, i40:oRS?oRS.diaI40||0:0,
+      rendPrem:oRS?oRS.diaRendPremRS||0:0, rendAhorr:oRS?oRS.diaRendAhorrRS||0:0,
+      c71:oRS?oRS.diaC71||0:0,
     };
     const _snapSC = {
-      d50: oSC?oSC.diaD50||0:0, scCart: oSC?oSC.diaSCCart||0:0,
-      i41: oSC?oSC.diaI41||0:0, usd:    oSC?oSC.diaUSD||0:0,
-      d37: oSC?oSC.diaD37||0:0, d46:    oSC?oSC.diaD46||0:0,
-      rendPrem: oSC?oSC.diaRendPremSC||0:0, rendAhorr: oSC?oSC.diaRendAhorrSC||0:0,
+      d50:oSC?oSC.diaD50||0:0, d26:oSC?oSC.diaD26||0:0, d33:oSC?oSC.diaD33||0:0,
+      d34:oSC?oSC.diaD34||0:0, d35:oSC?oSC.diaD35||0:0, d37:oSC?oSC.diaD37||0:0,
+      d38:oSC?oSC.diaD38||0:0, d39:oSC?oSC.diaD39||0:0, d40:oSC?oSC.diaD40||0:0,
+      d41:oSC?oSC.diaD41||0:0, d42:oSC?oSC.diaD42||0:0, d43:oSC?oSC.diaD43||0:0,
+      d44:oSC?oSC.diaD44||0:0, d45:oSC?oSC.diaD45||0:0, d46:oSC?oSC.diaD46||0:0,
+      usd:oSC?oSC.diaUSD||0:0, scCart:oSC?oSC.diaSCCart||0:0, i41:oSC?oSC.diaI41||0:0,
+      rendPrem:oSC?oSC.diaRendPremSC||0:0, rendAhorr:oSC?oSC.diaRendAhorrSC||0:0,
     };
     const _snapLP = { f50: oLP?oLP.diaF50||0:0 };
 
@@ -4134,9 +4150,22 @@ function parseMinutaDiaria(wb) {
 
     // B37=FIMA Renta Fija USD RS, D37=FIMA Renta Fija USD SC (fila 37 = índice 36)
     if (R[36]) {
-      if (oRS) oRS.diaB37 = pn(c(36,1)) || 0;  // col B = idx 1
-      if (oSC) oSC.diaD37 = pn(c(36,3)) || 0;  // col D = idx 3
+      if (oRS) oRS.diaB37 = pn(c(36,1)) || 0;
+      if (oSC) oSC.diaD37 = pn(c(36,3)) || 0;
     }
+    // Celdas adicionales del dashboard (fila = índice fila-1)
+    if(R[25]){if(oRS)oRS.diaB26=pn(c(25,1))||0;if(oSC)oSC.diaD26=pn(c(25,3))||0;} // F26 Efectivo
+    if(R[32]){if(oRS)oRS.diaB33=pn(c(32,1))||0;if(oSC)oSC.diaD33=pn(c(32,3))||0;} // F33 Bancos
+    if(R[33]){if(oRS)oRS.diaB34=pn(c(33,1))||0;if(oSC)oSC.diaD34=pn(c(33,3))||0;} // F34 FIMA Premium
+    if(R[34]){if(oRS)oRS.diaB35=pn(c(34,1))||0;if(oSC)oSC.diaD35=pn(c(34,3))||0;} // F35 FIMA Ahorro
+    if(R[37]){if(oRS)oRS.diaB38=pn(c(37,1))||0;if(oSC)oSC.diaD38=pn(c(37,3))||0;} // F38 Rend Premium
+    if(R[38]){if(oRS)oRS.diaB39=pn(c(38,1))||0;if(oSC)oSC.diaD39=pn(c(38,3))||0;} // F39 Rend Ahorro
+    if(R[39]){if(oRS)oRS.diaB40=pn(c(39,1))||0;if(oSC)oSC.diaD40=pn(c(39,3))||0;} // F40 USD Galicia
+    if(R[40]){if(oRS)oRS.diaB41=pn(c(40,1))||0;if(oSC)oSC.diaD41=pn(c(40,3))||0;} // F41 USD Macro
+    if(R[41]){if(oRS)oRS.diaB42=pn(c(41,1))||0;if(oSC)oSC.diaD42=pn(c(41,3))||0;} // F42 USD Dep CC
+    if(R[42]){if(oRS)oRS.diaB43=pn(c(42,1))||0;if(oSC)oSC.diaD43=pn(c(42,3))||0;} // F43 USD Caja 26
+    if(R[43]){if(oRS)oRS.diaB44=pn(c(43,1))||0;if(oSC)oSC.diaD44=pn(c(43,3))||0;} // F44 USD Caja 50
+    if(R[44]){if(oRS)oRS.diaB45=pn(c(44,1))||0;if(oSC)oSC.diaD45=pn(c(44,3))||0;} // F45 Rend FIMA USD
     // Rendimientos FIMA: buscar en filas alrededor de 40-55
     // REND. FIMA PREMIUM RS ~ columna B, REND. FIMA AHORRO RS ~ columna B
     for (let ri = 38; ri <= 55; ri++) {
@@ -8586,6 +8615,11 @@ async function onLogin(user) {
   const syncBtn  = document.getElementById('um-sync-btn');
   if (adminBtn) adminBtn.style.display = _supaRol === 'admin' ? '' : 'none';
   if (syncBtn)  syncBtn.style.display  = _supaRol === 'admin' ? '' : 'none';
+  // Excel button: solo visible para admins
+  const excelBtn = document.getElementById('nav-excel-btn');
+  if (excelBtn) excelBtn.style.display = _supaRol === 'admin' ? '' : 'none';
+  const mobileExcelBtn = document.getElementById('mobile-excel-btn');
+  if (mobileExcelBtn) mobileExcelBtn.style.display = _supaRol === 'admin' ? '' : 'none';
 
   // Cargar datos desde Supabase
   await loadFromSupabase();
