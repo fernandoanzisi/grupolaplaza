@@ -2368,17 +2368,21 @@ async function fetchDolar() {
 
 function updateDolarUI() {
   const today = new Date().toLocaleDateString('es-AR');
-  document.getElementById('dolar-modal-date').textContent = today;
+  const safeEl = document.getElementById('dolar-modal-date');
+  if (safeEl) safeEl.textContent = today;
   [['oficial',dolar.oficial],['blue',dolar.blue],['mep',dolar.mep]].forEach(([k,d]) => {
-    const el=document.getElementById('d-'+k); if(el) el.textContent = fmt(d.venta);
+    if (!d) d = {compra:null, venta:null};
+    const fmtV = v => v ? '$'+Number(v).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0}) : '—';
+    const el=document.getElementById('d-'+k);    if(el) el.textContent = fmtV(d.venta);
     const de=document.getElementById('d-'+k+'-date'); if(de) de.textContent = today;
-    const me=document.getElementById('m-'+k); if(me) me.textContent = fmt(d.venta);
-    const mb=document.getElementById('m-'+k+'-buy'); if(mb) mb.textContent = fmt(d.compra);
-    const ms=document.getElementById('m-'+k+'-sell'); if(ms) ms.textContent = fmt(d.venta);
-    const rv=document.getElementById('rate-'+k+'-val'); if(rv) rv.textContent = d.venta ? d.venta.toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:2}) : '—';
+    const me=document.getElementById('m-'+k);    if(me) me.textContent = fmtV(d.venta);
+    const mb=document.getElementById('m-'+k+'-buy');  if(mb) mb.textContent = fmtV(d.compra);
+    const ms=document.getElementById('m-'+k+'-sell'); if(ms) ms.textContent = fmtV(d.venta);
+    const rv=document.getElementById('rate-'+k+'-val'); if(rv) rv.textContent = d.venta ? Number(d.venta).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:2}) : '—';
   });
-  document.getElementById('nav-blue').textContent = dolar.blue.venta ? '$'+dolar.blue.venta.toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:2}) : '—';
-  updateConvRate();
+  const nbEl = document.getElementById('nav-blue');
+  if (nbEl) nbEl.textContent = dolar.blue?.venta ? '$'+Number(dolar.blue.venta).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0}) : '—';
+  if (typeof updateConvRate === 'function') updateConvRate();
 }
 
 // ==================== INIT ====================
