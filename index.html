@@ -4378,6 +4378,10 @@ function parseMinutaDiaria(wb) {
 function handleFile(input) {
   const file = input.files[0];
   if (!file) return;
+  if (window._supaRol && window._supaRol !== 'admin') {
+    showToast('⚠️ Solo administradores pueden importar datos');
+    return;
+  }
   if (window._supaUser) document.body.classList.remove('readonly-mode');
   const statusEl = document.getElementById('import-status');
   if (!statusEl) return;
@@ -7493,7 +7497,7 @@ function isExtractoBancario(wb) {
   // Si tiene hojas de cashflow, NO es extracto
   if (sheetNames.some(s => s.includes('cash flow') || s.includes('cashflow') || s === 'sc' || s === 'rs' || s.includes('tablero') || s.includes('detalle proveedores'))) return false;
   // Tiene hoja de extracto
-  if (sheetNames.some(s => s.includes('extracto') || s.includes('extractos bancos'))) return true;
+  if (sheetNames.some(s => s.includes('extracto') || s.includes('extractos bancos') || s.includes('extractos banco'))) return true;
   // Tiene columna 'importe banco' o 'empresa banco' en primera hoja
   try {
     const ws = wb.Sheets[wb.SheetNames[0]];
@@ -8328,11 +8332,9 @@ function showLoginScreen() {
   const ls = document.getElementById('login-screen');
   const ap = document.getElementById('app');
   if (ls) {
-    ls.style.setProperty('display', 'flex', 'important');
-    ls.style.alignItems = 'center';
-    ls.style.justifyContent = 'center';
+    ls.setAttribute('style', 'display:flex !important; position:fixed; inset:0; background:var(--bg); z-index:9999; align-items:center; justify-content:center; padding:20px;');
   }
-  if (ap) ap.style.setProperty('display', 'none', 'important');
+  if (ap) ap.setAttribute('style', 'display:none !important;');
   document.body.classList.remove('readonly-mode');
 }
 
@@ -8624,10 +8626,11 @@ async function syncSupabase() {
       cfFilas: appState.cfFilas,
       lastMinutaDate: appState.lastMinutaDate,
     };
-    await supa.from('app_state').upsert({
-      clave: 'main', valor: stateToSave,
+    const { error: stateErr } = await supa.from('app_state').upsert({
+      clave: 'main', valor: JSON.stringify(stateToSave),
       updated_at: new Date().toISOString(), updated_by: _supaUser.id
     }, { onConflict: 'clave' });
+    if (stateErr) console.warn('app_state upsert:', stateErr.message);
 
     // Cartera DEBO
     if (appState.cartDebo && appState.cartDebo.length) {
