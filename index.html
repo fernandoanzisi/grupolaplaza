@@ -420,6 +420,8 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 }
 #nav-tabs-scroll::-webkit-scrollbar { display: none; }
 #nav-tabs-scroll .nav-tab { flex-shrink: 0; font-size: 12px; padding: 6px 12px; }
+.main-nav .nav-tab { flex-shrink: 0; font-size: 12px; padding: 5px 10px; white-space:nowrap; }
+.main-nav .nav-group-trigger { font-size: 12px; padding: 5px 10px; }
 /* Indicador de scroll */
 .nav-scroll-fade {
   position: relative; overflow: hidden;
@@ -630,7 +632,7 @@ let _supaUser=null,_supaRol=null;
         title="Limpiar filtro de fecha">✕</button>
     </div>
     <div class="empresa-selector" style="display:flex;align-items:center;gap:8px">
-      <select id="empresa-select" onchange="switchEmpresa(this.value)"></select>
+      <select id="empresa-select" onchange="switchEmpresa(this.value)" style="display:none"></select>
       <button id="btn-consolidado" onclick="toggleConsolidado()" 
         style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:5px 11px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text2);font-family:var(--font);transition:all 0.2s;white-space:nowrap"
         title="Ver todas las empresas juntas">🏛️ Consolidado</button>
@@ -2325,58 +2327,65 @@ async function fetchDolar() {
   const blueEl = document.getElementById('nav-blue');
   if (blueEl) blueEl.textContent = '...';
 
-  // Usar allorigins como proxy para evitar CORS desde Vercel
-  async function fetchProxy(url) {
-    const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-    const r = await fetch(proxy, {cache:'no-store'});
-    if (!r.ok) throw new Error('proxy ' + r.status);
-    return await r.json();
-  }
+  const tryFetch = async (url, timeout=5000) => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeout);
+    try {
+      const r = await fetch(url, {signal: ctrl.signal, cache: 'no-store'});
+      clearTimeout(t);
+      if (!r.ok) throw new Error(r.status);
+      return await r.json();
+    } catch(e) { clearTimeout(t); throw e; }
+  };
 
   let ok = false;
 
-  // Intento 1: dolarapi.com directo
+  // API 1: dolarapi.com directo
   try {
-    const r = await fetch('https://dolarapi.com/v1/dolares', {cache:'no-store'});
-    if (r.ok) {
-      const data = await r.json();
+    const data = await tryFetch('https://dolarapi.com/v1/dolares');
+    if (Array.isArray(data)) {
       data.forEach(d => {
         const c = (d.casa||'').toLowerCase();
         if (c==='oficial')               dolar.oficial = {compra:d.compra, venta:d.venta};
         else if (c==='blue')             dolar.blue    = {compra:d.compra, venta:d.venta};
         else if (c==='bolsa'||c==='mep') dolar.mep     = {compra:d.compra||d.venta, venta:d.venta};
+        else if (c==='contadoliqui'||c==='ccl') dolar.ccl = {compra:d.compra||d.venta, venta:d.venta};
       });
       ok = true;
     }
-  } catch(e) {}
+  } catch(e) { console.warn('dolarapi directo:', e.message); }
 
-  // Intento 2: dolarapi via proxy
+  // API 2: bluelytics directo
   if (!ok) {
     try {
-      const data = await fetchProxy('https://dolarapi.com/v1/dolares');
-      if (Array.isArray(data)) {
-        data.forEach(d => {
-          const c = (d.casa||'').toLowerCase();
-          if (c==='oficial')               dolar.oficial = {compra:d.compra, venta:d.venta};
-          else if (c==='blue')             dolar.blue    = {compra:d.compra, venta:d.venta};
-          else if (c==='bolsa'||c==='mep') dolar.mep     = {compra:d.compra||d.venta, venta:d.venta};
-        });
+      const d = await tryFetch('https://api.bluelytics.com.ar/v2/latest');
+      if (d && d.blue) {
+        dolar.blue    = {compra: d.blue.value_buy,    venta: d.blue.value_sell};
+        dolar.oficial = {compra: d.oficial.value_buy, venta: d.oficial.value_sell};
         ok = true;
       }
-    } catch(e) {}
+    } catch(e) { console.warn('bluelytics:', e.message); }
   }
 
-  // Intento 3: bluelytics via proxy
+  // API 3: criptoya
   if (!ok) {
     try {
-      const d = await fetchProxy('https://api.bluelytics.com.ar/v2/latest');
-      if (d.blue)    dolar.blue    = {compra:d.blue.value_buy,    venta:d.blue.value_sell};
-      if (d.oficial) dolar.oficial = {compra:d.oficial.value_buy, venta:d.oficial.value_sell};
-      ok = true;
-    } catch(e) {}
+      const d = await tryFetch('https://criptoya.com/api/dolar');
+      if (d && d.blue) {
+        dolar.blue    = {compra: parseFloat(d.blue.compra||d.blue), venta: parseFloat(d.blue.venta||d.blue)};
+        dolar.oficial = {compra: parseFloat(d.oficial?.compra||0), venta: parseFloat(d.oficial?.venta||0)};
+        ok = true;
+      }
+    } catch(e) { console.warn('criptoya:', e.message); }
   }
 
   updateDolarUI();
+
+  // Update nav bar display
+  if (blueEl) {
+    const v = dolar.blue?.venta || dolar.oficial?.venta;
+    blueEl.textContent = v ? '$' + Number(v).toLocaleString('es-AR',{maximumFractionDigits:0}) : 's/d';
+  }
 }
 
 // fmt() and fmtNum() defined in import block above
