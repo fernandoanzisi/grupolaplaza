@@ -2019,7 +2019,11 @@ function loadState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
+      const _prevExtracto = (appState && appState.extractoBancario && appState.extractoBancario.length > 0)
+        ? appState.extractoBancario : null;
       appState = JSON.parse(saved);
+      // Restaurar extractoBancario — no se guarda en localStorage por su tamaño (126k filas)
+      if (_prevExtracto) appState.extractoBancario = _prevExtracto;
       appState.empresas.forEach(e => {
         if (!e.icon) e.icon = EMOJI_EMP[Math.abs(e.id) % EMOJI_EMP.length];
         if (!e.transactions) e.transactions = [];
@@ -2084,10 +2088,31 @@ function saveState() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      // Excluir extractoBancario del localStorage (126k filas supera el límite de 5MB)
+      // Los extractos se guardan en Supabase por separado
+      const toSave = {...appState};
+      delete toSave.extractoBancario;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
       showSaveIndicator('saved');
     } catch(e) {
-      showSaveIndicator('error');
+      console.warn('saveState error:', e);
+      // Intentar guardar versión mínima sin datos grandes
+      try {
+        const minimal = {
+          empresas: appState.empresas,
+          vistaConsolidada: appState.vistaConsolidada,
+          currentEmpresaId: appState.currentEmpresaId,
+          lastMinutaDate: appState.lastMinutaDate,
+          riesgoData: appState.riesgoData,
+          cartDebo: appState.cartDebo,
+          cfFilas: appState.cfFilas,
+          tnaFima: appState.tnaFima,
+          tnaFimaPremium: appState.tnaFimaPremium,
+          tnaFimaDate: appState.tnaFimaDate,
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(minimal));
+        showSaveIndicator('saved');
+      } catch(e2) { showSaveIndicator('error'); }
     }
   }, 500);
 }
