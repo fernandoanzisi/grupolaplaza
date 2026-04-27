@@ -2315,50 +2315,53 @@ let dolar = { oficial: {compra:1330,venta:1360}, blue: {compra:1395,venta:1420},
 let activeRate = 'oficial';
 
 async function fetchDolar() {
-  const blueEl=document.getElementById('nav-blue');
-  if(blueEl&&blueEl.textContent.includes('carg'))blueEl.textContent='...';
-  // Intentar múltiples APIs con fallback
-  const apis = [
+  const blueEl = document.getElementById('nav-blue');
+  if (blueEl) blueEl.textContent = '...';
+
+  const APIS = [
+    // API 1: dolarapi.com
     async () => {
-      const r = await fetch('https://dolarapi.com/v1/dolares');
-      if (!r.ok) throw new Error();
+      const r = await fetch('https://dolarapi.com/v1/dolares', {cache:'no-store'});
+      if (!r.ok) throw new Error('dolarapi ' + r.status);
       const data = await r.json();
       data.forEach(d => {
-        const casa = (d.casa||'').toLowerCase();
-        if (casa === 'oficial') dolar.oficial = {compra:d.compra, venta:d.venta};
-        else if (casa === 'blue') dolar.blue = {compra:d.compra, venta:d.venta};
-        else if (casa === 'bolsa' || casa === 'mep') dolar.mep = {compra:d.compra||d.venta, venta:d.venta};
+        const c = (d.casa||'').toLowerCase();
+        if (c==='oficial')              dolar.oficial = {compra:d.compra, venta:d.venta};
+        else if (c==='blue')            dolar.blue    = {compra:d.compra, venta:d.venta};
+        else if (c==='bolsa'||c==='mep')dolar.mep     = {compra:d.compra||d.venta, venta:d.venta};
+        else if (c==='contadoliqui'||c==='ccl') dolar.ccl = {compra:d.compra||d.venta, venta:d.venta};
       });
     },
+    // API 2: bluelytics
     async () => {
-      const r = await fetch('https://api.bluelytics.com.ar/v2/latest');
-      if (!r.ok) throw new Error();
+      const r = await fetch('https://api.bluelytics.com.ar/v2/latest', {cache:'no-store'});
+      if (!r.ok) throw new Error('bluelytics ' + r.status);
       const d = await r.json();
-      if (d.blue) dolar.blue = {compra:d.blue.value_buy, venta:d.blue.value_sell};
-      if (d.oficial) dolar.oficial = {compra:d.oficial.value_buy, venta:d.oficial.value_sell};
+      if (d.blue)   dolar.blue   = {compra:d.blue.value_buy,   venta:d.blue.value_sell};
+      if (d.oficial)dolar.oficial= {compra:d.oficial.value_buy, venta:d.oficial.value_sell};
     },
+    // API 3: ambito via allorigins proxy
     async () => {
-      // API pública argentina alternativa
-      const r = await fetch('https://criptoya.com/api/dolar');
-      if (!r.ok) throw new Error();
+      const url = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://mercados.ambito.com//dolar/informal/variacion');
+      const r = await fetch(url, {cache:'no-store'});
+      if (!r.ok) throw new Error('ambito ' + r.status);
       const d = await r.json();
-      if (d.blue) dolar.blue = {compra:d.blue.compra||d.blue, venta:d.blue.venta||d.blue};
-      if (d.oficial) dolar.oficial = {compra:d.oficial.compra||d.oficial, venta:d.oficial.venta||d.oficial};
-    }
+      if (d.venta) dolar.blue = {compra: parseFloat(d.compra?.replace(',','.')||0), venta: parseFloat(d.venta.replace(',','.'))};
+    },
   ];
 
   let ok = false;
-  for (const api of apis) {
+  for (const api of APIS) {
     if (ok) break;
-    try { await api(); ok = true; } catch(e) {}
+    try { await api(); ok = true; } catch(e) { console.warn('fetchDolar fallback:', e.message); }
   }
 
-  // Si ninguna funcionó, mostrar indicador manual
-  if (!ok) {
-    const el = document.getElementById('nav-blue');
-    if (el) el.textContent = '— (ingresá manual)';
-  }
   updateDolarUI();
+
+  if (blueEl) {
+    const v = dolar.blue?.venta || dolar.oficial?.venta;
+    blueEl.textContent = v ? '$ ' + fmtARS(v) : '— s/d';
+  }
 }
 
 // fmt() and fmtNum() defined in import block above
