@@ -244,8 +244,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .btn-primary:hover{opacity:0.9;transform:translateY(-1px);}
 .login-err{color:var(--red);font-size:13px;margin-top:10px;display:none;}
 #app{display:none;min-height:100vh;flex-direction:column;}
-.topnav{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 8px;height:60px;display:flex;align-items:center;gap:6px;position:sticky;top:0;z-index:100;overflow-x:auto;scrollbar-width:none;white-space:nowrap;}
+.topnav{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 8px;height:60px;display:flex;align-items:center;gap:6px;position:sticky;top:0;z-index:100;overflow:visible;}
 .topnav::-webkit-scrollbar{display:none;}
+#topnav-scroll::-webkit-scrollbar{display:none;}
 .topnav-left{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .topnav-logo{font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px;}
 .dot{width:8px;height:8px;background:var(--green);border-radius:50%;animation:pulse 2s infinite;}
@@ -572,8 +573,8 @@ let _supaUser=null,_supaRol=null;
 <nav class="topnav">
   <div class="topnav-left">
     <div class="topnav-logo"><span style="display:inline-flex;flex-direction:column;line-height:1.1"><span style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8fa3b8">GRUPO</span><span style="font-size:16px;font-weight:900;letter-spacing:0.5px"><span style="color:#4a9fd4">LA</span> <span style="color:#3aaa2a">PLAZA</span></span></span> <div class="dot"></div></div>
-    <div style="display:flex;align-items:center;gap:4px">
-      <nav class="main-nav" id="main-nav" style="overflow-x:visible;user-select:none;display:flex;gap:2px;align-items:center;">
+    <div id="topnav-scroll" style="display:flex;align-items:center;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;">
+      <nav class="main-nav" id="main-nav" style="display:flex;gap:2px;align-items:center;flex-shrink:0;">
       <button class="nav-tab active" onclick="navGo('dashboard',this)" data-page="dashboard"><span class="ni">📊</span><span class="nl">Dashboard</span></button>
       
       <div class="nav-group" id="grp-dinero">
@@ -2324,64 +2325,61 @@ async function fetchDolar() {
   const blueEl = document.getElementById('nav-blue');
   if (blueEl) blueEl.textContent = '...';
 
-  const tryFetch = async (url, timeout=5000) => {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeout);
-    try {
-      const r = await fetch(url, {signal: ctrl.signal, cache: 'no-store'});
-      clearTimeout(t);
-      if (!r.ok) throw new Error(r.status);
-      return await r.json();
-    } catch(e) { clearTimeout(t); throw e; }
-  };
+  function xhrGet(url) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.timeout = 6000;
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try { resolve(JSON.parse(xhr.responseText)); }
+          catch(e) { reject(e); }
+        } else reject(new Error(xhr.status));
+      };
+      xhr.onerror = xhr.ontimeout = () => reject(new Error('network'));
+      xhr.send();
+    });
+  }
 
   let ok = false;
 
-  // API 1: dolarapi.com directo
-  try {
-    const data = await tryFetch('https://dolarapi.com/v1/dolares');
+  // 1. dolarapi.com
+  if (!ok) try {
+    const data = await xhrGet('https://dolarapi.com/v1/dolares');
     if (Array.isArray(data)) {
       data.forEach(d => {
         const c = (d.casa||'').toLowerCase();
         if (c==='oficial')               dolar.oficial = {compra:d.compra, venta:d.venta};
         else if (c==='blue')             dolar.blue    = {compra:d.compra, venta:d.venta};
         else if (c==='bolsa'||c==='mep') dolar.mep     = {compra:d.compra||d.venta, venta:d.venta};
-        else if (c==='contadoliqui'||c==='ccl') dolar.ccl = {compra:d.compra||d.venta, venta:d.venta};
       });
       ok = true;
     }
-  } catch(e) { console.warn('dolarapi directo:', e.message); }
+  } catch(e) { console.warn('dolarapi:', e.message); }
 
-  // API 2: bluelytics directo
-  if (!ok) {
-    try {
-      const d = await tryFetch('https://api.bluelytics.com.ar/v2/latest');
-      if (d && d.blue) {
-        dolar.blue    = {compra: d.blue.value_buy,    venta: d.blue.value_sell};
-        dolar.oficial = {compra: d.oficial.value_buy, venta: d.oficial.value_sell};
-        ok = true;
-      }
-    } catch(e) { console.warn('bluelytics:', e.message); }
-  }
+  // 2. bluelytics
+  if (!ok) try {
+    const d = await xhrGet('https://api.bluelytics.com.ar/v2/latest');
+    if (d && d.blue) {
+      dolar.blue    = {compra:d.blue.value_buy,    venta:d.blue.value_sell};
+      dolar.oficial = {compra:d.oficial.value_buy, venta:d.oficial.value_sell};
+      ok = true;
+    }
+  } catch(e) { console.warn('bluelytics:', e.message); }
 
-  // API 3: criptoya
-  if (!ok) {
-    try {
-      const d = await tryFetch('https://criptoya.com/api/dolar');
-      if (d && d.blue) {
-        dolar.blue    = {compra: parseFloat(d.blue.compra||d.blue), venta: parseFloat(d.blue.venta||d.blue)};
-        dolar.oficial = {compra: parseFloat(d.oficial?.compra||0), venta: parseFloat(d.oficial?.venta||0)};
-        ok = true;
-      }
-    } catch(e) { console.warn('criptoya:', e.message); }
-  }
+  // 3. criptoya
+  if (!ok) try {
+    const d = await xhrGet('https://criptoya.com/api/dolar');
+    if (d && d.blue) {
+      dolar.blue = {compra:parseFloat(d.blue.compra||0), venta:parseFloat(d.blue.venta||d.blue)};
+      ok = true;
+    }
+  } catch(e) { console.warn('criptoya:', e.message); }
 
   updateDolarUI();
-
-  // Update nav bar display
   if (blueEl) {
     const v = dolar.blue?.venta || dolar.oficial?.venta;
-    blueEl.textContent = v ? '$' + Number(v).toLocaleString('es-AR',{maximumFractionDigits:0}) : 's/d';
+    blueEl.textContent = v ? '$'+Number(v).toLocaleString('es-AR',{maximumFractionDigits:0}) : 's/d';
   }
 }
 
@@ -2763,7 +2761,7 @@ function dashSetView(view) {
 
   // Valores del día según historial o última importación
   const dayTxArr = emp.transactions.filter(t=>!balDate||t.date===balDate);
-  const efec   = hist ? (isRS?hist.b50||0:isSC?hist.d50||0:hist.f50||0)
+  const efec   = hist ? (isRS?hist.b26||0:isSC?hist.d26||0:0)
                       : dayTxArr.filter(t=>t.cat==='Efectivo'&&t.type==='ingreso').reduce((s,t)=>s+(t.amount||0),0);
   const bancos = dayTxArr.filter(t=>(t.cat||'').includes('Banco')&&t.type==='ingreso'&&!t.cat.includes('USD')).reduce((s,t)=>s+(t.amount||0),0);
   const usdBanco   = hist ? (hist.usd||0) : dayTxArr.filter(t=>t.cat==='Bancos USD').reduce((s,t)=>s+(t.amount||0),0);
@@ -10503,11 +10501,9 @@ function simularPrestamo() {
   }
 
   function tryInit() {
-    var el = document.getElementById('main-nav');
-    if (el) initDragScroll(el);
-    var tn = document.querySelector('.topnav');
-    if (tn) initDragScroll(tn);
-    if (!el) setTimeout(tryInit, 300);
+    var sc = document.getElementById('topnav-scroll');
+    if (sc) initDragScroll(sc);
+    else setTimeout(tryInit, 300);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tryInit);
   else setTimeout(tryInit, 500);
