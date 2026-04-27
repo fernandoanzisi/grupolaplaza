@@ -383,6 +383,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 /* readonly import-zone: handled via JS */
 /* Usuarios: ocultar botones de acción */
 .readonly-mode #nav-excel-btn { display: none !important; }
+.readonly-mode #mobile-excel-btn { display: none !important; }
 .readonly-mode button[onclick*="nuevo"],
 .readonly-mode button[onclick*="Nuevo"],
 .readonly-mode button[onclick*="agregar"],
@@ -414,6 +415,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
   display: flex; gap: 2px; overflow-x: auto; flex-wrap: nowrap;
   -webkit-overflow-scrolling: touch; scrollbar-width: none;
   padding-bottom: 2px; max-width: calc(100vw - 220px);
+  cursor: grab; user-select: none;
 }
 #nav-tabs-scroll::-webkit-scrollbar { display: none; }
 #nav-tabs-scroll .nav-tab { flex-shrink: 0; font-size: 12px; padding: 6px 12px; }
@@ -4407,7 +4409,7 @@ function handleFile(input) {
     showToast('⚠️ Solo administradores pueden importar datos');
     return;
   }
-  if (window._supaUser) document.body.classList.remove('readonly-mode');
+  // readonly-mode managed by onLogin based on rol
   const statusEl = document.getElementById('import-status');
   if (!statusEl) return;
   statusEl.innerHTML = '<div class="alert blue">⏳ Leyendo ' + file.name + '...</div>';
@@ -4475,6 +4477,8 @@ function handleFile(input) {
           logDiv.style.display = 'block';
         }
         showToast('✅ Minuta Diaria importada — ' + result.totalCount + ' registros de ' + result.dias + ' días');
+        // Auto-guardar empresas en Supabase
+        _saveEmpresasSupabase();
         if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof navGo === 'function') navGo('dashboard', null);
         return;
@@ -6439,7 +6443,7 @@ const _origSheetMap = null; // marker
   <button class="bnav-btn" data-page="consolidado"  onclick="navGo('consolidado',this);setBottomNav(this)"><div class="bicon">🏛️</div>Consolidado</button>
   <button class="bnav-btn" data-page="cuentas"      onclick="navGo('cuentas',this);setBottomNav(this)"><div class="bicon">🏦</div>Cuentas</button>
   <button class="bnav-btn" data-page="inversiones"  onclick="navGo('inversiones',this);setBottomNav(this)"><div class="bicon">📈</div>Inversiones</button>
-  <button class="bnav-btn" data-page="importar"     onclick="navGo('importar',this);setBottomNav(this)"><div class="bicon">📂</div>Excel</button>
+  <button class="bnav-btn" id="mobile-excel-btn" data-page="importar"     onclick="navGo('importar',this);setBottomNav(this)"><div class="bicon">📂</div>Excel</button>
   <button class="bnav-btn" id="bnav-more"           onclick="openMoreMenu()"><div class="bicon">⋯</div>Más</button>
 </div>
 <!-- MOBILE MORE MENU -->
@@ -7930,7 +7934,34 @@ function parseCarteraDebo(wb) {
   log.push(`<span style="color:#3aaa2a">SC Total: $ ${fmtARS(totSC)}</span>`);
   log.push(`<span style="color:var(--accent)">📋 Total importado: ${total.toLocaleString('es-AR')} cheques</span>`);
   saveState();
+  // Auto-guardar en Supabase para persistir entre sesiones
+  _saveCartDeboSupabase(appState.cartDebo);
   return {log, total};
+}
+
+async function _saveCartDeboSupabase(data) {
+  if (!_supaUser || !data || !data.length) return;
+  try {
+    showToast('⏳ Guardando cartera en Supabase...');
+    await supa.from('cartera_debo').delete().neq('id', 0);
+    const rows = data.map(c => ({
+      empresa: c.emp||'RS', banco: c.banco||'', numero: c.numero||'',
+      f_emi: c.fEmi||null, f_pres: c.fPres||null,
+      cliente: c.cliente||'', librador: c.librador||'',
+      importe: c.importe||0, elect: c.elect||'No',
+      dias: c.dias||null, uunn: c.uunn||'', apies: c.apies||'',
+      tipo: c.tipo||'FISICO', hoja: c.hoja||'',
+      importado_by: _supaUser.id
+    }));
+    for (let i = 0; i < rows.length; i += 500) {
+      const { error } = await supa.from('cartera_debo').insert(rows.slice(i, i+500));
+      if (error) { console.warn('cartDebo chunk error:', error.message); }
+    }
+    showToast('✅ Cartera guardada en Supabase (' + data.length.toLocaleString() + ' cheques)');
+  } catch(e) {
+    console.error('_saveCartDeboSupabase:', e);
+    showToast('⚠️ Error al guardar cartera: ' + e.message);
+  }
 }
 
 // ─── PARSER CLIENTES ─────────────────────────────────────────
@@ -8639,6 +8670,24 @@ async function loadFromSupabase() {
 }
 
 // ── SYNC: guardar en Supabase (solo admins) ───────────────────
+
+async function _saveEmpresasSupabase() {
+  if (!_supaUser || _supaRol !== 'admin') return;
+  try {
+    const stateToSave = {
+      empresas: appState.empresas,
+      cfFilas: appState.cfFilas,
+      lastMinutaDate: appState.lastMinutaDate,
+    };
+    const { error } = await supa.from('app_state').upsert({
+      clave: 'main', valor: JSON.stringify(stateToSave),
+      updated_at: new Date().toISOString(), updated_by: _supaUser.id
+    }, { onConflict: 'clave' });
+    if (!error) showToast('☁️ Datos guardados en la nube');
+    else console.warn('_saveEmpresasSupabase:', error.message);
+  } catch(e) { console.error('_saveEmpresasSupabase:', e); }
+}
+
 async function syncSupabase() {
   if (_supaRol !== 'admin') { showToast('⚠️ Solo admins pueden sincronizar'); return; }
   document.getElementById('user-menu').style.display = 'none';
@@ -10354,6 +10403,47 @@ function simularPrestamo() {
   }
 }
 
+</script>
+<script>
+// ── Drag-to-scroll en la barra de pestañas ───────────────────
+(function() {
+  function initDragScroll(el) {
+    if (!el) return;
+    let isDown = false, startX, scrollLeft;
+    let moved = false;
+
+    el.addEventListener('mousedown', e => {
+      isDown = true; moved = false;
+      el.style.cursor = 'grabbing';
+      startX = e.pageX - el.offsetLeft;
+      scrollLeft = el.scrollLeft;
+    });
+    el.addEventListener('mouseleave', () => { isDown = false; el.style.cursor = ''; });
+    el.addEventListener('mouseup', () => { isDown = false; el.style.cursor = ''; });
+    el.addEventListener('mousemove', e => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - el.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      if (Math.abs(walk) > 5) moved = true;
+      el.scrollLeft = scrollLeft - walk;
+    });
+    // Si hubo movimiento, cancelar el click en los botones hijos
+    el.addEventListener('click', e => {
+      if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
+    }, true);
+  }
+
+  // Inicializar cuando el DOM esté listo
+  function tryInit() {
+    const el = document.getElementById('nav-tabs-scroll');
+    if (el) { initDragScroll(el); }
+    else { setTimeout(tryInit, 200); }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryInit);
+  } else { tryInit(); }
+})();
 </script>
 </body>
 </html>
