@@ -462,6 +462,8 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .nav-group.open .nav-arrow { transform:rotate(180deg); opacity:1; }
 .nav-group.open .nav-group-trigger { color:var(--accent); background:rgba(108,143,255,0.12); }
 .nav-dropdown { position:fixed; top:60px; background:var(--card); border:1px solid var(--border2); border-radius:12px; padding:6px; display:none; flex-direction:column; gap:2px; min-width:185px; box-shadow:0 12px 40px rgba(0,0,0,0.5); z-index:500; }
+.nav-dropdown-2col { display:none; grid-template-columns:1fr 1fr; min-width:360px; }
+.nav-group.open .nav-dropdown-2col { display:grid !important; }
 .nav-group.open .nav-dropdown { display:flex; }
 .nav-dd-item { background:none; border:none; color:var(--text2); font-size:13px; font-weight:500; padding:9px 14px; border-radius:8px; cursor:pointer; font-family:var(--font); text-align:left; transition:all 0.15s; white-space:nowrap; width:100%; }
 .nav-dd-item:hover { color:var(--text); background:var(--bg3); }
@@ -601,7 +603,7 @@ let _supaUser=null,_supaRol=null;
       </div>
       <div class="nav-group" id="grp-gestion">
         <button class="nav-tab nav-group-trigger" onclick="toggleGroup('grp-gestion',event)"><span class="ni">📋</span><span class="nl">Gestión</span><span class="nav-arrow">▾</span></button>
-        <div class="nav-dropdown">
+        <div class="nav-dropdown nav-dropdown-2col">
           <button class="nav-dd-item" onclick="navGo('inversiones',this)"   data-page="inversiones">📈 Inversiones</button>
           <button class="nav-dd-item" onclick="navGo('cartera',this)"       data-page="cartera">💼 Cartera de Valores</button>
           <button class="nav-dd-item" onclick="navGo('proveedores',this)"   data-page="proveedores">🧾 Proveedores</button>
@@ -4677,16 +4679,6 @@ function handleFile(input) {
         if (typeof navGo === 'function') navGo('cartera', null);
         return;
       }
-      // 3. Clientes DEBO (hoja Hoja1 / clientes)
-      if (typeof isClientesDebo === 'function' && isClientesDebo(wb)) {
-        const result = parseClientesDebo(wb);
-        const logDiv = document.getElementById('import-log');
-        if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
-        showToast('✅ Clientes DEBO — ' + result.total + ' registros');
-        if (typeof renderClientesDebo === 'function') renderClientesDebo();
-        if (typeof navGo === 'function') navGo('clientes', null);
-        return;
-      }
       // 4a. Límite de Crédito
       if (typeof isLimiteCredito === 'function' && isLimiteCredito(wb)) {
         const result = parseLimiteCredito(wb);
@@ -4725,6 +4717,17 @@ function handleFile(input) {
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
         showToast('✅ Pre-OP importado');
         navGo('preop', null);
+        return;
+      }
+
+      // 3. Clientes DEBO (hoja Hoja1 / clientes)
+      if (typeof isClientesDebo === 'function' && isClientesDebo(wb)) {
+        const result = parseClientesDebo(wb);
+        const logDiv = document.getElementById('import-log');
+        if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
+        showToast('✅ Clientes DEBO — ' + result.total + ' registros');
+        if (typeof renderClientesDebo === 'function') renderClientesDebo();
+        if (typeof navGo === 'function') navGo('clientes', null);
         return;
       }
       // 4. Cash Flow
@@ -8072,10 +8075,10 @@ function isCarteraDebo(wb) {
 }
 function isClientesDebo(wb) {
   if (isMinutaDiaria(wb) || isCarteraDebo(wb)) return false;
-  return wb.SheetNames.some(s => {
-    const sl = s.toLowerCase().trim();
-    return sl.includes('cliente') || sl === 'hoja1';
-  });
+  // Only match files specifically about clientes - NOT generic Hoja1
+  const sheets = wb.SheetNames.map(s => s.toLowerCase().trim());
+  return sheets.some(s => s.includes('cliente')) ||
+         (wb.SheetNames.length === 1 && wb.SheetNames[0] === 'Hoja1' && !sheets.some(s=>s.includes('pre-op')||s.includes('preop')||s.includes('fci')||s.includes('fima')||s.includes('nlp')));
 }
 
 // ─── PARSER CARTERA ──────────────────────────────────────────
@@ -10979,54 +10982,102 @@ function parseNlpComisiones(wb) {
   const log = []; let total = 0;
   appState.nlpData = [];
 
-  const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  const MESES = {
+    'ENERO':1,'ENE':1,'FEBRERO':2,'FEB':2,'MARZO':3,'MAR':3,
+    'ABRIL':4,'ABR':4,'MAYO':5,'MAY':5,'JUNIO':6,'JUN':6,
+    'JULIO':7,'JUL':7,'AGOSTO':8,'AGO':8,'SEPTIEMBRE':9,'SEP':9,'SET':9,
+    'OCTUBRE':10,'OCT':10,'NOVIEMBRE':11,'NOV':11,'DICIEMBRE':12,'DIC':12,
+  };
+
+  function mesFromStr(s) {
+    if (!s) return null;
+    const su = String(s).toUpperCase().trim().replace(/[.-]/g,'').split(' ')[0];
+    return MESES[su] || null;
+  }
+
+  function parseFechaSheet(v) {
+    if (!v) return null;
+    if (typeof v === 'string' && v.match(/^\d{4}/)) return {y:parseInt(v.slice(0,4)),m:parseInt(v.slice(5,7))};
+    return null;
+  }
 
   wb.SheetNames.forEach(sn => {
     const snU = sn.toUpperCase();
-    // Only process NLP year sheets and SERVICLUB/FRANQUICIA sheets
-    const anioMatch = snU.match(/(\d{4})/);
+    // Only NLP year sheets and SERVICLUB/FRANQUICIA sheets
+    const isNLP = snU.includes('NLP') || snU.includes('REINT') || snU.includes('IMAGEN');
+    const isSVC = snU.includes('SERVICLUB') || snU.includes('FRANQUICIA') || snU.includes('FULL');
+    if (!isNLP && !isSVC) return;
+
+    const anioMatch = sn.match(/\d{4}/);
     if (!anioMatch) return;
-    const anio = anioMatch[1];
+    const anio = anioMatch[0];
     if (parseInt(anio) < 2008) return;
 
     try {
       const ws = wb.Sheets[sn];
       const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
-      if (!rows || rows.length < 4) return;
+      if (!rows || rows.length < 3) return;
 
-      // Row 2 (index 2) = months, Row 3 (index 3) = FRANQUICIA/SERVICLUB headers
-      // Rows 4+ = estacion data
-      const mesRow = rows[2] || [];
-      const tipoRow = rows[3] || [];
-
-      // Build column map: col → {mes, tipo}
-      const colMap = {};
-      let lastMes = '';
-      for (let ci = 1; ci < mesRow.length; ci++) {
-        const m = String(mesRow[ci]||'').trim().toUpperCase();
-        if (MESES.some(mm=>m.includes(mm))) lastMes = m.split(' ')[0];
-        const t = String(tipoRow[ci]||'').trim().toUpperCase();
-        if (lastMes && (t.includes('FRANQUICIA')||t.includes('SERVICLUB')||t.includes('NLP')||t.includes('COMISION'))) {
-          colMap[ci] = { mes: lastMes, tipo: t };
+      if (isSVC) {
+        // SERVICLUB format:
+        // F3 (idx 2): month names
+        // F4 (idx 3): Estacion | FRANQUICIA | SERVICLUB | ...
+        // F5+ (idx 4+): data
+        const mesRow  = rows[2] || [];
+        const tipoRow = rows[3] || [];
+        const colMap = {};
+        let lastMes = null;
+        for (let ci = 1; ci < mesRow.length; ci++) {
+          const mv = mesRow[ci];
+          const mesNum = mv ? (mesFromStr(mv) || parseFechaSheet(mv)?.m) : null;
+          if (mesNum) lastMes = mesNum;
+          const t = String(tipoRow[ci]||'').trim().toUpperCase();
+          if (lastMes && (t.includes('FRANQUICIA')||t.includes('SERVICLUB'))) {
+            colMap[ci] = { mes: lastMes, tipo: t.includes('FRANQUICIA') ? 'Franquicia' : 'Serviclub' };
+          }
+        }
+        for (let ri = 4; ri < rows.length; ri++) {
+          const r = rows[ri];
+          const estacion = String(r?.[0]||'').trim();
+          if (!estacion || estacion.toUpperCase().includes('TOTAL')) continue;
+          Object.entries(colMap).forEach(([ci, {mes, tipo}]) => {
+            const val = parseFloat(String(r[ci]||'0').replace(/[^0-9.-]/g,'')) || 0;
+            if (!val) return;
+            appState.nlpData.push({ anio, mes: String(mes).padStart(2,'0'), estacion, tipo, importe: val });
+            total++;
+          });
+        }
+      } else {
+        // NLP format:
+        // F1: title
+        // F2: date/month headers
+        // F3+: estacion, then NLP value, YPF+ value alternating
+        const mesRow = rows[1] || [];
+        const colMap = {};
+        let lastMes = null;
+        for (let ci = 1; ci < mesRow.length; ci++) {
+          const mv = mesRow[ci];
+          const dt = parseFechaSheet(mv);
+          if (dt) lastMes = dt.m;
+          else { const m2 = mesFromStr(mv); if(m2) lastMes=m2; }
+          if (lastMes && ci > 0) colMap[ci] = { mes: lastMes, tipo: (ci % 3 === 1) ? 'NLP' : 'YPF+' };
+        }
+        for (let ri = 2; ri < rows.length; ri++) {
+          const r = rows[ri];
+          const estacion = String(r?.[0]||'').trim();
+          if (!estacion || estacion.toUpperCase().includes('TOTAL')) continue;
+          Object.entries(colMap).forEach(([ci, {mes, tipo}]) => {
+            const val = parseFloat(String(r[ci]||'0').replace(/[^0-9.-]/g,'')) || 0;
+            if (!val) return;
+            appState.nlpData.push({ anio, mes: String(mes).padStart(2,'0'), estacion, tipo, importe: val });
+            total++;
+          });
         }
       }
-
-      // Data rows
-      for (let ri = 4; ri < rows.length; ri++) {
-        const r = rows[ri];
-        const estacion = String(r?.[0]||'').trim();
-        if (!estacion || estacion.toLowerCase().includes('total')) continue;
-        Object.entries(colMap).forEach(([ci, {mes, tipo}]) => {
-          const val = parseFloat(String(r[ci]||'0').replace(/[^0-9.-]/g,'')) || 0;
-          if (val === 0) return;
-          appState.nlpData.push({ anio, mes, estacion, tipo, importe: val });
-          total++;
-        });
-      }
-    } catch(e) {}
+    } catch(e) { console.warn('NLP parse error in '+sn+':', e.message); }
   });
 
-  log.push(`<span style="color:var(--green)">✅ NLP Comisiones: ${total.toLocaleString()} registros</span>`);
+  log.push(`<span style="color:var(--green)">✅ NLP Comisiones: ${total.toLocaleString()} registros de ${wb.SheetNames.length} hojas</span>`);
   saveState();
   return { log, total };
 }
@@ -11133,8 +11184,11 @@ function parseFci(wb) {
       const iFondo  = hdr.findIndex(h=>h.includes('fondo'));
       const iTipo   = hdr.findIndex(h=>h.includes('tipo'));
       const iCuotas = hdr.findIndex(h=>h.includes('cuotapart'));
-      const iFechaOp = hdr.findIndex(h=>h.includes('fecha') && h.includes('op'));
+      const iFechaOp  = hdr.findIndex(h=>h.includes('fecha') && (h.includes('op')||h.includes('operac')));
       const iFechaLiq = hdr.findIndex(h=>h.includes('fecha') && (h.includes('liq')||h.includes('liquid')));
+      const iFechaAny = hdr.findIndex(h=>h.includes('fecha'));
+      const iFechaOp2  = iFechaOp  >= 0 ? iFechaOp  : iFechaAny;
+      const iFechaLiq2 = iFechaLiq >= 0 ? iFechaLiq : (iFechaAny >= 0 ? iFechaAny+1 : -1);
       const iImp    = hdr.findIndex(h=>h.includes('importe'));
       const iEst    = hdr.findIndex(h=>h.includes('estado'));
       const iEmp    = hdr.findIndex(h=>h.includes('empresa'));
@@ -11146,8 +11200,8 @@ function parseFci(wb) {
         const tipo  = String(r[iTipo]||'').trim();
         if (!fondo || !tipo) continue;
         const emp    = iEmp>=0 ? String(r[iEmp]||'').trim() : '';
-        const fechaOp = iFechaOp>=0 ? parseFecha(r[iFechaOp]) : '';
-        const fechaLiq = iFechaLiq>=0 ? parseFecha(r[iFechaLiq]) : '';
+        const fechaOp  = parseFecha(r[iFechaOp2]) || '';
+        const fechaLiq = parseFecha(r[iFechaLiq2 >= 0 ? iFechaLiq2 : iFechaOp2]) || '';
         const cuotas  = parseFloat(String(r[iCuotas]||0).replace(/[^0-9.-]/g,'')) || 0;
         const importe = parseFloat(String(r[iImp]||0).replace(/[^0-9.-]/g,'')) || 0;
         const estado  = iEst>=0 ? String(r[iEst]||'').trim() : '';
@@ -11306,7 +11360,8 @@ function parsePreOp(wb) {
     const nro = String(r[iNro]||'').trim();
     if (!nro) continue;
     const prov = String(r[iProv]||'').trim();
-    const imp  = parseFloat(String(r[iImp]||'0').replace(/[^0-9.-]/g,'')) || 0;
+    const impRaw = r[iImp] != null ? String(r[iImp]).replace(/[^0-9.-]/g,'') : '0';
+    const imp  = parseFloat(impRaw) || 0;
     appState.preopData.push({
       nro,
       fecha:    iFecha>=0 ? parseFecha(r[iFecha]) : '',
