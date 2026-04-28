@@ -2829,257 +2829,154 @@ function dashSetView(view) {
   if (vE) vE.style.display='block';
   const empMap={RS:'Rio Salado',SC:'Cipolletti',LP:'Plaza'};
   const emp=appState.empresas.find(e=>e.name.includes(empMap[view]));
-  if(!emp){if(vE)vE.innerHTML='<div style="color:var(--text3);padding:32px">Sin datos. Importá la Minuta.</div>';return;}
-  const balDate=activeDateFilter||appState.lastMinutaDate||'';
-  const tcBlue=(dolar&&dolar.blue&&dolar.blue.venta)?dolar.blue.venta:1420;
-  const col=colors[view];
+  if(!emp){if(vE)vE.innerHTML='<div style="color:var(--text3);padding:32px;text-align:center">Sin datos. Importá la Minuta.</div>';return;}
 
-  // ── Leer del historial por fecha ─────────────────────────
-  const hist = emp.diaHistory && emp.diaHistory[balDate] ? emp.diaHistory[balDate] : null;
-  const isRS = view==='RS', isSC = view==='SC';
+  const balDate = activeDateFilter||appState.lastMinutaDate||'';
+  const tcBlue  = (dolar&&dolar.blue&&dolar.blue.venta)?dolar.blue.venta:1420;
+  const col     = colors[view];
+  const isRS    = view==='RS', isSC = view==='SC';
+  const hist    = emp.diaHistory&&emp.diaHistory[balDate]?emp.diaHistory[balDate]:null;
+  const H       = (k,fb) => hist?(hist[k]||0):(fb||0);
 
-  // Valores del día según historial o última importación
-  const dayTxArr = emp.transactions.filter(t=>!balDate||t.date===balDate);
-  const efec   = hist ? (isRS?hist.b26||0:isSC?hist.d26||0:0)
-                      : dayTxArr.filter(t=>t.cat==='Efectivo'&&t.type==='ingreso').reduce((s,t)=>s+(t.amount||0),0);
-  const bancos = dayTxArr.filter(t=>(t.cat||'').includes('Banco')&&t.type==='ingreso'&&!t.cat.includes('USD')).reduce((s,t)=>s+(t.amount||0),0);
-  const usdBanco   = hist ? (hist.usd||0) : dayTxArr.filter(t=>t.cat==='Bancos USD').reduce((s,t)=>s+(t.amount||0),0);
-  const fimaARS    = emp.investments.filter(i=>!balDate||i.fecha===balDate).reduce((s,i)=>s+(i.capital||0),0);
-  const fimaUSD    = hist ? (isRS?hist.b37||0:isSC?hist.d37||0:0) : (isRS?emp.diaB37||0:isSC?emp.diaD37||0:0);
-  const rendPrem   = hist ? hist.rendPrem||0  : (isRS?emp.diaRendPremRS||0:isSC?emp.diaRendPremSC||0:0);
-  const rendAhorr  = hist ? hist.rendAhorr||0 : (isRS?emp.diaRendAhorrRS||0:isSC?emp.diaRendAhorrSC||0:0);
-  const mercadoPago= hist ? (isRS?hist.b46||0:isSC?hist.d46||0:0) : (isRS?emp.diaB46||0:isSC?emp.diaD46||0:0);
-  const usdInv     = fimaUSD; // USD en inversión = FIMA Renta USD (B37/D37)
-  const totalUSD   = usdBanco + usdInv;
+  // Valores desde historial
+  const b50  = isRS?H('b50',emp.diaB50):isSC?H('d50',emp.diaD50):H('f50',emp.diaF50);
+  const b26  = isRS?H('b26',emp.diaB26):H('d26',emp.diaD26);
+  const b33  = isRS?H('b33',emp.diaB33):H('d33',emp.diaD33);
+  const b34  = isRS?H('b34',emp.diaB34):H('d34',emp.diaD34);
+  const b35  = isRS?H('b35',emp.diaB35):H('d35',emp.diaD35);
+  const b37  = isRS?H('b37',emp.diaB37):H('d37',emp.diaD37);
+  const b38  = isRS?H('b38',emp.diaB38):H('d38',emp.diaD38);
+  const b39  = isRS?H('b39',emp.diaB39):H('d39',emp.diaD39);
+  const b40  = isRS?H('b40',emp.diaB40):H('d40',emp.diaD40);
+  const b41  = isRS?H('b41',emp.diaB41):H('d41',emp.diaD41);
+  const b42  = isRS?H('b42',emp.diaB42):H('d42',emp.diaD42);
+  const b43  = isRS?H('b43',emp.diaB43):H('d43',emp.diaD43);
+  const b44  = isRS?H('b44',emp.diaB44):H('d44',emp.diaD44);
+  const b45  = isRS?H('b45',emp.diaB45):H('d45',emp.diaD45);
+  const b46  = isRS?H('b46',emp.diaB46):H('d46',emp.diaD46);
+  const totalUSD = b40+b41+b42+b43+b44;
+  const prefB    = isRS?'B':'D';
 
-  // Total ingresos del día (B50/D50)
-  const ingTotal = hist
-    ? (isRS?(hist.b50||0):isSC?(hist.d50||0):(hist.f50||0))
-    : (isRS?emp.diaB50||0:isSC?emp.diaD50||0:emp.diaF50||0);
+  const vEl=g('dash-view-empresa');
+  if(!vEl)return;
 
-  // ── Render view empresa ──────────────────────────────────
-  const vEl = g('dash-view-empresa');
-  if (!vEl) return;
+  // Cuadro helper
+  function C(lbl,val,c2,isUSD,sub){
+    const neg=val<0, fc=neg?'var(--red)':c2;
+    return '<div style="background:var(--bg3);border-radius:10px;padding:11px 13px;border-left:3px solid '+fc+'">'+
+      '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">'+lbl+'</div>'+
+      '<div style="font-family:var(--mono);font-size:clamp(13px,1.6vw,17px);font-weight:800;color:'+fc+'">'+(neg?'-':'')+(isUSD?'U$S ':'$ ')+fmtARS(Math.abs(val))+'</div>'+
+      (sub?'<div style="font-size:9px;color:var(--text3);margin-top:3px">'+sub+'</div>':'')+
+    '</div>';
+  }
 
-  vEl.innerHTML =
-  // Header empresa
-  '<div style="background:var(--card);border:1px solid '+col+'33;border-radius:16px;padding:20px 24px;margin-bottom:16px;border-top:3px solid '+col+'">' +
-    '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">' +
+  vEl.innerHTML=
+  '<div style="background:var(--card);border:1px solid '+col+'33;border-radius:14px;padding:18px 20px;margin-bottom:14px;border-top:3px solid '+col+'">' +
+
+    // Header
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">' +
       '<div>' +
-        '<div style="font-size:11px;font-weight:700;color:'+col+';text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">INGRESOS DEL DÍA</div>' +
-        '<div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+emp.name+'</div>' +
-        '<div style="font-family:var(--mono);font-size:clamp(24px,3vw,36px);font-weight:900;color:var(--text)">$ '+fmtARS(ingTotal)+'</div>' +
+        '<div style="font-size:10px;font-weight:700;color:'+col+';text-transform:uppercase;letter-spacing:1.5px;margin-bottom:3px">INGRESOS DEL DÍA</div>' +
+        '<div style="font-size:12px;color:var(--text3);margin-bottom:5px">'+emp.name+'</div>' +
+        '<div style="font-family:var(--mono);font-size:clamp(22px,3.5vw,36px);font-weight:900;color:var(--text)">$ '+fmtARS(b50)+'</div>' +
+        '<div style="font-size:10px;color:var(--text3);margin-top:3px">Celda '+prefB+'50'+(balDate?' · '+new Date(balDate+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'')+'</div>' +
       '</div>' +
-      '<div style="text-align:right">' +
-        (balDate?'<div style="background:'+col+'22;color:'+col+';padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700">📅 '+new Date(balDate+'T12:00:00').toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric"})+'</div>':'') +
-        (hist?'':'<div style="font-size:10px;color:var(--yellow);margin-top:4px">⚠️ Datos del último período importado</div>') +
+      (balDate?'<div style="background:'+col+'22;color:'+col+';padding:5px 14px;border-radius:99px;font-size:11px;font-weight:700">📅 '+new Date(balDate+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})+'</div>':'') +
+    '</div>' +
+
+    // Filtros análisis
+    '<div style="background:var(--bg2);border-radius:10px;padding:12px 14px;margin-bottom:14px">' +
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">' +
+        '<span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">📊 Análisis entre fechas</span>' +
+        '<input type="date" id="dash-emp-desde" oninput="dashEmpBtn(document.querySelector(\'[data-emp=\\\"'+view+'\\\"][data-k=\\\"ef\\\"]\'))" style="background:var(--bg3);border:1px solid var(--accent);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--mono)">' +
+        '<span style="font-size:10px;color:var(--text3)">hasta</span>' +
+        '<input type="date" id="dash-emp-hasta" oninput="dashEmpBtn(document.querySelector(\'[data-emp=\\\"'+view+'\\\"][data-k=\\\"ef\\\"]\'))" style="background:var(--bg3);border:1px solid var(--accent);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--mono)">' +
+        '<button onclick="dashEmpExcel(\''+view+'\')" style="padding:5px 12px;border-radius:7px;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);font-size:11px;font-weight:700;cursor:pointer">📥 Excel</button>' +
+      '</div>' +
+      '<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">' +
+        '<span style="font-size:10px;color:var(--text3)">Mostrar:</span>' +
+        [['ef','Efectivo','var(--green)'],['bcos','Bancos $','var(--accent)'],['mp','Mercado Pago','#009ee3'],
+         ['usd','USD Banco','var(--yellow)'],['f34','FIMA Premium','#a78bfa'],['f35','FIMA Ahorro','#7c6cfa'],
+         ['f37','FIMA USD','#2dd4bf'],['rp','Rend. Premium','var(--green)'],['ra','Rend. Ahorro','var(--red)'],['rb45','Rend. USD','#fb923c']
+        ].map(([k,l,c])=>'<button data-emp="'+view+'" data-k="'+k+'" onclick="dashEmpBtn(this)" style="padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:var(--bg2);color:var(--text3);font-size:10px;cursor:pointer">'+l+'</button>').join('') +
       '</div>' +
     '</div>' +
 
-    // Cuadros de detalle — fila 1
-    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:10px">' +
-      _dashCuadro('💵 Efectivo',efec,'var(--green)',false) +
-      _dashCuadro('🏦 Bancos $',bancos,'var(--accent)',false) +
-      _dashCuadro('💱 USD Banco',usdBanco,'var(--yellow)',true) +
-      _dashCuadro('💵 USD Inversión',usdInv,'#2dd4bf',true) +
-    '</div>' +
-    // Fila 2
-    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:10px">' +
-      _dashCuadro('📈 FIMA $',fimaARS,'var(--purple)',false) +
-      (fimaUSD>0?_dashCuadro('📈 FIMA USD',fimaUSD,'#2dd4bf',true):'') +
-      (rendPrem!==0?_dashCuadro('📊 Rend.FIMA Premium',rendPrem,rendPrem>=0?'var(--green)':'var(--red)',false):'') +
-      (rendAhorr!==0?_dashCuadro('📊 Rend.FIMA Ahorro',rendAhorr,rendAhorr>=0?'var(--green)':'var(--red)',false):'') +
-      (mercadoPago>0?_dashCuadro('💳 Mercado Pago',mercadoPago,'#009ee3',false):'') +
+    // Pesos
+    '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Pesos ($)</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:14px">' +
+      C('Efectivo ('+prefB+'26)',b26,'var(--green)',false) +
+      C('Bancos $ ('+prefB+'33)',b33,'var(--accent)',false) +
+      C('Mercado Pago ('+prefB+'46)',b46,'#009ee3',false) +
     '</div>' +
 
-    // USD resumen consolidado
-    (totalUSD>0?'<div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:10px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
-      '<div style="font-size:10px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:1px">💱 Total USD</div>' +
-      '<div style="font-family:var(--mono);font-size:18px;font-weight:900;color:var(--yellow)">U$S '+fmtARS(totalUSD)+'</div>' +
-      '<div style="font-size:11px;color:var(--text3)">≈ $ '+fmtARS(totalUSD*tcBlue)+'</div>' +
-      '<div style="margin-left:auto;font-size:10px;color:var(--text3)">'+
-        'Banco: U$S '+fmtARS(usdBanco)+' &nbsp;|&nbsp; Inversión: U$S '+fmtARS(usdInv)+
-      '</div>' +
+    // Dólares
+    '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Dólares (U$S)</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:10px">' +
+      C('USD Banco ('+prefB+'40+'+prefB+'41)',b40+b41,'var(--yellow)',true,(b40&&b41?'Galicia '+fmtARS(b40)+' · Macro '+fmtARS(b41):'')) +
+      C('USD Dep. CC ('+prefB+'42)',b42,'var(--yellow)',true) +
+      C('USD Caja Seg.26 ('+prefB+'43)',b43,'var(--yellow)',true) +
+      C('USD Caja Seg.50 ('+prefB+'44)',b44,'var(--yellow)',true) +
+    '</div>' +
+    (totalUSD>0?'<div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;gap:14px;flex-wrap:wrap;align-items:center">' +
+      '<span style="font-size:10px;font-weight:700;color:var(--yellow)">Total USD</span>' +
+      '<span style="font-family:var(--mono);font-size:16px;font-weight:800;color:var(--yellow)">U$S '+fmtARS(totalUSD)+'</span>' +
+      '<span style="font-size:10px;color:var(--text3)">≈ $ '+fmtARS(totalUSD*tcBlue)+'</span>' +
+      '<span style="font-size:10px;color:var(--text3);margin-left:auto">Banco: '+fmtARS(b40+b41)+' · CC: '+fmtARS(b42)+' · Seg.26: '+fmtARS(b43)+' · Seg.50: '+fmtARS(b44)+'</span>' +
     '</div>':'') +
 
-  '</div>' + // end header card
-
-  // Gráfico de evolución
-  '<div class="card" style="padding:16px;margin-bottom:16px">' +
-    '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">' +
-      '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">📈 Evolución histórica</div>' +
-      '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
-        ['efectivo','bancos','fima','usd','rendprem','rendahorr','mp'].map(k=>{
-          const lbls={efectivo:'Efectivo',bancos:'Bancos',fima:'FIMA $',usd:'USD',rendprem:'Rend.Premium',rendahorr:'Rend.Ahorro',mp:'Mercado Pago'};
-          return '<button data-chart="'+k+'" data-view="'+view+'" onclick="dashEmpChart(this.dataset.view,this.dataset.chart,this)" '+
-            'style="padding:3px 10px;border-radius:5px;font-size:10px;font-weight:700;border:1px solid rgba(255,255,255,0.1);background:var(--bg3);color:var(--text3);cursor:pointer">'+lbls[k]+'</button>';
-        }).join('') +
-      '</div>' +
+    // Inversiones
+    '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Inversiones</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:14px">' +
+      C('FIMA Premium ('+prefB+'34)',b34,'#a78bfa',false) +
+      C('FIMA Ahorro ('+prefB+'35)',b35,'#7c6cfa',false) +
+      C('FIMA Renta USD ('+prefB+'37)',b37,'#2dd4bf',true) +
+      C('Rend.FIMA Premium ('+prefB+'38)',b38,b38>=0?'var(--green)':'var(--red)',false) +
+      C('Rend.FIMA Ahorro ('+prefB+'39)',b39,b39>=0?'var(--green)':'var(--red)',false) +
+      C('Rend.FIMA USD ('+prefB+'45)',b45,b45>=0?'var(--green)':'var(--red)',true) +
     '</div>' +
-    '<div style="position:relative;height:180px"><canvas id="chart-dash-emp-evol"></canvas></div>' +
+
+    // Gráfico
+    '<div style="background:var(--bg3);border-radius:12px;padding:14px 16px">' +
+      '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📈 Evolución histórica</div>' +
+      '<div style="position:relative;height:160px"><canvas id="chart-dash-emp"></canvas></div>' +
+    '</div>' +
+
   '</div>' +
 
-  // Estaciones grid
-  '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px" id="dash-eess-title">Estaciones</div>' +
-  '<div id="dash-eess-grid"></div>';
+  // Estaciones
+  '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px">Estaciones — '+emp.name+'</div>' +
+  '<div id="dash-eess-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div>';
 
   // Render estaciones
-  if(g('dash-eess-title')) g('dash-eess-title').textContent='Estaciones — '+emp.name;
   {
-  const allEsts2=emp.estaciones||[];
-  let ests2=balDate?allEsts2.filter(e=>e.fecha===balDate):[];
-  if(!ests2.length&&allEsts2.length){const last2=allEsts2.reduce((m,e)=>e.fecha>m?e.fecha:m,'');ests2=allEsts2.filter(e=>e.fecha===last2);}
-  const seen2=new Set();
-  const uniq2=ests2.filter(e=>{if(seen2.has(e.nombre))return false;seen2.add(e.nombre);return true;});
-  const COLORS2=['#4a9fd4','#3aaa2a','#d4920a','#a78bfa','#2dd4bf','#fb923c','#f87171','#34d399'];
-  if(!g('dash-eess-grid'))return;
-  if(!uniq2.length){g('dash-eess-grid').innerHTML='<div style="color:var(--text3);padding:20px">Sin datos de estaciones. Importá la Minuta.</div>';}
-  else g('dash-eess-grid').innerHTML=uniq2.map((est,i)=>{
-    const c2=COLORS2[i%COLORS2.length];
-    const isAgro=!!(est.esAgro||(est.nombre||'').toUpperCase().includes('AGRO'));
-    const fields=isAgro
-      ?[['Efectivo',est.efectivo,'var(--green)'],['Erogaciones',est.erogaciones,'var(--red)'],['Rechazados',est.chqRechaz,'var(--red)'],['Cartera',est.chqCartera,'var(--accent)']]
-      :[['Efectivo',est.efectivo,'var(--green)'],['Cajero',est.cajero,'var(--yellow)'],['Fondos No Dep.',est.fondosNoDep,'var(--text2)'],['Erogaciones',est.erogaciones,'var(--red)'],['Disp. Banco',est.dispBanco,'var(--green)'],['Rend. Agro',est.rendAgro,'var(--purple)'],['Cheq. Cartera',est.chqCartera,'var(--accent)'],['Rechazados',est.chqRechaz,'var(--red)']];
-    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;border-left:3px solid '+c2+';box-shadow:var(--shadow);margin-bottom:10px">'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
-        +'<div style="width:32px;height:32px;border-radius:8px;background:'+c2+'22;display:flex;align-items:center;justify-content:center;font-size:16px">'+(isAgro?'🌾':'⛽')+'</div>'
-        +'<div><div style="font-size:13px;font-weight:700;color:var(--text)">'+(est.nombre||'')+'</div>'
-        +'<div style="font-size:10px;color:var(--text3)">'+(isAgro?'AGRO':'Estación YPF')+'</div></div>'
-      +'</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
-        +fields.map(([l,vv,fc])=>{const val=parseFloat(vv)||0;return '<div style="background:var(--bg3);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;font-weight:600">'+l+'</div><div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">$ '+fmtARS(val)+'</div></div>';}).join('')
-      +'</div>'
-      +(est.ultAct?'<div style="font-size:9px;color:var(--text3);text-align:right;margin-top:8px">🕐 '+String(est.ultAct).slice(0,16)+'</div>':'')
-    +'</div>';
-  }).join('');
-  } // end estaciones block
+    const allE=emp.estaciones||[];
+    let ests=balDate?allE.filter(e=>e.fecha===balDate):[];
+    if(!ests.length&&allE.length){const last=allE.reduce((m,e)=>e.fecha>m?e.fecha:m,'');ests=allE.filter(e=>e.fecha===last);}
+    const seen=new Set();
+    const uniq=ests.filter(e=>{if(seen.has(e.nombre))return false;seen.add(e.nombre);return true;});
+    const ECOLS=['#4a9fd4','#3aaa2a','#d4920a','#a78bfa','#2dd4bf','#fb923c','#f87171','#34d399'];
+    const eg=g('dash-eess-grid');
+    if(eg){
+      if(!uniq.length) eg.innerHTML='<div style="color:var(--text3);padding:16px;font-size:12px">Sin datos. Reimportá la Minuta.</div>';
+      else eg.innerHTML=uniq.map((est,i)=>{
+        const ec2=ECOLS[i%ECOLS.length];
+        const isAg=!!(est.esAgro||(est.nombre||'').toUpperCase().includes('AGRO'));
+        const flds=isAg?[['Efectivo',est.efectivo,'var(--green)'],['Erogaciones',est.erogaciones,'var(--red)'],['Rechazados',est.chqRechaz,'var(--red)'],['Cartera',est.chqCartera,'var(--accent)']]
+          :[['Efectivo',est.efectivo,'var(--green)'],['Cajero',est.cajero,'var(--yellow)'],['Erogaciones',est.erogaciones,'var(--red)'],['Disp. Banco',est.dispBanco,'var(--green)'],['Cheq. Cartera',est.chqCartera,'var(--accent)'],['Rechazados',est.chqRechaz,'var(--red)']];
+        return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;border-left:3px solid '+ec2+'">'+
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="font-size:20px">'+(isAg?'🌾':'⛽')+'</div>'+
+          '<div><div style="font-size:12px;font-weight:700">'+(est.nombre||'')+'</div><div style="font-size:9px;color:var(--text3)">'+(isAg?'AGRO':'Estación YPF')+'</div></div></div>'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'+
+          flds.map(([l,vv,fc])=>{const v=parseFloat(vv)||0;return '<div style="background:var(--bg3);border-radius:7px;padding:7px 9px"><div style="font-size:8px;color:var(--text3);text-transform:uppercase;margin-bottom:2px">'+l+'</div><div style="font-family:var(--mono);font-size:12px;font-weight:700;color:'+(v<0?'var(--red)':'var(--text)')+'">$ '+fmtARS(Math.abs(v))+'</div></div>';}).join('')+
+          '</div></div>';
+      }).join('');
+    }
+  }
 
-  // Render evolution chart with default = efectivo
-  dashEmpChart(view, 'efectivo', null);
-  if(g('dash-eess-title')) g('dash-eess-title').textContent='Estaciones — '+emp.name;
-  const allEsts=emp.estaciones||[];
-  let ests=balDate?allEsts.filter(e=>e.fecha===balDate):[];
-  if(!ests.length&&allEsts.length){const last=allEsts.reduce((m,e)=>e.fecha>m?e.fecha:m,'');ests=allEsts.filter(e=>e.fecha===last);}
-  const seen=new Set();
-  const uniq=ests.filter(e=>{if(seen.has(e.nombre))return false;seen.add(e.nombre);return true;});
-  const COLORS=['#4a9fd4','#3aaa2a','#d4920a','#a78bfa','#2dd4bf','#fb923c','#f87171','#34d399'];
-  if(!g('dash-eess-grid'))return;
-  if(!uniq.length){g('dash-eess-grid').innerHTML='<div style="color:var(--text3);padding:20px">Sin datos. Importá la Minuta.</div>';return;}
-  g('dash-eess-grid').innerHTML=uniq.map((est,i)=>{
-    const c=COLORS[i%COLORS.length];
-    const isAgro=!!(est.esAgro||(est.nombre||'').toUpperCase().includes('AGRO'));
-    const fields=isAgro
-      ?[['Efectivo',est.efectivo,'var(--green)'],['Erogaciones',est.erogaciones,'var(--red)'],['Rechazados',est.chqRechaz,'var(--red)'],['Cartera',est.chqCartera,'var(--accent)']]
-      :[['Efectivo',est.efectivo,'var(--green)'],['Cajero',est.cajero,'var(--yellow)'],['Fondos No Dep.',est.fondosNoDep,'var(--text2)'],['Erogaciones',est.erogaciones,'var(--red)'],['Disp. Banco',est.dispBanco,'var(--green)'],['Rend. Agro',est.rendAgro,'var(--purple)'],['Cheq. Cartera',est.chqCartera,'var(--accent)'],['Rechazados',est.chqRechaz,'var(--red)']];
-    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;border-left:3px solid '+c+';box-shadow:var(--shadow)">'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
-        +'<div style="width:32px;height:32px;border-radius:8px;background:'+c+'22;display:flex;align-items:center;justify-content:center;font-size:16px">'+(isAgro?'🌾':'⛽')+'</div>'
-        +'<div><div style="font-size:13px;font-weight:700;color:var(--text)">'+(est.nombre||'')+'</div>'
-        +'<div style="font-size:10px;color:var(--text3)">'+(isAgro?'AGRO':'Estación YPF')+'</div></div>'
-      +'</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
-        +fields.map(([l,v,fc])=>{const val=parseFloat(v)||0;return '<div style="background:var(--bg3);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;font-weight:600">'+l+'</div><div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">$ '+fmtARS(val)+'</div></div>';}).join('')
-      +'</div>'
-      +(est.ultAct?'<div style="font-size:9px;color:var(--text3);text-align:right;margin-top:8px">🕐 '+String(est.ultAct).slice(0,16)+'</div>':'')
-    +'</div>';
-  }).join('');
-}
+  // Render chart default
+  setTimeout(()=>dashEmpBtn(document.querySelector('[data-emp="'+view+'"][data-k="ef"]')),50);
 
-
-// ── Dashboard empresa helpers ─────────────────────────────────
-function _dashCuadro(label, val, color, isUSD) {
-  const formatted = isUSD ? 'U$S '+fmtARS(val) : '$ '+fmtARS(val);
-  const isNeg = !isUSD && val < 0;
-  const c = isNeg ? 'var(--red)' : color;
-  return '<div style="background:var(--bg3);border-radius:12px;padding:12px 14px;border-left:3px solid '+c+'">' +
-    '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">'+label+'</div>' +
-    '<div style="font-family:var(--mono);font-size:clamp(13px,1.8vw,17px);font-weight:900;color:'+c+'">'+formatted+'</div>' +
-  '</div>';
-}
-
-function dashEmpChart(view, metrica, btn) {
-  // Highlight active button
-  const btns = document.querySelectorAll('[data-chart]');
-  btns.forEach(b => {
-    b.style.background = b.dataset.chart===metrica ? 'var(--accent)22' : 'var(--bg3)';
-    b.style.color = b.dataset.chart===metrica ? 'var(--accent)' : 'var(--text3)';
-    b.style.borderColor = b.dataset.chart===metrica ? 'var(--accent)' : 'rgba(255,255,255,0.1)';
-  });
-
-  const empMap={RS:'Rio Salado',SC:'Cipolletti',LP:'Plaza'};
-  const emp = appState.empresas.find(e=>e.name.includes(empMap[view]));
-  if (!emp || !emp.diaHistory) return;
-
-  const isRS = view==='RS', isSC = view==='SC';
-  const hist = emp.diaHistory;
-
-  // Ordenar fechas
-  const fechas = Object.keys(hist).sort();
-  if (!fechas.length) return;
-
-  const metricaMap = {
-    efectivo:  f => isRS?(hist[f].b50||0):isSC?(hist[f].d50||0):(hist[f].f50||0),
-    bancos:    f => {
-      const tx = (emp.transactions||[]).filter(t=>t.date===f&&(t.cat||'').includes('Banco')&&t.type==='ingreso'&&!t.cat.includes('USD'));
-      return tx.reduce((s,t)=>s+(t.amount||0),0);
-    },
-    fima:      f => (emp.investments||[]).filter(i=>i.fecha===f).reduce((s,i)=>s+(i.capital||0),0),
-    usd:       f => (hist[f].usd||0) + (isRS?hist[f].b37||0:hist[f].d37||0),
-    rendprem:  f => hist[f].rendPrem||0,
-    rendahorr: f => hist[f].rendAhorr||0,
-    mp:        f => isRS?(hist[f].b46||0):(hist[f].d46||0),
-  };
-
-  const fn = metricaMap[metrica] || metricaMap.efectivo;
-  const vals = fechas.map(f => fn(f));
-  const labels = fechas.map(f => {
-    const d = new Date(f+'T12:00:00');
-    return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
-  });
-
-  const colors2 = {
-    efectivo:'rgba(74,222,128,0.8)',bancos:'rgba(74,159,212,0.8)',
-    fima:'rgba(167,139,250,0.8)',usd:'rgba(251,191,36,0.8)',
-    rendprem:'rgba(74,222,128,0.8)',rendahorr:'rgba(45,212,191,0.8)',
-    mp:'rgba(0,158,227,0.8)'
-  };
-  const borderColors = {
-    efectivo:'#4ade80',bancos:'#4a9fd4',fima:'#a78bfa',usd:'#fbbf24',
-    rendprem:'#4ade80',rendahorr:'#2dd4bf',mp:'#009ee3'
-  };
-  const isNegAllowed = ['rendprem','rendahorr'].includes(metrica);
-  const metricaLabels = {efectivo:'Efectivo',bancos:'Bancos $',fima:'FIMA $',usd:'Total USD',rendprem:'Rend.FIMA Premium',rendahorr:'Rend.FIMA Ahorro',mp:'Mercado Pago'};
-
-  try {
-    const ctx = document.getElementById('chart-dash-emp-evol');
-    if (!ctx) return;
-    if (window._chDashEmpEvol) window._chDashEmpEvol.destroy();
-    window._chDashEmpEvol = new Chart(ctx.getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          label: metricaLabels[metrica]||metrica,
-          data: vals,
-          backgroundColor: vals.map(v => v < 0 ? 'rgba(248,113,113,0.7)' : colors2[metrica]||'rgba(74,159,212,0.8)'),
-          borderColor: vals.map(v => v < 0 ? '#f87171' : borderColors[metrica]||'#4a9fd4'),
-          borderWidth: 1, borderRadius: 4,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: c => (c.raw<0?'-':'')+' $ '+fmtARS(Math.abs(c.raw)) } }
-        },
-        scales: {
-          x: { ticks:{color:'rgba(255,255,255,0.5)',font:{size:9},maxRotation:45}, grid:{color:'rgba(255,255,255,0.04)'} },
-          y: { ticks:{color:'rgba(255,255,255,0.5)',font:{size:9},callback:v=>'$'+fmtARS(v)}, grid:{color:'rgba(255,255,255,0.06)'} }
-        }
-      }
-    });
-  } catch(e) { console.warn('dashEmpChart error:', e); }
-}
 
 function buildChartAnual() {
   if(chartAnual) chartAnual.destroy();
@@ -6612,6 +6509,7 @@ function openAddCheque() {
 // ════════════════════════════════════════════════════════════════
 // Se integra al procesador existente via sheetsByType
 const _origSheetMap = null; // marker
+}
 
 </script>
 
@@ -7272,6 +7170,11 @@ function renderExtractos() {
     if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:32px">⏳ Cargando extractos...</td></tr>';
     _loadExtractosSupabase().then(loaded => {
       if (loaded) renderExtractos();
+      else {
+        // Fallback: build from transactions if Supabase load fails
+        appState.extractoBancario = _buildExtractosFromTransactions ? _buildExtractosFromTransactions() : [];
+        renderExtractos();
+      }
     });
     return;
   }
@@ -7871,7 +7774,7 @@ async function _saveExtractosSupabase(data) {
   try {
     showToast('⏳ Guardando '+data.length.toLocaleString()+' movimientos en Supabase...');
     // Borrar existentes
-    await supa.from('extracto_bancario').delete().neq('id', 0);
+    await supa.from('extracto_bancario').delete().gte('id', 0);
     // Insertar en chunks de 500
     const CHUNK = 500;
     for (let i = 0; i < data.length; i += CHUNK) {
@@ -8126,7 +8029,7 @@ async function _saveCartDeboSupabase(data) {
   if (!_supaUser || !data || !data.length) return;
   try {
     showToast('⏳ Guardando cartera en Supabase...');
-    await supa.from('cartera_debo').delete().neq('id', 0);
+    await supa.from('cartera_debo').delete().gte('id', 0);
     const rows = data.map(c => ({
       empresa: c.emp||'RS', banco: c.banco||'', numero: c.numero||'',
       f_emi: c.fEmi||null, f_pres: c.fPres||null,
@@ -8926,7 +8829,7 @@ async function syncSupabase() {
 
     // Clientes DEBO
     if (appState.clientesDebo && appState.clientesDebo.length) {
-      await supa.from('clientes_debo').delete().neq('id', 0);
+      await supa.from('clientes_debo').delete().gte('id', 0);
       const rows = appState.clientesDebo.map(c => ({
         empresa:c.emp, uunn:c.uunn, apies:c.apies, codigo:c.codigo, nombre:c.nombre,
         rem_pend:c.remPend, debitos:c.debitos, creditos:c.creditos, saldo:c.saldo,
