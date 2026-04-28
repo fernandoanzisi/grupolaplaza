@@ -7777,18 +7777,40 @@ async function _saveExtractosSupabase(data) {
     await supa.from('extracto_bancario').delete().gte('id', 0);
     // Insertar en chunks de 500
     const CHUNK = 500;
+    let errCount = 0;
     for (let i = 0; i < data.length; i += CHUNK) {
       const chunk = data.slice(i, i+CHUNK).map(m => ({
-        fecha: m.fecha, emp_tag: m.empTag||'', banco: m.banco||'',
-        cuenta: m.cuenta||'', detalle: (m.detalle||m.concepto||'').slice(0,200),
-        cat: m.cat||'', importe: m.importe||0, tipo: m.tipo||'ingreso',
-        saldo: m.saldo||null, denominacion: (m.denominacion||'').slice(0,100),
+        fecha: m.fecha||null,
+        emp_tag: (m.empTag||'').slice(0,10),
+        banco: (m.banco||'').slice(0,50),
+        cuenta: (m.cuenta||'').slice(0,100),
+        detalle: (m.detalle||m.concepto||m.descripcion||'').slice(0,200),
+        cat: (m.cat||'').slice(0,50),
+        importe: parseFloat(m.importe)||0,
+        tipo: (m.tipo||'ingreso').slice(0,20),
+        saldo: m.saldo!=null?parseFloat(m.saldo):null,
+        denominacion: (m.denominacion||'').slice(0,100),
       }));
       const { error } = await supa.from('extracto_bancario').insert(chunk);
-      if (error) { console.warn('Supabase chunk error:', error.message); }
+      if (error) {
+        errCount++;
+        if (errCount === 1) {
+          console.error('Supabase extracto error:', error.message, '| First row:', JSON.stringify(chunk[0]));
+          showToast('⚠️ Error Supabase: ' + error.message.slice(0,80));
+        }
+      }
     }
-    return true;
-  } catch(e) { console.error('_saveExtractosSupabase:', e); return false; }
+    if (errCount === 0) {
+      showToast('✅ Extractos guardados en Supabase ('+data.length.toLocaleString()+' movimientos)');
+    } else {
+      showToast('⚠️ '+errCount+' chunks fallaron — revisá la consola F12');
+    }
+    return errCount === 0;
+  } catch(e) {
+    console.error('_saveExtractosSupabase exception:', e);
+    showToast('❌ Error al guardar extractos: ' + e.message);
+    return false;
+  }
 }
 
 async function _loadExtractosSupabase() {
@@ -7814,7 +7836,11 @@ async function _loadExtractosSupabase() {
       return true;
     }
     return false;
-  } catch(e) { console.error('_loadExtractosSupabase:', e); return false; }
+  } catch(e) {
+    console.error('_loadExtractosSupabase:', e);
+    showToast('⚠️ Error al cargar extractos: ' + e.message);
+    return false;
+  }
 }
 
 
