@@ -10837,31 +10837,44 @@ function renderLimiteCredito() {
     .filter(r => !div    || r.division === div)
     .filter(r => !search || r.division.toLowerCase().includes(search) || r.fecha.includes(search));
 
-  filtered.sort((a,b) => b.fecha.localeCompare(a.fecha));
+  filtered.sort((a,b) => b.fecha.localeCompare(a.fecha) || a.division.localeCompare(b.division));
 
-  const tbody = document.getElementById('lc-tbody');
   const count = document.getElementById('lc-count');
   if (count) count.textContent = filtered.length.toLocaleString('es-AR') + ' registros';
+
+  // Update header
+  const thead = document.getElementById('lc-thead');
+  if (thead) thead.innerHTML = '<tr><th>Fecha</th><th>División</th><th>Riesgo Otorgado</th><th>Capital Trabajo</th><th>OP Abiertas</th><th>Total Consumo</th><th>Saldo Disponible</th></tr>';
+
+  const tbody = document.getElementById('lc-tbody');
   if (!tbody) return;
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:32px">' + (data.length ? 'Sin resultados' : 'Importá el Excel de Límite de Crédito') + '</td></tr>';
-    return;
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:32px">' + (data.length ? 'Sin resultados' : 'Importá el Excel de Límite de Crédito') + '</td></tr>';
+  } else {
+    tbody.innerHTML = filtered.map(r => {
+      const pct = r.riesgoOtorgado > 0 ? (r.totalConsumo / r.riesgoOtorgado * 100).toFixed(1) : 0;
+      const saldoColor = r.saldo > 0 ? 'var(--green)' : 'var(--red)';
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="font-family:var(--mono);font-size:11px">${r.fecha}</td>
+        <td style="font-weight:700">${r.division}</td>
+        <td style="font-family:var(--mono);text-align:right">$ ${fmtARS(r.riesgoOtorgado)}</td>
+        <td style="font-family:var(--mono);text-align:right">$ ${fmtARS(r.capitalTrabajo)}</td>
+        <td style="font-family:var(--mono);text-align:right">$ ${fmtARS(r.opAbiertas)}</td>
+        <td style="font-family:var(--mono);text-align:right">
+          $ ${fmtARS(r.totalConsumo)}
+          <span style="font-size:9px;color:var(--text3);margin-left:4px">${pct}%</span>
+        </td>
+        <td style="font-family:var(--mono);text-align:right;font-weight:700;color:${saldoColor}">$ ${fmtARS(r.saldo)}</td>
+      </tr>`;
+    }).join('');
   }
-
-  tbody.innerHTML = filtered.map(r => `<tr style="border-bottom:1px solid var(--border)">
-    <td style="font-family:var(--mono);font-size:11px">${r.fecha}</td>
-    <td>${r.division}</td>
-    <td style="font-family:var(--mono);text-align:right">$ ${fmtARS(r.riesgo)}</td>
-    <td style="font-family:var(--mono);text-align:right">$ ${fmtARS(r.capitalTrabajo)}</td>
-    <td style="font-family:var(--mono);text-align:right;color:${r.saldo<0?'var(--red)':'var(--green)'}">$ ${fmtARS(r.saldo)}</td>
-  </tr>`).join('');
 
   // Populate division select
   const divSel = document.getElementById('lc-division');
   if (divSel && divSel.options.length <= 1) {
     const divs = [...new Set(data.map(r=>r.division))].sort();
-    divs.forEach(d => { const o=document.createElement('option'); o.value=d; o.textContent=d; divSel.appendChild(o); });
+    divSel.innerHTML = '<option value="">Todas</option>' + divs.map(d=>`<option value="${d}">${d}</option>`).join('');
   }
 }
 
@@ -10881,39 +10894,69 @@ function isLimiteCredito(wb) {
 function parseLimiteCredito(wb) {
   const log = []; let total = 0;
   appState.lcData = [];
-  const dateSheets = wb.SheetNames.filter(s => /^\d{1,2}[-\/]\d{2}[-\/]\d{2,4}/.test(s.trim()) && !s.includes('T') && !s.includes('('));
+
+  // Cols usadas: B(1)=concepto, C(2)=EESS, E(4)=Dist.Diesel, G(6)=LU/DE-EESS, H(7)=LU/DE-Agro, I(8)=FE-Agro, J(9)=TOTAL
+  const COL_DIVS = [
+    {ci:2, nombre:'EESS'},
+    {ci:4, nombre:'Dist. Diesel'},
+    {ci:6, nombre:'LU/DE-EESS'},
+    {ci:7, nombre:'LU/DE-Agro'},
+    {ci:8, nombre:'FE-Agro'},
+    {ci:9, nombre:'TOTAL'},
+  ];
+
+  function pn(v){ return v!=null ? parseFloat(String(v).replace(/[^0-9.-]/g,''))||0 : 0; }
+
+  function parseFechaSheet(sn) {
+    const m = sn.trim().match(/(\d{1,2})[-\/](\d{2})[-\/](\d{2,4})/);
+    if (!m) return '';
+    const d=m[1].padStart(2,'0'), mo=m[2].padStart(2,'0');
+    let y=m[3]; if(y.length===2) y='20'+y;
+    return `${y}-${mo}-${d}`;
+  }
+
+  // Only process date-named sheets (skip 'Hoja5' etc)
+  const dateSheets = wb.SheetNames.filter(s => /^\d{1,2}[-\/]\d{2}[-\/]\d{2,4}/.test(s.trim()) && !s.includes('(') && !s.includes('T'));
 
   dateSheets.forEach(sn => {
+    const fecha = parseFechaSheet(sn);
+    if (!fecha) return;
     try {
       const ws = wb.Sheets[sn];
-      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
       if (!rows || rows.length < 2) return;
 
-      // Parse fecha from sheet name
-      const parts = sn.trim().split(/[-\/]/);
-      let fecha = '';
-      if (parts.length >= 3) {
-        const d = parts[0].padStart(2,'0'), m = parts[1].padStart(2,'0');
-        let y = parts[2]; if (y.length === 2) y = '20'+y;
-        fecha = `${y}-${m}-${d}`;
-      }
-      if (!fecha) return;
+      // F1 = division headers, F2 = Riesgo Otorgado, F4 = Capital Trabajo, F6 = OP Abiertas
+      // F33 = TOTAL, F35 = SALDOS
+      const r1  = rows[0]  || [];  // headers
+      const r2  = rows[1]  || [];  // Riesgo Otorgado
+      const r4  = rows[3]  || [];  // Capital de Trabajo
+      const r6  = rows[5]  || [];  // OP abiertas
+      const r33 = rows[32] || [];  // TOTAL
+      const r35 = rows[34] || [];  // SALDOS
 
-      // Find divisiones row (row 0 usually has headers)
-      const hdrRow = rows[0] || [];
-      for (let ci = 0; ci < hdrRow.length; ci++) {
-        const divName = String(hdrRow[ci] || '').trim();
-        if (!divName || divName.toLowerCase() === 'divisiones') continue;
-        const riesgo      = parseFloat(String(rows[1]?.[ci]||0).replace(/[^0-9.-]/g,'')) || 0;
-        const capitalTrab = parseFloat(String(rows[3]?.[ci]||0).replace(/[^0-9.-]/g,'')) || 0;
-        const saldo       = riesgo - capitalTrab;
-        if (riesgo === 0) continue;
-        appState.lcData.push({ fecha, division: divName, riesgo, capitalTrabajo: capitalTrab, saldo });
+      COL_DIVS.forEach(({ci, nombre}) => {
+        const riesgo       = pn(r2[ci]);
+        const capitalTrab  = pn(r4[ci]);
+        const opAbiertas   = pn(r6[ci]);
+        const total_col    = pn(r33[ci]);
+        const saldo        = pn(r35[ci]);
+        if (riesgo === 0 && total_col === 0) return;
+
+        appState.lcData.push({
+          fecha, division: nombre,
+          riesgoOtorgado: riesgo,
+          capitalTrabajo: capitalTrab,
+          opAbiertas,
+          totalConsumo: total_col,
+          saldo,
+        });
         total++;
-      }
-    } catch(e) {}
+      });
+    } catch(e) { console.warn('LC parse error '+sn, e.message); }
   });
 
+  appState.lcData.sort((a,b) => b.fecha.localeCompare(a.fecha));
   log.push(`<span style="color:var(--green)">✅ Límite de Crédito: ${total.toLocaleString()} registros de ${dateSheets.length} fechas</span>`);
   saveState();
   return { log, total };
@@ -11169,51 +11212,62 @@ function parseFci(wb) {
   const log = []; let total = 0;
   appState.fciData = [];
 
+  // Las hojas de datos tienen SIEMPRE estas columnas en F1:
+  // A=Fondo, B=Tipo de movimiento, C=Cuotapartes, D=Fecha operación,
+  // E=Fecha liquidación, F=Importe, G=Estado, H=Empresa
+  // Hojas de datos: RS/SC FIMA PREMIUM, RS/SC FIMA AHORRO, RS/SC FIMA RENTA, Hoja2
+
+  const DATA_SHEETS = wb.SheetNames.filter(s => {
+    const su = s.toUpperCase();
+    return su.includes('FIMA') || su.includes('HOJA2') || su.includes('HOJA 2');
+  });
+
   function parseFecha(v) {
     if (!v) return '';
     if (typeof v === 'string' && v.match(/^\d{4}-\d{2}-\d{2}/)) return v.slice(0,10);
-    return String(v).slice(0,10);
+    if (v instanceof Date) return v.toISOString().slice(0,10);
+    const s = String(v);
+    if (s.match(/^\d{4}-\d{2}-\d{2}/)) return s.slice(0,10);
+    return s.slice(0,10);
   }
 
-  // Look for main data sheet (first sheet with Fondo/Tipo columns)
-  wb.SheetNames.forEach(sn => {
+  DATA_SHEETS.forEach(sn => {
     try {
       const ws = wb.Sheets[sn];
+      // Use raw:false to get string dates, header:1 for array of arrays
       const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
       if (!rows || rows.length < 2) return;
-      const hdr = (rows[0]||[]).map(h=>String(h||'').toLowerCase().trim());
-      // Check if this sheet has the right columns
-      const iFondo  = hdr.findIndex(h=>h.includes('fondo'));
-      const iTipo   = hdr.findIndex(h=>h.includes('tipo'));
-      const iCuotas = hdr.findIndex(h=>h.includes('cuotapart'));
-      const iFechaOp  = hdr.findIndex(h=>h.includes('fecha') && (h.includes('op')||h.includes('operac')));
-      const iFechaLiq = hdr.findIndex(h=>h.includes('fecha') && (h.includes('liq')||h.includes('liquid')));
-      const iFechaAny = hdr.findIndex(h=>h.includes('fecha'));
-      const iFechaOp2  = iFechaOp  >= 0 ? iFechaOp  : iFechaAny;
-      const iFechaLiq2 = iFechaLiq >= 0 ? iFechaLiq : (iFechaAny >= 0 ? iFechaAny+1 : -1);
-      const iImp    = hdr.findIndex(h=>h.includes('importe'));
-      const iEst    = hdr.findIndex(h=>h.includes('estado'));
-      const iEmp    = hdr.findIndex(h=>h.includes('empresa'));
-      if (iFondo < 0 || iTipo < 0) return;
 
+      // Verify F1 has the expected headers
+      const hdr = (rows[0] || []).map(h => String(h||'').toLowerCase().trim());
+      if (!hdr[0].includes('fondo') && !hdr[1].includes('tipo')) return;
+
+      let cnt = 0;
       for (let ri = 1; ri < rows.length; ri++) {
         const r = rows[ri];
-        const fondo = String(r[iFondo]||'').trim();
-        const tipo  = String(r[iTipo]||'').trim();
+        if (!r || !r[0]) continue;
+        const fondo  = String(r[0]||'').trim();
+        const tipo   = String(r[1]||'').trim();
         if (!fondo || !tipo) continue;
-        const emp    = iEmp>=0 ? String(r[iEmp]||'').trim() : '';
-        const fechaOp  = parseFecha(r[iFechaOp2]) || '';
-        const fechaLiq = parseFecha(r[iFechaLiq2 >= 0 ? iFechaLiq2 : iFechaOp2]) || '';
-        const cuotas  = parseFloat(String(r[iCuotas]||0).replace(/[^0-9.-]/g,'')) || 0;
-        const importe = parseFloat(String(r[iImp]||0).replace(/[^0-9.-]/g,'')) || 0;
-        const estado  = iEst>=0 ? String(r[iEst]||'').trim() : '';
-        appState.fciData.push({ fondo, tipo, empresa:emp, fechaOp, fechaLiq, cuotapartes:cuotas, importe, estado });
-        total++;
+
+        const cuotas  = parseFloat(String(r[2]||'0').replace(/[^0-9.-]/g,'')) || 0;
+        const fechaOp = parseFecha(r[3]);
+        const fechaLiq= parseFecha(r[4]);
+        const importe = parseFloat(String(r[5]||'0').replace(/[^0-9.-]/g,'')) || 0;
+        const estado  = String(r[6]||'').trim();
+        const empresa = String(r[7]||'').trim();
+
+        appState.fciData.push({ fondo, tipo, cuotapartes:cuotas, fechaOp, fechaLiq, importe, estado, empresa });
+        cnt++; total++;
       }
-    } catch(e) {}
+      if (cnt > 0) log.push(`<span style="color:var(--green)">✅ ${sn}: ${cnt} movimientos</span>`);
+    } catch(e) {
+      log.push(`<span style="color:var(--red)">❌ Error en ${sn}: ${e.message}</span>`);
+    }
   });
 
-  log.push(`<span style="color:var(--green)">✅ FCI: ${total.toLocaleString()} movimientos</span>`);
+  appState.fciData.sort((a,b) => b.fechaOp.localeCompare(a.fechaOp));
+  log.push(`<span style="color:var(--accent)">📊 FCI Total: ${total.toLocaleString()} movimientos en ${DATA_SHEETS.length} fondos</span>`);
   saveState();
   return { log, total };
 }
@@ -11298,11 +11352,13 @@ function renderPreOp() {
       <td style="font-family:var(--mono);font-weight:700;color:var(--accent)">${r.nro||'—'}</td>
       <td style="font-family:var(--mono);font-size:11px">${r.fecha||'—'}</td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${r.proveedor||''}">${r.proveedor||'—'}</td>
-      <td style="font-family:var(--mono);text-align:right;font-weight:700">$ ${fmtARS(r.importe)}</td>
+      <td style="font-family:var(--mono);text-align:right;font-weight:700;color:${(r.importe||0)<0?'var(--red)':'var(--text)'}">$ ${fmtARS(Math.abs(r.importe||0))}</td>
       <td style="font-size:11px">${r.uunn||'—'}</td>
       <td style="font-family:var(--mono);font-size:11px">${r.fechaPago||'—'}</td>
       <td style="font-size:11px">${r.formaPago||'—'}</td>
-      <td><span style="font-size:10px;font-weight:700;color:${colorEstado(r.estado)}">${r.estado||'—'}</span></td>
+      <td><span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;background:${colorEstado(r.estado)+'22'};color:${colorEstado(r.estado)}">${r.estado||'—'}</span></td>
+      <td style="font-size:10px;color:var(--text3)">${r.hoja||''}</td>
+      <td style="font-size:11px;color:var(--text3)">${r.bcoPagador||r.cliente||'—'}</td>
     </tr>`).join('');
   }
 
@@ -11332,52 +11388,75 @@ function parsePreOp(wb) {
   const log = []; let total = 0;
   appState.preopData = [];
 
-  const mainSN = wb.SheetNames.find(s => s.toLowerCase().includes('pre-op') && s.toLowerCase().includes('uunn')) || wb.SheetNames[0];
-  const ws = wb.Sheets[mainSN];
-  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
-  if (!rows || rows.length < 2) {
-    log.push('<span style="color:var(--red)">❌ No se encontraron datos</span>');
-    return { log, total };
-  }
-
   function parseFecha(v) {
     if (!v) return '';
     if (typeof v === 'string' && v.match(/^\d{4}-\d{2}-\d{2}/)) return v.slice(0,10);
+    if (v instanceof Date) return v.toISOString().slice(0,10);
     return String(v).slice(0,10);
   }
 
-  // Row 0 = headers
-  const hdr = (rows[0]||[]).map(h=>String(h||'').toLowerCase().trim());
-  const iNro     = hdr.findIndex(h=>h.includes('pre-op')||h.includes('preop')||h.includes('n°')||h.includes('nro'));
-  const iFecha   = hdr.findIndex(h=>h==='fecha'||h.includes('fecha')&&!h.includes('pago'));
-  const iProv    = hdr.findIndex(h=>h.includes('proveedor'));
-  const iImp     = hdr.findIndex(h=>h.includes('total')||h.includes('importe'));
-  const iUunn    = hdr.findIndex(h=>h.includes('uunn')||h.includes('uu.nn'));
-  const iFechaPago = hdr.findIndex(h=>h.includes('fecha') && h.includes('pago'));
-  const iForma   = hdr.findIndex(h=>h.includes('forma'));
-  const iEstado  = hdr.findIndex(h=>h.includes('estado'));
+  // ── Hoja 1: PAGOS PRE-OP UUNN ─────────────────────────────
+  // Cols: A=N°Pre-OP, B=Fecha, C=Proveedor, D=Total, E=UUNN, F=FechaPago, G=FormaPago, H=Estado, I=BcoPagador
+  const sh1 = wb.SheetNames.find(s => s.toUpperCase().includes('PRE-OP') && s.toUpperCase().includes('UUNN')) || wb.SheetNames[0];
+  try {
+    const ws1 = wb.Sheets[sh1];
+    const rows1 = XLSX.utils.sheet_to_json(ws1, {header:1, defval:null, raw:false});
+    for (let ri = 1; ri < rows1.length; ri++) {
+      const r = rows1[ri];
+      const nro = String(r[0]||'').trim();
+      if (!nro || nro.toLowerCase() === 'n° pre-op') continue;
+      appState.preopData.push({
+        hoja:      'TRF',
+        nro,
+        fecha:      parseFecha(r[1]),
+        proveedor:  String(r[2]||'').trim(),
+        importe:    parseFloat(String(r[3]||'0').replace(/[^0-9.-]/g,''))||0,
+        uunn:       String(r[4]||'').trim(),
+        fechaPago:  parseFecha(r[5]),
+        formaPago:  String(r[6]||'').trim(),
+        estado:     String(r[7]||'').trim(),
+        bcoPagador: String(r[8]||'').trim(),
+      });
+      total++;
+    }
+    log.push(`<span style="color:var(--green)">✅ Hoja TRF (${sh1}): ${total} registros</span>`);
+  } catch(e) { log.push(`<span style="color:var(--red)">❌ Error hoja 1: ${e.message}</span>`); }
 
-  for (let ri = 1; ri < rows.length; ri++) {
-    const r = rows[ri];
-    const nro = String(r[iNro]||'').trim();
-    if (!nro) continue;
-    const prov = String(r[iProv]||'').trim();
-    const impRaw = r[iImp] != null ? String(r[iImp]).replace(/[^0-9.-]/g,'') : '0';
-    const imp  = parseFloat(impRaw) || 0;
-    appState.preopData.push({
-      nro,
-      fecha:    iFecha>=0 ? parseFecha(r[iFecha]) : '',
-      proveedor: prov,
-      importe:  imp,
-      uunn:     iUunn>=0 ? String(r[iUunn]||'').trim() : '',
-      fechaPago: iFechaPago>=0 ? parseFecha(r[iFechaPago]) : '',
-      formaPago: iForma>=0 ? String(r[iForma]||'').trim() : '',
-      estado:   iEstado>=0 ? String(r[iEstado]||'').trim() : '',
-    });
-    total++;
+  // ── Hoja 2: PAGO CON CHEQ. ────────────────────────────────
+  // Cols: A=Solicita, B=Fecha, C=AfectaApies, D=Proveedor, E=Comprobante, F=NroFactura, G=NroCheq, H=Cliente, I=Emision, J=Vto, K=Importe
+  const sh2 = wb.SheetNames.find(s => s.toUpperCase().includes('CHEQ'));
+  if (sh2) {
+    let cnt2 = 0;
+    try {
+      const ws2 = wb.Sheets[sh2];
+      const rows2 = XLSX.utils.sheet_to_json(ws2, {header:1, defval:null, raw:false});
+      for (let ri = 1; ri < rows2.length; ri++) {
+        const r = rows2[ri];
+        const proveedor = String(r[3]||'').trim();
+        if (!proveedor || proveedor.toLowerCase() === 'proveedor' || proveedor.toLowerCase() === 'ctrl') continue;
+        const imp = parseFloat(String(r[10]||'0').replace(/[^0-9.-]/g,''))||0;
+        appState.preopData.push({
+          hoja:       'CHQ',
+          nro:        String(r[6]||'—').trim(),  // Nro Cheque
+          fecha:      parseFecha(r[1]),
+          proveedor,
+          importe:    imp,
+          uunn:       String(r[2]||'').trim(),   // Afecta APIES
+          fechaPago:  parseFecha(r[9]),           // Vto
+          formaPago:  String(r[4]||'CHQ').trim(), // Comprobante (E-CHEQ/CHQ/etc)
+          estado:     imp < 0 ? 'EMITIDO' : 'RECIBIDO',
+          cliente:    String(r[7]||'').trim(),
+          nroFactura: String(r[5]||'').trim(),
+          emision:    parseFecha(r[8]),
+          bcoPagador: '',
+        });
+        cnt2++; total++;
+      }
+      log.push(`<span style="color:var(--green)">✅ Hoja CHQ (${sh2}): ${cnt2} registros</span>`);
+    } catch(e) { log.push(`<span style="color:var(--red)">❌ Error hoja 2: ${e.message}</span>`); }
   }
 
-  log.push(`<span style="color:var(--green)">✅ Pre-OP: ${total.toLocaleString()} registros importados</span>`);
+  log.push(`<span style="color:var(--accent)">📋 Total: ${total.toLocaleString()} registros</span>`);
   saveState();
   return { log, total };
 }
