@@ -2977,6 +2977,110 @@ function dashSetView(view) {
   // Render chart default
   setTimeout(()=>dashEmpBtn(document.querySelector('[data-emp="'+view+'"][data-k="ef"]')),50);
 
+} // end dashSetView
+
+function dashEmpBtn(btn) {
+  if (!btn) return;
+  const view = btn.dataset.emp;
+  const k    = btn.dataset.k;
+  // Highlight active button
+  document.querySelectorAll('[data-emp="'+view+'"][data-k]').forEach(b => {
+    const m = DASH_EMP_METRICS[b.dataset.k];
+    b.style.background   = b.dataset.k===k ? m.c+'22' : 'var(--bg2)';
+    b.style.color        = b.dataset.k===k ? m.c      : 'var(--text3)';
+    b.style.borderColor  = b.dataset.k===k ? m.c      : 'var(--border)';
+    b.style.fontWeight   = b.dataset.k===k ? '700'    : '400';
+  });
+
+  const empMap = {RS:'Rio Salado',SC:'Cipolletti',LP:'Plaza'};
+  const emp = appState.empresas.find(e=>e.name.includes(empMap[view]));
+  if (!emp || !emp.diaHistory) return;
+
+  const isRS = view==='RS';
+  const m    = DASH_EMP_METRICS[k] || DASH_EMP_METRICS.ef;
+  const hist = emp.diaHistory;
+  const fechas = Object.keys(hist).sort();
+  if (!fechas.length) return;
+
+  const labels = fechas.map(f => {
+    const d = new Date(f+'T12:00:00');
+    return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+  });
+  const getVal = isRS ? m.getRS : m.getSC;
+  const vals   = fechas.map(f => getVal(hist[f]||{}));
+
+  const ctx = document.getElementById('chart-dash-emp');
+  if (!ctx) return;
+  if (window._chDashEmp) window._chDashEmp.destroy();
+
+  const hasNeg = vals.some(v=>v<0);
+  window._chDashEmp = new Chart(ctx.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: m.l,
+        data: vals,
+        borderColor: m.c,
+        backgroundColor: m.c+'22',
+        borderWidth: 2,
+        pointRadius: vals.length > 30 ? 2 : 4,
+        pointHoverRadius: 6,
+        tension: 0.3,
+        fill: true,
+        segment: {
+          borderColor: ctx2 => ctx2.p1.parsed.y < 0 ? '#f87171' : m.c,
+          backgroundColor: ctx2 => ctx2.p1.parsed.y < 0 ? 'rgba(248,113,113,0.1)' : m.c+'22',
+        }
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => ' '+m.l+': '+(m.isUSD?'U$S ':'$ ')+fmtARS(Math.abs(c.raw))+(c.raw<0?' ▼':'')
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color:'rgba(255,255,255,0.5)', font:{size:9}, maxRotation:45 },
+          grid:  { color:'rgba(255,255,255,0.04)' }
+        },
+        y: {
+          ticks: {
+            color:'rgba(255,255,255,0.5)', font:{size:9},
+            callback: v => (m.isUSD?'U$S ':'$')+fmtARS(Math.abs(v))
+          },
+          grid: { color:'rgba(255,255,255,0.06)' }
+        }
+      }
+    }
+  });
+}
+
+function dashEmpExcel(view) {
+  showToast('📥 Exportando historial...');
+  const empMap={RS:'Rio Salado',SC:'Cipolletti',LP:'Plaza'};
+  const emp = appState.empresas.find(e=>e.name.includes(empMap[view]));
+  if (!emp || !emp.diaHistory) { showToast('Sin datos de historial'); return; }
+  const rows = Object.entries(emp.diaHistory).sort().map(([fecha, h]) => ({
+    Fecha:fecha, 'Total ARS':h.b50||h.d50||h.f50||0,
+    Efectivo:h.b26||h.d26||0, Bancos:h.b33||h.d33||0,
+    'FIMA Premium':h.b34||h.d34||0, 'FIMA Ahorro':h.b35||h.d35||0,
+    'FIMA USD':h.b37||h.d37||0, 'USD Total':(h.usd||0),
+    'Mercado Pago':h.b46||h.d46||0,
+  }));
+  if (!rows.length) { showToast('Sin historial'); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb2 = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2, ws, view);
+  XLSX.writeFile(wb2, 'Historial_'+view+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  showToast('✅ Excel exportado');
+}
 
 function buildChartAnual() {
   if(chartAnual) chartAnual.destroy();
@@ -6508,8 +6612,7 @@ function openAddCheque() {
 // IMPORT: procesar Subempresas y Cheques del Excel
 // ════════════════════════════════════════════════════════════════
 // Se integra al procesador existente via sheetsByType
-const _origSheetMap = null; // marker
-}
+const _origSheetMap = null; // markerashSetView
 
 </script>
 
