@@ -1894,6 +1894,7 @@ let _supaUser=null,_supaRol=null;
         <button onclick="mercadosTipoTasa('plazo')" id="mt-plazo" style="padding:5px 12px;border-radius:6px;border:1px solid var(--accent);background:var(--accent)22;color:var(--accent);font-size:11px;cursor:pointer">Plazo fijo</button>
         <button onclick="mercadosTipoTasa('prestamo')" id="mt-prestamo" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:var(--bg3);color:var(--text2);font-size:11px;cursor:pointer">Préstamos</button>
         <button onclick="mercadosTipoTasa('caja')" id="mt-caja" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:var(--bg3);color:var(--text2);font-size:11px;cursor:pointer">Caja ahorro</button>
+        <button onclick="mercadosTipoTasa('pyme')" id="mt-pyme" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:var(--bg3);color:var(--text2);font-size:11px;cursor:pointer">PyMEs</button>
       </div>
     </div>
     <div style="position:relative;height:260px"><canvas id="chart-mercados-tasas"></canvas></div>
@@ -2781,19 +2782,30 @@ function dashSetView(view) {
     const scIng=sumIng(empSC),scUSD=sumUSD(empSC),scFIMA=sumFIMA(empSC),scCart=sumCart(empSC);
     const lpIng=sumIng(empLP);
     const totalCart=sumCartGrupo(empRS,empSC);
-    // C71 = total grupo desde historial o fallback
-    const c71h = histRS && histRS.c71 ? histRS.c71 : 0;
-    const totalGrupo = c71h > 0 ? c71h : (empRS && empRS.diaC71 > 0 ? empRS.diaC71 : rsIng+scIng+lpIng);
-    // B51+D51 dolares
-    const totalUSD=rsUSD+scUSD;
-    const totalUSDenARS=totalUSD*tcBlue;
+    // Totales por empresa usando historial (B50/D50/F50 = ingresos ARS reales)
+    const rsIngARS = histRS ? (histRS.b50||0) : (empRS?empRS.diaB50||0:rsIng);
+    const scIngARS = histSC ? (histSC.d50||0) : (empSC?empSC.diaD50||0:scIng);
+    const lpIngARS = histLP ? (histLP.f50||0) : (empLP?empLP.diaF50||0:lpIng);
+    const rsIngUSD = histRS ? (histRS.usd||0)  : rsUSD;
+    const scIngUSD = histSC ? (histSC.usd||0)  : scUSD;
+    const totalGrupoARS = rsIngARS + scIngARS + lpIngARS;
+    const totalGrupoUSD = rsIngUSD + scIngUSD;
+    const totalGrupo = totalGrupoARS;
+    const totalUSD = totalGrupoUSD;
+    const totalUSDenARS = totalUSD * tcBlue;
     const totalFIMA=rsFIMA+scFIMA;
     // Chips por empresa (solo ARS sin USD)
     const totalRS=rsIng, totalSC=scIng, totalLP=lpIng;
     if(g('dash-total-grupo')) g('dash-total-grupo').textContent='$ '+fmtARS(totalGrupo);
-    if(g('dash-emp-chips')) g('dash-emp-chips').innerHTML=[
-      {n:'Rio Salado',v:totalRS,c:'#4a9fd4'},{n:'Serv. Cip.',v:totalSC,c:'#3aaa2a'},{n:'La Plaza',v:totalLP,c:'#d4920a'}
-    ].map(x=>'<div style="background:'+x.c+'22;border-radius:10px;padding:12px 14px;border:1px solid '+x.c+'55"><div style="font-size:9px;font-weight:700;color:'+x.c+';text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">'+x.n+'</div><div style="font-family:var(--mono);font-size:clamp(13px,1.8vw,16px);font-weight:800;color:#ffffff">$ '+fmtARS(x.v)+'</div></div>').join('');
+    if(g('dash-total-grupo-usd')) g('dash-total-grupo-usd').textContent='U$S '+fmtARS(totalGrupoUSD);
+    if(g('dash-emp-chips')) g('dash-emp-chips').innerHTML=
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">'+
+      [{n:'Rio Salado $',v:rsIngARS,c:'#4a9fd4'},{n:'Serv. Cip. $',v:scIngARS,c:'#3aaa2a'},{n:'La Plaza $',v:lpIngARS,c:'#d4920a'}]
+        .map(x=>'<div style="background:'+x.c+'22;border-radius:10px;padding:11px 13px;border:1px solid '+x.c+'55"><div style="font-size:9px;font-weight:700;color:'+x.c+';text-transform:uppercase;margin-bottom:4px">'+x.n+'</div><div style="font-family:var(--mono);font-size:clamp(12px,1.6vw,16px);font-weight:800;color:#fff">$ '+fmtARS(x.v)+'</div></div>').join('')+
+      '</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'+
+      [{n:'Rio Salado U$S',v:rsIngUSD,c:'#4a9fd4'},{n:'Serv. Cip. U$S',v:scIngUSD,c:'#3aaa2a'},{n:'La Plaza U$S',v:0,c:'#d4920a'}]
+        .map(x=>'<div style="background:rgba(251,191,36,0.08);border-radius:10px;padding:11px 13px;border:1px solid rgba(251,191,36,0.3);opacity:'+(x.v>0?'1':'0.4')+'"><div style="font-size:9px;font-weight:700;color:var(--yellow);text-transform:uppercase;margin-bottom:4px">'+x.n+'</div><div style="font-family:var(--mono);font-size:clamp(12px,1.6vw,16px);font-weight:800;color:var(--yellow)">U$S '+fmtARS(x.v)+'</div></div>').join('')+
+      '</div>';
     if(g('dash-usd-total')) g('dash-usd-total').textContent='U$S '+fmtARS(totalUSD);
     if(g('dash-usd-tc')) g('dash-usd-tc').textContent='TC Blue $'+fmtARS(tcBlue)+' · ≈ $ '+fmtARS(totalUSDenARS);
     if(g('dash-usd-detail')) g('dash-usd-detail').innerHTML='<span style="color:#4a9fd4">RS U$S '+fmtARS(rsUSD)+'</span> &nbsp; <span style="color:#3aaa2a">SC U$S '+fmtARS(scUSD)+'</span>';
@@ -6338,6 +6350,12 @@ function renderClientesPage() {
   }).join('');
 }
 
+function bancosLimpiar() {
+  ['bancos-search','bancos-f-desde','bancos-f-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['bancos-f-empresa','bancos-f-tipo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderBancosPage();
+}
+
 function renderBancosPage() {
   const emp = empresa();
   const el = document.getElementById('bancos-empresa-name');
@@ -6475,6 +6493,11 @@ function renderEfectivoPage() {
     });
   });
 
+  // Filter by selected date if active (not date range)
+  const efBalDate = activeDateFilter||appState.lastMinutaDate||'';
+  if (efBalDate && !fDesde && !fHasta) {
+    all = all.filter(t => t.date === efBalDate);
+  }
   all.sort((a,b)=>{
     if(sortVal==='imp_desc') return (b.amount||0)-(a.amount||0);
     if(sortVal==='imp_asc')  return (a.amount||0)-(b.amount||0);
@@ -10284,6 +10307,20 @@ const TASAS_BASE = {
     {banco:'Ciudad',    tna:91.0,  color:'#fabc02'},
     {banco:'Provincia', tna:93.5,  color:'#003082'},
   ],
+  pyme: [
+    {banco:'BNA',       tna:55.0, color:'#1a6bb5'},
+    {banco:'Galicia',   tna:58.0, color:'#e30613'},
+    {banco:'Macro',     tna:57.0, color:'#00843d'},
+    {banco:'BBVA',      tna:59.0, color:'#072146'},
+    {banco:'Santander', tna:56.0, color:'#ec0000'},
+    {banco:'HSBC',      tna:55.5, color:'#db0011'},
+    {banco:'ICBC',      tna:57.5, color:'#c01a22'},
+    {banco:'Supervielle',tna:60.0,color:'#ff6900'},
+    {banco:'Credicoop', tna:52.0, color:'#00a651'},
+    {banco:'Patagonia', tna:54.0, color:'#005ea8'},
+    {banco:'Ciudad',    tna:53.0, color:'#fabc02'},
+    {banco:'Provincia', tna:54.5, color:'#003082'},
+  ],
   caja: [
     {banco:'BNA',       tna:30.0, color:'#1a6bb5'},
     {banco:'Galicia',   tna:28.0, color:'#e30613'},
@@ -10461,16 +10498,30 @@ function _mercadosTasasBCRAUI() {
     {l:'TNA plazo fijo 30d (BCRA ref.)',v:_mercadosData.tasasBCRA.tna_pf||'N/D',u:'%'},
     {l:'Inflación último mes (IPC INDEC)',v:(_mercadosData.inflacion.slice(-1)[0]?.ipc?.toFixed(1)||'N/D'),u:'%'},
   ];
-  el.innerHTML = tasas.map(t=>'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">' +
-    '<span style="color:var(--text2)">'+t.l+'</span>' +
-    '<span style="font-family:var(--mono);font-weight:700;color:var(--accent)">'+t.v+t.u+'</span>' +
-  '</div>').join('') +
-  '<div style="font-size:10px;color:var(--text3);margin-top:8px">Fuente: BCRA · Presioná Actualizar para obtener datos en tiempo real</div>';
+  const mercadoCap = [
+    {l:'Índice Merval (BYMA)',             v:'aprox. 2.900.000', u:'pts'},
+    {l:'Acciones líderes (panel general)',  v:'Ver en BYMA.com',  u:''},
+    {l:'Cauciones bursátiles 1d',          v:'~45-50',            u:'% TNA'},
+    {l:'Letras del Tesoro (LETES)',        v:'Ver Secretaría',    u:''},
+    {l:'ON corporativas AAA',              v:'~55-65',            u:'% TNA'},
+  ];
+  el.innerHTML =
+    '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📊 Tasas BCRA</div>'+
+    tasas.map(t=>'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">' +
+      '<span style="color:var(--text2);font-size:12px">'+t.l+'</span>' +
+      '<span style="font-family:var(--mono);font-weight:700;color:var(--accent)">'+t.v+t.u+'</span>' +
+    '</div>').join('') +
+    '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">📈 Mercado de Capitales</div>'+
+    mercadoCap.map(t=>'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">' +
+      '<span style="color:var(--text2);font-size:12px">'+t.l+'</span>' +
+      '<span style="font-family:var(--mono);font-weight:700;color:var(--purple)">'+t.v+(t.u?' '+t.u:'')+'</span>' +
+    '</div>').join('') +
+  '<div style="font-size:10px;color:var(--text3);margin-top:8px">Presioná "Actualizar" para datos en tiempo real · Fuente: BCRA · BYMA</div>';
 }
 
 function mercadosTipoTasa(tipo) {
   _mercadosTipoTasa = tipo;
-  ['plazo','prestamo','caja'].forEach(t=>{
+  ['plazo','prestamo','caja','pyme'].forEach(t=>{
     const b=document.getElementById('mt-'+t);if(!b)return;
     b.style.background=t===tipo?'var(--accent)22':'var(--bg3)';
     b.style.color=t===tipo?'var(--accent)':'var(--text2)';
