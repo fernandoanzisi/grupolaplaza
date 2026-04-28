@@ -620,10 +620,12 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('nlp_comisiones',this)"  data-page="nlp_comisiones">💰 NLP - Comisiones</button>
           <button class="nav-dd-item" onclick="navGo('fci',this)"             data-page="fci">📊 FCI</button>
           <button class="nav-dd-item" onclick="navGo('preop',this)"           data-page="preop">📋 Planilla Maestra Prov.</button>
+          <hr style="border:none;border-top:1px solid var(--border);margin:4px 0">
+          <button class="nav-dd-item" onclick="window.open('https://bancogalicia.com.ar','_blank')" style="color:#e30613">🏦 Galicia</button>
+          <button class="nav-dd-item" onclick="window.open('https://interbanking.com.ar','_blank')" style="color:#4a9fd4">🔗 Interbanking</button>
         </div>
       </div>
-      <button class="nav-dd-item" onclick="window.open('https://bancogalicia.com','_blank')" style="background:rgba(227,6,19,0.1);color:#e30613;border-radius:7px;margin:2px 6px">🏦 Galicia</button>
-      <button class="nav-dd-item" onclick="window.open('https://interbanking.com.ar','_blank')" style="background:rgba(74,159,212,0.1);color:#4a9fd4;border-radius:7px;margin:2px 6px">🔗 Interbanking</button>
+
       <button class="nav-tab" id="nav-excel-btn" style="display:none" onclick="navGo('importar',this)" data-page="importar"><span class="ni">📂</span><span class="nl">Excel</span></button>
     </nav>
     </div>
@@ -8661,8 +8663,8 @@ function showLoginScreen() {
 function hideLoginScreen() {
   const ls = document.getElementById('login-screen');
   const ap = document.getElementById('app');
-  if (ls) { ls.style.display = 'none'; ls.style.visibility = 'hidden'; ls.style.pointerEvents = 'none'; ls.style.zIndex = '-1'; }
-  if (ap) { ap.style.display = 'flex'; ap.style.flexDirection = 'column'; ap.style.visibility = 'visible'; ap.style.zIndex = '1'; }
+  if (ls) ls.setAttribute('style', 'display:none !important;');
+  if (ap) ap.setAttribute('style', 'display:flex !important; flex-direction:column;');
   document.body.classList.remove('readonly-mode');
   console.log('✅ Login screen hidden, app shown');
 }
