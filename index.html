@@ -2886,10 +2886,10 @@ function dashSetView(view) {
     // Header
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">' +
       '<div>' +
-        '<div style="font-size:10px;font-weight:700;color:'+col+';text-transform:uppercase;letter-spacing:1.5px;margin-bottom:3px">INGRESOS DEL DÍA</div>' +
+        '<div style="font-size:10px;font-weight:700;color:'+col+';text-transform:uppercase;letter-spacing:1.5px;margin-bottom:3px" id="dash-emp-ing-label">INGRESOS DEL DÍA</div>' +
         '<div style="font-size:12px;color:var(--text3);margin-bottom:5px">'+emp.name+'</div>' +
-        '<div style="font-family:var(--mono);font-size:clamp(22px,3.5vw,36px);font-weight:900;color:var(--text)">$ '+fmtARS(b50)+'</div>' +
-        '<div style="font-size:10px;color:var(--text3);margin-top:3px">Celda '+prefB+'50'+(balDate?' · '+new Date(balDate+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'')+'</div>' +
+        '<div style="font-family:var(--mono);font-size:clamp(22px,3.5vw,36px);font-weight:900;color:var(--text)" id="dash-emp-ing-valor">$ '+fmtARS(b50)+'</div>' +
+        '<div style="font-size:10px;color:var(--text3);margin-top:3px" id="dash-emp-ing-celda">Celda '+prefB+'50'+(balDate?' · '+new Date(balDate+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'')+'</div>' +
       '</div>' +
       (balDate?'<div style="background:'+col+'22;color:'+col+';padding:5px 14px;border-radius:99px;font-size:11px;font-weight:700">📅 '+new Date(balDate+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})+'</div>':'') +
     '</div>' +
@@ -2898,10 +2898,18 @@ function dashSetView(view) {
     '<div style="background:var(--bg2);border-radius:10px;padding:12px 14px;margin-bottom:14px">' +
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">' +
         '<span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">📊 Análisis entre fechas</span>' +
-        '<input type="date" id="dash-emp-desde" oninput="dashEmpBtn(document.querySelector(\'[data-emp=\\\"'+view+'\\\"][data-k=\\\"ef\\\"]\'))" style="background:var(--bg3);border:1px solid var(--accent);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--mono)">' +
+        '<input type="date" id="dash-emp-desde" oninput="dashEmpBtnActive(\''+view+'\')" style="background:var(--bg3);border:1px solid var(--accent);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--mono)">' +
         '<span style="font-size:10px;color:var(--text3)">hasta</span>' +
-        '<input type="date" id="dash-emp-hasta" oninput="dashEmpBtn(document.querySelector(\'[data-emp=\\\"'+view+'\\\"][data-k=\\\"ef\\\"]\'))" style="background:var(--bg3);border:1px solid var(--accent);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--mono)">' +
+        '<input type="date" id="dash-emp-hasta" oninput="dashEmpBtnActive(\''+view+'\')" style="background:var(--bg3);border:1px solid var(--accent);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--mono)">' +
         '<button onclick="dashEmpExcel(\''+view+'\')" style="padding:5px 12px;border-radius:7px;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);font-size:11px;font-weight:700;cursor:pointer">📥 Excel</button>' +
+        '<div style="width:1px;height:28px;background:var(--border);margin:0 2px"></div>' +
+        '<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:5px 12px;display:flex;gap:14px;align-items:center">' +
+          '<div><div style="font-size:8px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:1px">Total $</div>' +
+          '<div class="mono" style="font-family:var(--mono);font-size:13px;font-weight:800;color:var(--green)">$ '+fmtARS(b26+b33+b46+b34+b35+b38+b39)+'</div></div>' +
+          '<div style="width:1px;height:22px;background:var(--border)"></div>' +
+          '<div><div style="font-size:8px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:1px">Total U$S</div>' +
+          '<div style="font-family:var(--mono);font-size:13px;font-weight:800;color:var(--yellow)">U$S '+fmtARS(b40+b41+b42+b43+b44+b37+b45)+'</div></div>' +
+        '</div>' +
       '</div>' +
       '<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">' +
         '<span style="font-size:10px;color:var(--text3)">Mostrar:</span>' +
@@ -2914,7 +2922,7 @@ function dashSetView(view) {
 
     // Pesos
     '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Pesos ($)</div>' +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:14px">' +
+    '<div id="dash-emp-cuadros-pesos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:14px">' +
       C('Efectivo ('+prefB+'26)',b26,'var(--green)',false) +
       C('Bancos $ ('+prefB+'33)',b33,'var(--accent)',false) +
       C('Mercado Pago ('+prefB+'46)',b46,'#009ee3',false) +
@@ -2922,7 +2930,7 @@ function dashSetView(view) {
 
     // Dólares
     '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Dólares (U$S)</div>' +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:10px">' +
+    '<div id="dash-emp-cuadros-usd" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:10px">' +
       C('USD Banco ('+prefB+'40+'+prefB+'41)',b40+b41,'var(--yellow)',true,(b40&&b41?'Galicia '+fmtARS(b40)+' · Macro '+fmtARS(b41):'')) +
       C('USD Dep. CC ('+prefB+'42)',b42,'var(--yellow)',true) +
       C('USD Caja Seg.26 ('+prefB+'43)',b43,'var(--yellow)',true) +
@@ -2937,7 +2945,7 @@ function dashSetView(view) {
 
     // Inversiones
     '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Inversiones</div>' +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:14px">' +
+    '<div id="dash-emp-cuadros-inv" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:14px">' +
       C('FIMA Premium ('+prefB+'34)',b34,'#a78bfa',false) +
       C('FIMA Ahorro ('+prefB+'35)',b35,'#7c6cfa',false) +
       C('FIMA Renta USD ('+prefB+'37)',b37,'#2dd4bf',true) +
@@ -2945,6 +2953,24 @@ function dashSetView(view) {
       C('Rend.FIMA Ahorro ('+prefB+'39)',b39,b39>=0?'var(--green)':'var(--red)',false) +
       C('Rend.FIMA USD ('+prefB+'45)',b45,b45>=0?'var(--green)':'var(--red)',true) +
     '</div>' +
+
+    // Cartera de Valores
+    (()=>{
+      const vFis  = isRS ? H('d143', emp.diaD143||0) : H('e143', emp.diaE143||0);
+      const vEcheq= isRS ? H('d146', emp.diaD146||0) : H('e146', emp.diaE146||0);
+      const vTot  = isRS ? H('d147', emp.diaD147||0) : H('e147', emp.diaE147||0);
+      const cartCol = '#2dd4bf';
+      const cellPref = isRS ? 'D' : 'E';
+      return '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Cartera de Valores</div>' +
+        '<div id="dash-emp-cuadros-cart" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:14px">' +
+          C('Valores Físicos ('+cellPref+'143)', vFis, cartCol, false) +
+          C('Valores E-Cheq. ('+cellPref+'146)', vEcheq, cartCol, false) +
+          '<div style="background:var(--bg3);border-radius:10px;padding:11px 13px;border-left:3px solid '+cartCol+';border:1px solid '+cartCol+'44">' +
+            '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Total Cartera ('+cellPref+'147)</div>' +
+            '<div style="font-family:var(--mono);font-size:clamp(13px,1.6vw,17px);font-weight:800;color:'+cartCol+'">$ '+fmtARS(Math.abs(vTot))+'</div>' +
+          '</div>' +
+        '</div>';
+    })() +
 
     // Gráfico
     '<div style="background:var(--bg3);border-radius:12px;padding:14px 16px">' +
@@ -2989,10 +3015,32 @@ function dashSetView(view) {
 
 } // end dashSetView
 
+const DASH_EMP_METRICS = {
+  ef:   { l:'Efectivo',       c:'var(--green)',   isUSD:false, getRS: h=>h.b26||0, getSC: h=>h.d26||0 },
+  bcos: { l:'Bancos $',       c:'var(--accent)',  isUSD:false, getRS: h=>h.b33||0, getSC: h=>h.d33||0 },
+  mp:   { l:'Mercado Pago',   c:'#009ee3',        isUSD:false, getRS: h=>h.b46||0, getSC: h=>h.d46||0 },
+  usd:  { l:'USD Banco',      c:'var(--yellow)',  isUSD:true,  getRS: h=>(h.b40||0)+(h.b41||0), getSC: h=>(h.d40||0)+(h.d41||0) },
+  f34:  { l:'FIMA Premium',   c:'#a78bfa',        isUSD:false, getRS: h=>h.b34||0, getSC: h=>h.d34||0 },
+  f35:  { l:'FIMA Ahorro',    c:'#7c6cfa',        isUSD:false, getRS: h=>h.b35||0, getSC: h=>h.d35||0 },
+  f37:  { l:'FIMA USD',       c:'#2dd4bf',        isUSD:true,  getRS: h=>h.b37||0, getSC: h=>h.d37||0 },
+  rp:   { l:'Rend. Premium',  c:'var(--green)',   isUSD:false, getRS: h=>h.b38||0, getSC: h=>h.d38||0 },
+  ra:   { l:'Rend. Ahorro',   c:'var(--red)',     isUSD:false, getRS: h=>h.b39||0, getSC: h=>h.d39||0 },
+  rb45: { l:'Rend. USD',      c:'#fb923c',        isUSD:true,  getRS: h=>h.b45||0, getSC: h=>h.d45||0 },
+};
+
+function dashEmpBtnActive(view) {
+  const k = window._dashActiveK && window._dashActiveK[view] || 'ef';
+  const btn = document.querySelector('[data-emp="'+view+'"][data-k="'+k+'"]');
+  dashEmpBtn(btn || document.querySelector('[data-emp="'+view+'"][data-k="ef"]'));
+}
+
 function dashEmpBtn(btn) {
   if (!btn) return;
   const view = btn.dataset.emp;
   const k    = btn.dataset.k;
+  // Track active key per view
+  if (!window._dashActiveK) window._dashActiveK = {};
+  window._dashActiveK[view] = k;
   // Highlight active button
   document.querySelectorAll('[data-emp="'+view+'"][data-k]').forEach(b => {
     const m = DASH_EMP_METRICS[b.dataset.k];
@@ -3008,6 +3056,35 @@ function dashEmpBtn(btn) {
 
   const isRS = view==='RS';
   const m    = DASH_EMP_METRICS[k] || DASH_EMP_METRICS.ef;
+
+  // ── Actualizar header "Ingresos del Día" con el valor del métrico seleccionado ──
+  const activeDateFilter2 = (typeof activeDateFilter !== 'undefined') ? activeDateFilter : '';
+  const balDate2 = activeDateFilter2 || appState.lastMinutaDate || '';
+  const histSnap = balDate2 && emp.diaHistory[balDate2] ? emp.diaHistory[balDate2] : null;
+  if (histSnap || emp.diaHistory) {
+    const getVal2 = isRS ? m.getRS : m.getSC;
+    const snapForDate = histSnap || {};
+    // fallback: tomar la última fecha disponible
+    const latestFecha = Object.keys(emp.diaHistory).sort().slice(-1)[0];
+    const latestSnap  = emp.diaHistory[latestFecha] || {};
+    const snap = Object.keys(snapForDate).length ? snapForDate : latestSnap;
+    const headerVal = getVal2(snap);
+    const headerEl  = document.getElementById('dash-emp-ing-valor');
+    const labelEl   = document.getElementById('dash-emp-ing-label');
+    const celdaEl   = document.getElementById('dash-emp-ing-celda');
+    if (headerEl) {
+      headerEl.textContent = (m.isUSD ? 'U$S ' : '$ ') + fmtARS(Math.abs(headerVal));
+      headerEl.style.color = headerVal < 0 ? 'var(--red)' : 'var(--text)';
+    }
+    if (labelEl) { labelEl.textContent = m.l.toUpperCase(); labelEl.style.color = m.c; }
+    if (celdaEl) { celdaEl.textContent = m.l + (balDate2 ? ' · ' + new Date(balDate2+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}) : ''); }
+    // Resaltar cuadro correspondiente
+    ['dash-emp-cuadros-pesos','dash-emp-cuadros-usd','dash-emp-cuadros-inv','dash-emp-cuadros-cart'].forEach(id=>{
+      const sec = document.getElementById(id);
+      if (sec) sec.querySelectorAll('[style*="border-left"]').forEach(el=>el.style.opacity='0.5');
+    });
+  }
+
   const hist = emp.diaHistory;
   const fechas = Object.keys(hist).sort();
   if (!fechas.length) return;
@@ -4254,6 +4331,7 @@ function parseMinutaDiaria(wb) {
       usd:oRS?oRS.diaUSD||0:0, rsCart:oRS?oRS.diaRSCart||0:0, i40:oRS?oRS.diaI40||0:0,
       rendPrem:oRS?oRS.diaRendPremRS||0:0, rendAhorr:oRS?oRS.diaRendAhorrRS||0:0,
       c71:oRS?oRS.diaC71||0:0,
+      d143:oRS?oRS.diaD143||0:0, d146:oRS?oRS.diaD146||0:0, d147:oRS?oRS.diaD147||0:0,
     };
     const _snapSC = {
       d50:oSC?oSC.diaD50||0:0, d26:oSC?oSC.diaD26||0:0, d33:oSC?oSC.diaD33||0:0,
@@ -4263,6 +4341,7 @@ function parseMinutaDiaria(wb) {
       d44:oSC?oSC.diaD44||0:0, d45:oSC?oSC.diaD45||0:0, d46:oSC?oSC.diaD46||0:0,
       usd:oSC?oSC.diaUSD||0:0, scCart:oSC?oSC.diaSCCart||0:0, i41:oSC?oSC.diaI41||0:0,
       rendPrem:oSC?oSC.diaRendPremSC||0:0, rendAhorr:oSC?oSC.diaRendAhorrSC||0:0,
+      e143:oSC?oSC.diaE143||0:0, e146:oSC?oSC.diaE146||0:0, e147:oSC?oSC.diaE147||0:0,
     };
     const _snapLP = { f50: oLP?oLP.diaF50||0:0 };
 
@@ -4288,6 +4367,11 @@ function parseMinutaDiaria(wb) {
     if(R[42]){if(oRS)oRS.diaB43=pn(c(42,1))||0;if(oSC)oSC.diaD43=pn(c(42,3))||0;} // F43 USD Caja 26
     if(R[43]){if(oRS)oRS.diaB44=pn(c(43,1))||0;if(oSC)oSC.diaD44=pn(c(43,3))||0;} // F44 USD Caja 50
     if(R[44]){if(oRS)oRS.diaB45=pn(c(44,1))||0;if(oSC)oSC.diaD45=pn(c(44,3))||0;} // F45 Rend FIMA USD
+    // Cartera de Valores — fila 143=idx142, 146=idx145, 147=idx146
+    // RS: col D=idx3 ; SC: col E=idx4
+    if(R[142]){if(oRS)oRS.diaD143=pn(c(142,3))||0;if(oSC)oSC.diaE143=pn(c(142,4))||0;} // Valores Físicos
+    if(R[145]){if(oRS)oRS.diaD146=pn(c(145,3))||0;if(oSC)oSC.diaE146=pn(c(145,4))||0;} // E-Cheq
+    if(R[146]){if(oRS)oRS.diaD147=pn(c(146,3))||0;if(oSC)oSC.diaE147=pn(c(146,4))||0;} // Total Cartera
     // Rendimientos FIMA: buscar en filas alrededor de 40-55
     // REND. FIMA PREMIUM RS ~ columna B, REND. FIMA AHORRO RS ~ columna B
     for (let ri = 38; ri <= 55; ri++) {
