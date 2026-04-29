@@ -4862,7 +4862,17 @@ function handleFile(input) {
         return;
       }
 
-      // 3. Clientes DEBO (hoja Hoja1 / clientes)
+      // 3. Extracto Bancario (antes de Clientes — ambos pueden tener Hoja1)
+      if (typeof isExtractoBancario === 'function' && isExtractoBancario(wb)) {
+        const result = parseExtractoBancario(wb);
+        const logDiv = document.getElementById('import-log');
+        if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
+        showToast('✅ Extracto Bancario — ' + result.total.toLocaleString() + ' movimientos');
+        if (typeof renderExtractos === 'function') renderExtractos();
+        if (typeof navGo === 'function') navGo('extractos', null);
+        return;
+      }
+      // 4. Clientes DEBO (hoja Hoja1 / clientes)
       if (typeof isClientesDebo === 'function' && isClientesDebo(wb)) {
         const result = parseClientesDebo(wb);
         const logDiv = document.getElementById('import-log');
@@ -4872,7 +4882,7 @@ function handleFile(input) {
         if (typeof navGo === 'function') navGo('clientes', null);
         return;
       }
-      // 4. Cash Flow
+      // 5. Cash Flow
       if (typeof isCashFlow === 'function' && isCashFlow(wb)) {
         const result = parseCashFlow(wb);
         statusEl.innerHTML = '<div class="alert green">✅ Cash Flow importado — ' + result.total.toLocaleString() + ' registros</div>';
@@ -4881,16 +4891,6 @@ function handleFile(input) {
         showToast('✅ Cash Flow — ' + result.total.toLocaleString() + ' registros');
         if (typeof renderCashFlow === 'function') renderCashFlow();
         if (typeof navGo === 'function') navGo('cashflow', null);
-        return;
-      }
-      // 5. Extracto Bancario
-      if (typeof isExtractoBancario === 'function' && isExtractoBancario(wb)) {
-        const result = parseExtractoBancario(wb);
-        const logDiv = document.getElementById('import-log');
-        if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
-        showToast('✅ Extracto Bancario — ' + result.total.toLocaleString() + ' movimientos');
-        if (typeof renderExtractos === 'function') renderExtractos();
-        if (typeof navGo === 'function') navGo('extractos', null);
         return;
       }
 
