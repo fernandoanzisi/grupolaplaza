@@ -2652,7 +2652,7 @@ function renderDashboard() {
     <div style="padding:22px 24px;border-right:1px solid var(--border)" id="dash-left-col">
       <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:7px">Total ingresos del grupo — día</div>
       <div id="dash-total-grupo" style="font-family:var(--mono);font-size:clamp(22px,3vw,36px);font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">$ —</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:5px;margin-bottom:18px">ARS (B50+D50+B152) · USD al costado</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:5px;margin-bottom:18px">ARS (C71 Minuta, o B50+D50+F50) · USD al costado</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px" id="dash-emp-chips"></div>
     </div>
     <div style="display:flex;flex-direction:column">
@@ -2800,7 +2800,9 @@ function dashSetView(view) {
     const scIngUSD = histSC ? (histSC.usd||0)  : scUSD;
     const totalGrupoARS = rsIngARS + scIngARS + lpIngARS;
     const totalGrupoUSD = rsIngUSD + scIngUSD;
-    const totalGrupo = totalGrupoARS;
+    // C71 = total grupo directo desde la minuta (tiene prioridad sobre suma B50+D50+F50)
+    const c71val = histRS ? (histRS.c71||0) : (empRS ? empRS.diaC71||0 : 0);
+    const totalGrupo = c71val > 0 ? c71val : totalGrupoARS;
     const totalUSD = totalGrupoUSD;
     const totalUSDenARS = totalUSD * tcBlue;
     const totalFIMA=rsFIMA+scFIMA;
@@ -4969,11 +4971,20 @@ function handleFile(input) {
         const rows = sheetToRows(sheetsByType.empresas);
         const empNames = new Set();
 
-        // Resetear estado si hay empresas reales en el Excel
-        if (rows.length > 0) {
+        // Solo resetear empresas si las actuales son las de demo/default (no las reales del usuario)
+        const empNamesActual = appState.empresas.map(e=>(e.name||'').toLowerCase());
+        const hasRealEmpresas = empNamesActual.some(n=>n.includes('rio')||n.includes('cipolletti')||n.includes('plaza')||n.includes('salado'));
+        if (rows.length > 0 && !hasRealEmpresas) {
           appState.empresas = [];
           appState.currentEmpresaId = null;
+        } else if (rows.length > 0 && hasRealEmpresas) {
+          // Tiene empresas reales — no las pisamos, saltamos el bloque de empresas del Excel
+          log.push('<span style="color:var(--yellow)">⚠️ Empresas reales detectadas — no se sobreescriben con el Excel</span>');
+          // skip
         }
+        // Usamos una bandera para no agregar empresas si ya existen las reales
+        const skipEmpresaCreation = rows.length > 0 && hasRealEmpresas;
+        if (skipEmpresaCreation) { /* no hacer nada */ } else
 
         rows.forEach((r, idx) => {
           const name = clean(getF(r, ['nombreempresa','nombre empresa','empresa','name','company']));
@@ -8215,6 +8226,8 @@ function isCarteraDebo(wb) {
 }
 function isClientesDebo(wb) {
   if (isMinutaDiaria(wb) || isCarteraDebo(wb)) return false;
+  // Exclude extracto bancario files
+  if (typeof isExtractoBancario === 'function' && isExtractoBancario(wb)) return false;
   // Only match files specifically about clientes - NOT generic Hoja1
   const sheets = wb.SheetNames.map(s => s.toLowerCase().trim());
   return sheets.some(s => s.includes('cliente')) ||
@@ -8754,6 +8767,7 @@ function exportClientesExcel(){
   </div>
   <button id="um-admin-btn" onclick="abrirGestionUsuarios()" style="display:none;width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;border-radius:8px">👥 Gestionar usuarios</button>
   <button id="um-sync-btn" onclick="syncSupabase()" style="display:none;width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;border-radius:8px">☁️ Sincronizar datos</button>
+  <button id="um-restore-btn" onclick="restaurarDesdeSupabase()" style="width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:#fbbf24;font-size:13px;cursor:pointer;border-radius:8px">🔄 Restaurar desde Supabase</button>
   <button onclick="doLogout()" style="width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:#f87171;font-size:13px;cursor:pointer;border-radius:8px">🚪 Cerrar sesión</button>
 </div>
 
@@ -9002,6 +9016,22 @@ function showUserMenu() {
 }
 
 // ── SYNC: cargar desde Supabase ───────────────────────────────
+async function restaurarDesdeSupabase() {
+  if (!confirm('¿Restaurar todos los datos desde Supabase? Esto reemplazará el estado actual del localStorage.')) return;
+  document.getElementById('user-menu').style.display = 'none';
+  showToast('🔄 Restaurando desde Supabase...', 4000);
+  try {
+    await loadFromSupabase();
+    saveState();
+    buildEmpresaSelect();
+    refreshAll();
+    showToast('✅ Datos restaurados correctamente desde Supabase');
+  } catch(e) {
+    showToast('❌ Error al restaurar: ' + e.message);
+    console.error('restaurarDesdeSupabase:', e);
+  }
+}
+
 async function loadFromSupabase() {
   try {
     // App state (empresas, transacciones, etc.)
