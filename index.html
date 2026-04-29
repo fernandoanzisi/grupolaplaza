@@ -620,6 +620,7 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('nlp_comisiones',this)"  data-page="nlp_comisiones">💰 NLP - Comisiones</button>
           <button class="nav-dd-item" onclick="navGo('fci',this)"             data-page="fci">📊 FCI</button>
           <button class="nav-dd-item" onclick="navGo('preop',this)"           data-page="preop">📋 Planilla Maestra Prov.</button>
+          <button class="nav-dd-item" onclick="navGo('conciliaciones',this)" data-page="conciliaciones">🔗 Conciliaciones Bancarias</button>
           <hr style="border:none;border-top:1px solid var(--border);margin:4px 0">
           <button class="nav-dd-item" onclick="window.open('https://bancogalicia.com.ar','_blank')" style="color:#e30613">🏦 Galicia</button>
           <button class="nav-dd-item" onclick="window.open('https://interbanking.com.ar','_blank')" style="color:#4a9fd4">🔗 Interbanking</button>
@@ -1561,36 +1562,316 @@ let _supaUser=null,_supaRol=null;
     </div>
   </div>
   <div class="grid-4 mb" id="extractos-stats"></div>
-  <!-- Filtros -->
-  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
-    <input type="text" id="extractos-search" placeholder="🔍 Buscar descripción, empresa, cuenta..." oninput="renderExtractos()"
-      style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--text);flex:1;min-width:200px;outline:none">
-    <select id="extractos-filter-banco" onchange="renderExtractos()"
-      style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
-      <option value="todos">Todos los bancos</option>
-    </select>
-    <select id="extractos-filter-cuenta" onchange="renderExtractos()"
-      style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
-      <option value="todos">Todas las cuentas</option>
-    </select>
+
+  <!-- FILTROS FILA 1 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Empresa</div>
+      <select id="exf-filter-emp" onchange="renderExtractos()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todos</option>
+        <option value="RS">RS</option>
+        <option value="SC">SC</option>
+        <option value="LP">LP</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Banco</div>
+      <select id="extractos-filter-banco" onchange="renderExtractos()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="todos">Todos los bancos</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Cuenta (CORRESPONDE A)</div>
+      <select id="extractos-filter-cuenta" onchange="renderExtractos()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="todos">Todas las cuentas</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Categoría</div>
+      <select id="exf-filter-cat" onchange="renderExtractos()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todas</option>
+      </select>
+    </div>
   </div>
+
+  <!-- FILTROS FILA 2 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Concepto / Cód. Op.</div>
+      <select id="exf-filter-concepto" onchange="renderExtractos()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Mes</div>
+      <select id="exf-filter-mes" onchange="renderExtractos()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Tipo</div>
+      <select id="exf-filter-tipo" onchange="renderExtractos()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Ingreso + Egreso</option>
+        <option value="ingreso">Solo ingresos</option>
+        <option value="gasto">Solo egresos</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">NRO. CTA</div>
+      <select id="exf-filter-nrocta" onchange="renderExtractos()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Buscar descripción / CUIT</div>
+      <input type="text" id="extractos-search" placeholder="Ej: Cabal, 30672..." oninput="renderExtractos()"
+        style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--text);outline:none">
+    </div>
+  </div>
+
+  <!-- GRÁFICOS (colapsable) -->
+  <div style="margin-bottom:14px">
+    <div onclick="toggleExtractosCharts()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;background:var(--bg2);border-radius:10px;border:1px solid var(--border);user-select:none">
+      <span style="font-size:13px;font-weight:700;color:var(--text2)">📊 Gráficos</span>
+      <span id="extractos-charts-arrow" style="font-size:11px;color:var(--text3);margin-left:auto">▼ mostrar</span>
+    </div>
+    <div id="extractos-charts-panel" style="display:none;margin-top:10px">
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
+        <div class="card" style="padding:16px">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Ingresos vs Egresos por día</div>
+          <canvas id="chart-extractos-barras" height="160"></canvas>
+        </div>
+        <div class="card" style="padding:16px">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Por categoría</div>
+          <canvas id="chart-extractos-dona" height="160"></canvas>
+          <div id="chart-extractos-dona-legend" style="margin-top:10px;font-size:10px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLA -->
   <div class="card">
-    <div class="table-wrap" style="max-height:65vh;overflow-y:auto">
-      <table style="font-size:12px">
+    <div class="table-wrap" style="max-height:60vh;overflow-y:auto;overflow-x:auto">
+      <table style="font-size:12px;min-width:1400px">
         <thead style="position:sticky;top:0;background:var(--card);z-index:1"><tr>
-          <th>Fecha</th>
-          <th>Emp.</th>
-          <th>Banco</th>
-          <th>Cuenta</th>
-          <th>Detalle</th>
-          <th>Cat.</th>
-          <th style="text-align:right">Importe</th>
-          <th style="text-align:right">Saldo</th>
+          <th style="white-space:nowrap">Concepto</th>
+          <th style="white-space:nowrap">Fecha</th>
+          <th style="white-space:nowrap">Comp.</th>
+          <th style="white-space:nowrap">Suc.</th>
+          <th style="white-space:nowrap;text-align:right">Importe</th>
+          <th style="white-space:nowrap">Descripción</th>
+          <th style="white-space:nowrap">Cód. Banco</th>
+          <th style="white-space:nowrap">CUIT</th>
+          <th style="white-space:nowrap">Denominación</th>
+          <th style="white-space:nowrap;text-align:right">Saldo</th>
+          <th style="white-space:nowrap">Detalle</th>
+          <th style="white-space:nowrap">Banco</th>
+          <th style="white-space:nowrap">Emp.</th>
+          <th style="white-space:nowrap">Mes</th>
+          <th style="white-space:nowrap">Corresponde A</th>
+          <th style="white-space:nowrap">Nro. Cta</th>
+          <th style="white-space:nowrap">Año</th>
         </tr></thead>
         <tbody id="extractos-table-ars"></tbody>
         <tfoot><tr>
-          <td colspan="6" style="padding:8px 10px;font-size:11px;color:var(--text3)">Saldo período</td>
-          <td style="padding:8px 10px;font-family:var(--mono);font-weight:700;text-align:right;color:var(--accent)" id="extractos-total-ars" colspan="2">$ 0</td>
+          <td colspan="4" style="padding:8px 10px;font-size:11px;color:var(--text3)">Saldo período</td>
+          <td style="padding:8px 10px;font-family:var(--mono);font-weight:700;text-align:right;color:var(--accent)" id="extractos-total-ars" colspan="13">$ 0</td>
+        </tr></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-preop">
+  <div class="section-header mb" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <h2>📋 Planilla Maestra Proveedores — <span id="preop-title-tab" style="color:var(--accent)">Pre-OP UUNN</span></h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-sm" onclick="preOpSetTab('TRF',this)" id="preop-tab-trf" style="background:var(--accent)33;border-color:var(--accent);color:var(--accent)">📋 Pre-OP UUNN</button>
+      <button class="btn-sm" onclick="preOpSetTab('CHQ',this)" id="preop-tab-chq">🏦 Cheques</button>
+      <button class="btn-sm" onclick="preOpExcel()" style="background:var(--green)22;color:var(--green);border-color:var(--green)">📥 Excel</button>
+      <button class="btn-sm" onclick="preOpLimpiar()" style="background:var(--red)22;color:var(--red);border-color:var(--red)">🗑 Limpiar filtros</button>
+    </div>
+  </div>
+  <div class="grid-4 mb" id="preop-kpis"></div>
+  <!-- Filtros -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Buscar proveedor / Nro</div>
+      <input type="text" id="preop-search" placeholder="Ej: Fermabras, 6547..." oninput="renderPreOp()"
+        style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Estado</div>
+      <select id="preop-estado" onchange="renderPreOp()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todos</option>
+        <option value="PAGADO">Pagado</option>
+        <option value="PENDIENTE">Pendiente</option>
+        <option value="ANULADO">Anulado</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">UUNN</div>
+      <select id="preop-uunn" onchange="renderPreOp()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todas</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Forma de pago</div>
+      <select id="preop-forma" onchange="renderPreOp()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todas</option>
+        <option value="TRF">TRF</option>
+        <option value="CHQ">CHQ</option>
+        <option value="E-CHEQ">E-CHEQ</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:6px">
+      <div style="flex:1">
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Desde</div>
+        <input type="date" id="preop-desde" onchange="renderPreOp()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
+      </div>
+      <div style="flex:1">
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Hasta</div>
+        <input type="date" id="preop-hasta" onchange="renderPreOp()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span id="preop-count" style="font-size:12px;color:var(--text3)">0 registros</span>
+    </div>
+    <div class="table-wrap" style="max-height:60vh;overflow-y:auto;overflow-x:auto">
+      <table style="font-size:12px;min-width:900px" id="preop-table">
+        <thead style="position:sticky;top:0;background:var(--card);z-index:1" id="preop-thead"><tr>
+          <th>N° Pre-OP</th>
+          <th>Fecha</th>
+          <th>Proveedor</th>
+          <th style="text-align:right">Importe</th>
+          <th>UUNN</th>
+          <th>Fecha Pago</th>
+          <th>Forma Pago</th>
+          <th>Estado</th>
+          <th>Bco. Pagador</th>
+          <th>Tipo</th>
+        </tr></thead>
+        <tbody id="preop-tbody"></tbody>
+        <tfoot><tr>
+          <td colspan="3" style="padding:8px 10px;font-size:11px;color:var(--text3)" id="preop-footer-count">0 registros</td>
+          <td style="padding:8px 10px;font-family:var(--mono);font-weight:700;text-align:right;color:var(--accent)" id="preop-footer-total" colspan="7">Total: $ 0</td>
+        </tr></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-conciliaciones">
+  <div class="section-header mb" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <div>
+      <h2>🔗 Conciliaciones Bancarias</h2>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">Extracto banco vs. Planilla Maestra Proveedores</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-sm" onclick="conciliarAhora()" style="background:var(--accent)33;border-color:var(--accent);color:var(--accent)">⚡ Conciliar ahora</button>
+      <button class="btn-sm" onclick="conciliarExportExcel()" style="background:var(--green)22;color:var(--green);border-color:var(--green)">📥 Exportar Excel</button>
+    </div>
+  </div>
+
+  <!-- Filtros superiores -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Período</div>
+      <select id="conc-periodo" onchange="conciliarAhora()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Empresa</div>
+      <select id="conc-emp" onchange="conciliarAhora()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todos</option>
+        <option value="RS">RS</option>
+        <option value="SC">SC</option>
+        <option value="LP">LP</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Banco</div>
+      <select id="conc-banco" onchange="conciliarAhora()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Estado</div>
+      <select id="conc-estado" onchange="renderConciliaciones()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todos</option>
+        <option value="ok">✅ Conciliado</option>
+        <option value="warn">⚠️ Revisar</option>
+        <option value="err">❌ No conciliado</option>
+        <option value="chq">🔔 Cheque pendiente</option>
+        <option value="huerfa">🔍 Sin identificar</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Buscar proveedor</div>
+      <input type="text" id="conc-search" placeholder="Ej: Fermabras, Galicia..." oninput="renderConciliaciones()"
+        style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div id="conc-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px"></div>
+
+  <!-- Barra de progreso -->
+  <div id="conc-progreso" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:700;color:var(--text2)">Progreso de conciliación</span>
+      <span id="conc-pct" style="font-size:13px;font-weight:700;color:var(--green)">0%</span>
+    </div>
+    <div style="height:10px;border-radius:99px;background:var(--bg2);overflow:hidden;display:flex;gap:1px">
+      <div id="conc-bar-ok"   style="height:100%;background:#4ade80;border-radius:99px 0 0 99px;transition:width .4s"></div>
+      <div id="conc-bar-warn" style="height:100%;background:#fbbf24;transition:width .4s"></div>
+      <div id="conc-bar-err"  style="height:100%;background:#f87171;transition:width .4s"></div>
+      <div id="conc-bar-chq"  style="height:100%;background:#a78bfa;border-radius:0 99px 99px 0;transition:width .4s"></div>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:8px;font-size:10px;color:var(--text3)">
+      <span style="color:#4ade80">■ Conciliado</span>
+      <span style="color:#fbbf24">■ Revisar</span>
+      <span style="color:#f87171">■ No conciliado</span>
+      <span style="color:#a78bfa">■ Cheque pend.</span>
+    </div>
+  </div>
+
+  <!-- Alertas -->
+  <div id="conc-alertas" style="margin-bottom:14px"></div>
+
+  <!-- Pestañas -->
+  <div style="display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--border)">
+    <button id="conc-tab-all"    onclick="concSetTab('all',this)"    style="padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;border-radius:8px 8px 0 0;background:var(--accent)33;border:1px solid var(--accent);border-bottom:none;color:var(--accent);margin-bottom:-1px">📋 Detalle completo</button>
+    <button id="conc-tab-noplam" onclick="concSetTab('noplam',this)" style="padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;border-radius:8px 8px 0 0;background:var(--bg3);border:1px solid var(--border);border-bottom:none;color:var(--text3);margin-bottom:-1px">🏦 En banco, no en planilla</button>
+    <button id="conc-tab-nobco"  onclick="concSetTab('nobco',this)"  style="padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;border-radius:8px 8px 0 0;background:var(--bg3);border:1px solid var(--border);border-bottom:none;color:var(--text3);margin-bottom:-1px">📄 En planilla, no en banco</button>
+  </div>
+
+  <!-- Tabla -->
+  <div class="card">
+    <div class="table-wrap" style="max-height:55vh;overflow-y:auto;overflow-x:auto">
+      <table style="font-size:12px;min-width:1100px">
+        <thead style="position:sticky;top:0;background:var(--card);z-index:1"><tr>
+          <th>Estado</th>
+          <th>Origen</th>
+          <th>N° / Cheque</th>
+          <th>Fecha planilla</th>
+          <th>Proveedor planilla</th>
+          <th style="text-align:right">Importe planilla</th>
+          <th>Fecha banco</th>
+          <th>Descripción banco</th>
+          <th style="text-align:right">Importe banco</th>
+          <th style="text-align:right">Diferencia</th>
+          <th>Confianza</th>
+          <th>Banco</th>
+        </tr></thead>
+        <tbody id="conc-tbody"></tbody>
+        <tfoot><tr>
+          <td colspan="5" style="padding:8px 10px;font-size:11px;color:var(--text3)" id="conc-footer-count">0 registros</td>
+          <td style="padding:8px 10px;font-family:var(--mono);font-weight:700;text-align:right;color:var(--accent)" id="conc-footer-total" colspan="7">Diferencia neta: $ 0</td>
         </tr></tfoot>
       </table>
     </div>
@@ -7065,6 +7346,8 @@ function navGo(page, triggerEl) {
     'empresas':     ()=>renderEmpresaList(),
     'cuentas':      ()=>renderAccounts(),
     'extractos':    ()=>renderExtractos(),
+    'preop':        ()=>renderPreOp(),
+    'conciliaciones':()=>renderConciliaciones(),
     'cashflow':     ()=>renderCashFlow(),
     'obras':        ()=>renderObras(),
     'riesgo':       ()=>renderRiesgo(),
@@ -7466,53 +7749,138 @@ function filterExtractos(tab, btn) {
   renderExtractos();
 }
 
+function toggleExtractosCharts() {
+  const panel = document.getElementById('extractos-charts-panel');
+  const arrow = document.getElementById('extractos-charts-arrow');
+  if (!panel) return;
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.textContent = open ? '▼ mostrar' : '▲ ocultar';
+  if (!open) _renderExtractosCharts(window._lastExtractosData || []);
+}
+
+let _chartExtractosBarras = null;
+let _chartExtractosDona = null;
+
+function _renderExtractosCharts(data) {
+  window._lastExtractosData = data;
+  const panel = document.getElementById('extractos-charts-panel');
+  if (!panel || panel.style.display === 'none') return;
+
+  // Barras: ingresos vs egresos por día (top 30 fechas)
+  const byDay = {};
+  data.forEach(m => {
+    const d = (m.fecha||'').slice(0,10);
+    if (!d) return;
+    if (!byDay[d]) byDay[d] = {ing:0, egr:0};
+    if (m.tipo === 'ingreso') byDay[d].ing += m.importe;
+    else byDay[d].egr += m.importe;
+  });
+  const dias = Object.keys(byDay).sort().slice(-30);
+  const ctx1 = document.getElementById('chart-extractos-barras');
+  if (ctx1) {
+    if (_chartExtractosBarras) { _chartExtractosBarras.destroy(); _chartExtractosBarras = null; }
+    _chartExtractosBarras = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: dias.map(d => d.slice(5)),
+        datasets: [
+          { label: 'Ingresos', data: dias.map(d=>byDay[d].ing), backgroundColor: 'rgba(74,222,128,0.7)', borderRadius: 4 },
+          { label: 'Egresos',  data: dias.map(d=>byDay[d].egr), backgroundColor: 'rgba(248,113,113,0.7)', borderRadius: 4 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { labels: { color: '#c8cede', font: { size: 11 } } } },
+        scales: {
+          x: { ticks: { color: '#7a8399', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#7a8399', font: { size: 10 }, callback: v => '$'+fmtARS(v) }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+  }
+
+  // Dona: por categoría
+  const byCat = {};
+  data.forEach(m => { const c = m.cat||'Otros'; byCat[c] = (byCat[c]||0) + m.importe; });
+  const cats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const COLORS = ['#4a9fd4','#3aaa2a','#fbbf24','#f87171','#a78bfa','#2dd4bf','#fb923c','#e879f9'];
+  const ctx2 = document.getElementById('chart-extractos-dona');
+  if (ctx2) {
+    if (_chartExtractosDona) { _chartExtractosDona.destroy(); _chartExtractosDona = null; }
+    _chartExtractosDona = new Chart(ctx2, {
+      type: 'doughnut',
+      data: {
+        labels: cats.map(c=>c[0]),
+        datasets: [{ data: cats.map(c=>c[1]), backgroundColor: COLORS, borderWidth: 0, hoverOffset: 6 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true, cutout: '60%',
+        plugins: { legend: { display: false } }
+      }
+    });
+    const leg = document.getElementById('chart-extractos-dona-legend');
+    if (leg) leg.innerHTML = cats.map((c,i)=>'<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px"><div style="width:8px;height:8px;border-radius:2px;background:'+COLORS[i]+'"></div><span style="color:var(--text2);font-size:10px">'+c[0]+'</span><span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3)">$'+fmtARS(c[1])+'</span></div>').join('');
+  }
+}
+
 function renderExtractos() {
   // Si no hay datos locales, intentar cargar desde Supabase primero
   if ((!appState.extractoBancario || appState.extractoBancario.length === 0) && _supaUser) {
     const tbody = document.getElementById('extractos-table-ars');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:32px">⏳ Cargando extractos...</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="17" style="text-align:center;color:var(--text3);padding:32px">⏳ Cargando extractos...</td></tr>';
     _loadExtractosSupabase().then(loaded => {
       if (loaded) renderExtractos();
       else {
-        // Fallback: build from transactions if Supabase load fails
         appState.extractoBancario = _buildExtractosFromTransactions ? _buildExtractosFromTransactions() : [];
         renderExtractos();
       }
     });
     return;
   }
-  // Fuente de datos: appState.extractoBancario (del Excel) o emp.transactions (de Minuta)
   const allData = appState.extractoBancario && appState.extractoBancario.length
     ? appState.extractoBancario
     : _buildExtractosFromTransactions();
 
   // Filtros
-  const search   = (document.getElementById('extractos-search')?.value || '').toLowerCase();
-  const fFrom    = dateFilterFrom || '';
-  const fTo      = dateFilterTo   || '';
-  const bancoFil = (document.getElementById('extractos-filter-banco')?.value || 'todos');
-  const cuentaFil= (document.getElementById('extractos-filter-cuenta')?.value || 'todos');
+  const search    = (document.getElementById('extractos-search')?.value || '').toLowerCase();
+  const fFrom     = dateFilterFrom || '';
+  const fTo       = dateFilterTo   || '';
+  const bancoFil  = (document.getElementById('extractos-filter-banco')?.value || 'todos');
+  const cuentaFil = (document.getElementById('extractos-filter-cuenta')?.value || 'todos');
+  const empFil    = (document.getElementById('exf-filter-emp')?.value || '');
+  const catFil    = (document.getElementById('exf-filter-cat')?.value || '');
+  const conceptoFil = (document.getElementById('exf-filter-concepto')?.value || '');
+  const mesFil    = (document.getElementById('exf-filter-mes')?.value || '');
+  const tipoFil   = (document.getElementById('exf-filter-tipo')?.value || '');
+  const nroctaFil = (document.getElementById('exf-filter-nrocta')?.value || '');
 
   let data = allData.filter(m => {
     if (_exfTab !== 'todos' && m.empTag !== _exfTab) return false;
+    if (empFil && m.empTag !== empFil) return false;
     if (fFrom && m.fecha < fFrom) return false;
     if (fTo   && m.fecha > fTo)   return false;
     if (bancoFil  !== 'todos' && m.banco  !== bancoFil)  return false;
     if (cuentaFil !== 'todos' && m.cuenta !== cuentaFil) return false;
+    if (catFil && (m.cat||'') !== catFil) return false;
+    if (conceptoFil && (m.concepto||'') !== conceptoFil) return false;
+    if (mesFil && (m.mes||'') !== mesFil) return false;
+    if (tipoFil && m.tipo !== tipoFil) return false;
+    if (nroctaFil && (m.nroCta||'') !== nroctaFil) return false;
     if (search && !( (m.detalle||'').toLowerCase().includes(search) ||
                      (m.denominacion||'').toLowerCase().includes(search) ||
                      (m.concepto||'').toLowerCase().includes(search) ||
                      (m.banco||'').toLowerCase().includes(search) ||
-                     (m.cuenta||'').toLowerCase().includes(search) )) return false;
+                     (m.cuenta||'').toLowerCase().includes(search) ||
+                     (m.cuit||'').toLowerCase().includes(search) )) return false;
     return true;
   });
 
   data.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
 
-  const tcBlue = (dolar&&dolar.blue&&dolar.blue.venta) ? dolar.blue.venta : 1410;
   const empColorMap = { RS:'#4a9fd4', SC:'#3aaa2a', LP:'#d4920a' };
 
-  // Actualizar filtros banco/cuenta dinámicamente
+  // Actualizar todos los filtros dinámicos
   _updateExtractosFilters(allData);
 
   // Nombre de empresa en header
@@ -7531,19 +7899,21 @@ function renderExtractos() {
     ['📋 Movimientos', data.length+' mov.', 'var(--text2)'],
   ].map(([l,v,c])=>'<div class="stat-card" style="border-left:3px solid '+c+'"><div class="label">'+l+'</div><div class="value" style="color:'+c+';font-size:'+(typeof v==='number'?'16':'18')+'px">'+(typeof v==='number'?'$ '+fmtARS(v):v)+'</div></div>').join('');
 
+  // Actualizar gráficos si están visibles
+  _renderExtractosCharts(data);
+
   // Tabla principal
   const tbody = document.getElementById('extractos-table-ars');
   if (!tbody) return;
 
   if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:32px">Sin movimientos' +
+    tbody.innerHTML = '<tr><td colspan="17" style="text-align:center;color:var(--text3);padding:32px">Sin movimientos' +
       (appState.extractoBancario && appState.extractoBancario.length ? '' : ' — importá el Excel de Extracto Bancario') + '</td></tr>';
     const totEl = document.getElementById('extractos-total-ars');
     if (totEl) totEl.textContent = '$ 0';
     return;
   }
 
-  // Paginación simple: mostrar máx 500 para no trabar el browser
   const MAX_ROWS = 500;
   const visible = data.slice(0, MAX_ROWS);
 
@@ -7551,15 +7921,25 @@ function renderExtractos() {
     const col = empColorMap[m.empTag] || 'var(--accent)';
     const sign = m.tipo === 'ingreso';
     const impColor = sign ? 'var(--green)' : 'var(--red)';
+    const imp = sign ? '+$ '+fmtARS(m.importe) : '-$ '+fmtARS(m.importe);
     return '<tr style="border-bottom:1px solid var(--border)">' +
-      '<td style="padding:6px 10px;font-size:11px;font-family:var(--mono);color:var(--text3)">' + (m.fecha||'') + '</td>' +
-      '<td style="padding:6px 10px"><span style="font-size:10px;font-weight:700;color:'+col+';padding:2px 7px;border-radius:4px;background:'+col+'22">'+m.empTag+'</span></td>' +
-      '<td style="padding:6px 10px;font-size:11px;color:var(--text3)">' + (m.banco||'') + '</td>' +
-      '<td style="padding:6px 10px;font-size:11px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (m.cuenta||'') + '</td>' +
-      '<td style="padding:6px 10px;font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(m.denominacion||'')+'">' + (m.detalle||m.concepto||'') + '</td>' +
-      '<td style="padding:6px 10px;font-size:10px;color:var(--text3)">' + (m.cat||'') + '</td>' +
-      '<td style="padding:6px 10px;font-family:var(--mono);font-size:12px;text-align:right;font-weight:700;color:'+impColor+'">' + (sign?'+':'-') + '$ ' + fmtARS(m.importe) + '</td>' +
-      (m.saldo != null ? '<td style="padding:6px 10px;font-family:var(--mono);font-size:11px;text-align:right;color:var(--text3)">$ '+fmtARS(m.saldo)+'</td>' : '<td></td>') +
+      '<td style="padding:5px 8px;font-size:11px;color:var(--text2);white-space:nowrap">' + (m.concepto||'—') + '</td>' +
+      '<td style="padding:5px 8px;font-size:11px;font-family:var(--mono);white-space:nowrap">' + (m.fecha||'') + '</td>' +
+      '<td style="padding:5px 8px;font-size:11px;font-family:var(--mono);color:var(--text3)">' + (m.compBco||'—') + '</td>' +
+      '<td style="padding:5px 8px;font-size:11px;color:var(--text3)">' + (m.suc||'—') + '</td>' +
+      '<td style="padding:5px 8px;font-family:var(--mono);font-size:12px;text-align:right;font-weight:700;color:'+impColor+';white-space:nowrap">' + imp + '</td>' +
+      '<td style="padding:5px 8px;font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(m.descripcion||'')+'">' + (m.descripcion||'—') + '</td>' +
+      '<td style="padding:5px 8px;font-size:11px;color:var(--text3)">' + (m.codigoBanco||'—') + '</td>' +
+      '<td style="padding:5px 8px;font-size:11px;font-family:var(--mono);color:var(--text3)">' + (m.cuit||'—') + '</td>' +
+      '<td style="padding:5px 8px;font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(m.denominacion||'')+'">' + (m.denominacion||'—') + '</td>' +
+      (m.saldo != null ? '<td style="padding:5px 8px;font-family:var(--mono);font-size:11px;text-align:right;color:var(--text3);white-space:nowrap">$ '+fmtARS(m.saldo)+'</td>' : '<td style="padding:5px 8px;color:var(--text3)">—</td>') +
+      '<td style="padding:5px 8px;font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(m.detalle||'')+'">' + (m.detalle||'—') + '</td>' +
+      '<td style="padding:5px 8px;font-size:11px;color:var(--text3)">' + (m.banco||'—') + '</td>' +
+      '<td style="padding:5px 8px"><span style="font-size:10px;font-weight:700;color:'+col+';padding:2px 6px;border-radius:4px;background:'+col+'22">'+m.empTag+'</span></td>' +
+      '<td style="padding:5px 8px;font-size:11px;color:var(--text3)">' + (m.mes||'—') + '</td>' +
+      '<td style="padding:5px 8px;font-size:11px;color:var(--text2);white-space:nowrap">' + (m.cuenta||'—') + '</td>' +
+      '<td style="padding:5px 8px;font-size:11px;font-family:var(--mono);color:var(--text3);white-space:nowrap">' + (m.nroCta||'—') + '</td>' +
+      '<td style="padding:5px 8px;font-size:11px;color:var(--text3)">' + (m.anio||'—') + '</td>' +
     '</tr>';
   }).join('');
 
@@ -7591,22 +7971,23 @@ function _buildExtractosFromTransactions() {
 }
 
 function _updateExtractosFilters(allData) {
-  // Actualizar selects de filtro banco y cuenta
-  const bancos  = [...new Set(allData.map(m=>m.banco).filter(Boolean))].sort();
-  const cuentas = [...new Set(allData.map(m=>m.cuenta).filter(Boolean))].sort();
-
-  const bEl = document.getElementById('extractos-filter-banco');
-  const cEl = document.getElementById('extractos-filter-cuenta');
-  if (bEl && bEl.dataset.populated !== bancos.join(',')) {
-    bEl.innerHTML = '<option value="todos">Todos los bancos</option>' +
-      bancos.map(b=>'<option value="'+b+'">'+b+'</option>').join('');
-    bEl.dataset.populated = bancos.join(',');
+  function fill(id, vals, allLabel, allVal) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const key = vals.join('|');
+    if (el.dataset.populated === key) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="'+(allVal||'')+'">'+allLabel+'</option>' +
+      vals.map(v=>'<option value="'+v+'">'+v+'</option>').join('');
+    el.dataset.populated = key;
+    if (vals.includes(cur)) el.value = cur;
   }
-  if (cEl && cEl.dataset.populated !== cuentas.join(',')) {
-    cEl.innerHTML = '<option value="todos">Todas las cuentas</option>' +
-      cuentas.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
-    cEl.dataset.populated = cuentas.join(',');
-  }
+  fill('extractos-filter-banco',   [...new Set(allData.map(m=>m.banco).filter(Boolean))].sort(), 'Todos los bancos', 'todos');
+  fill('extractos-filter-cuenta',  [...new Set(allData.map(m=>m.cuenta).filter(Boolean))].sort(), 'Todas las cuentas', 'todos');
+  fill('exf-filter-cat',           [...new Set(allData.map(m=>m.cat).filter(Boolean))].sort(), 'Todas', '');
+  fill('exf-filter-concepto',      [...new Set(allData.map(m=>m.concepto).filter(Boolean))].sort(), 'Todos', '');
+  fill('exf-filter-mes',           [...new Set(allData.map(m=>m.mes).filter(Boolean))].sort(), 'Todos', '');
+  fill('exf-filter-nrocta',        [...new Set(allData.map(m=>m.nroCta).filter(Boolean))].sort(), 'Todos', '');
 }
 
 function exportExtractosExcel() {
@@ -7972,19 +8353,22 @@ function parseExtractoBancario(wb) {
   const iFecha  = ci('fecha') >= 0 ? ci('fecha') : 2;
   const iImp    = ci('importe') >= 0 ? ci('importe') : 5;
   const iEmp    = ci('empresa') >= 0 ? ci('empresa') : 13;
-  const iBanco  = (() => { 
-    // Prefer exact 'BANCO' column (col 12), not 'CTA,BANCO' (col 0)
+  const iBanco  = (() => {
     const exact = hdr.findIndex(h => h === 'banco');
     if (exact >= 0) return exact;
     return ci('banco') >= 0 ? ci('banco') : 12;
   })();
-  const iCuenta = ci('corresponde','corres') >= 0 ? ci('corresponde','corres') : 15;
-  const iNroCta = 16;
-  const iDetalle= ci('detalle') >= 0 ? ci('detalle') : 11;
-  const iDesc   = ci('descripci') >= 0 ? ci('descripci') : 6;
-  const iCodigo = ci('codigo') >= 0 ? ci('codigo') : 7;
-  const iSaldo  = ci('saldo') >= 0 ? ci('saldo') : 10;
-  const iDenom  = ci('denominacion','denom') >= 0 ? ci('denominacion','denom') : 9;
+  const iCuenta    = ci('corresponde','corres') >= 0 ? ci('corresponde','corres') : 15;
+  const iNroCta    = ci('nro.cta','nrocta') >= 0 ? ci('nro.cta','nrocta') : 16;
+  const iDetalle   = ci('detalle nuevo','detalle') >= 0 ? ci('detalle nuevo','detalle') : 11;
+  const iDesc      = ci('descripci') >= 0 ? ci('descripci') : 6;
+  const iCodigo    = ci('codigo') >= 0 ? ci('codigo') : 7;
+  const iSaldo     = ci('saldo') >= 0 ? ci('saldo') : 10;
+  const iDenom     = ci('denominacion','denom') >= 0 ? ci('denominacion','denom') : 9;
+  const iComp      = ci('comp') >= 0 ? ci('comp') : 3;
+  const iSuc       = ci('suc') >= 0 ? ci('suc') : 4;
+  const iMes       = ci('mes') >= 0 ? ci('mes') : 14;
+  const iAnio      = ci('año','ano','anio') >= 0 ? ci('año','ano','anio') : 17;
 
   function parseFecha(v) {
     if (!v) return '';
@@ -8036,11 +8420,20 @@ function parseExtractoBancario(wb) {
     else if (dl.includes('interes')) cat='Intereses';
     else if (dl.includes('haberes')||dl.includes('sueldo')) cat='Haberes';
 
+    const compBco   = String(row[iComp]||'').trim();
+    const suc       = String(row[iSuc]||'').trim();
+    const mes       = String(row[iMes]||'').trim();
+    const anio      = String(row[iAnio]||'').trim();
+    const cuit      = String(row[8]||'').trim();  // CUIT Banco siempre col 8
+    const descripcion = String(row[iDesc]||'').trim();
+    const codigoBanco = String(row[iCodigo]||'').trim();
+
     appState.extractoBancario.push({
       _fromExtracto:true, fecha, empTag, banco, cuenta, nroCta,
       concepto:codigo, detalle, denominacion, cat,
       importe:Math.abs(imp), importeOriginal:imp,
       saldo, tipo,
+      compBco, suc, mes, anio, cuit, descripcion, codigoBanco,
     });
 
     if (stats[empTag]) {
@@ -8976,8 +9369,10 @@ async function onLogin(user) {
   // Mostrar botones admin
   const adminBtn = document.getElementById('um-admin-btn');
   const syncBtn  = document.getElementById('um-sync-btn');
-  if (adminBtn) adminBtn.style.display = _supaRol === 'admin' ? '' : 'none';
-  if (syncBtn)  syncBtn.style.display  = _supaRol === 'admin' ? '' : 'none';
+  const restoreBtn = document.getElementById('um-restore-btn');
+  if (adminBtn)    adminBtn.style.display    = _supaRol === 'admin' ? '' : 'none';
+  if (syncBtn)     syncBtn.style.display     = _supaRol === 'admin' ? '' : 'none';
+  if (restoreBtn)  restoreBtn.style.display  = _supaRol === 'admin' ? '' : 'none';
   // Excel button: solo visible para admins
   const excelBtn = document.getElementById('nav-excel-btn');
   if (excelBtn) excelBtn.style.display = _supaRol === 'admin' ? '' : 'none';
@@ -11441,6 +11836,29 @@ function parseFci(wb) {
 }
 
 // ── PLANILLA MAESTRA PROVEEDORES (PRE-OP) ─────────────────────
+let _preOpTab = 'TRF';
+
+function preOpSetTab(tab, btn) {
+  _preOpTab = tab;
+  ['preop-tab-trf','preop-tab-chq'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) { b.style.background=''; b.style.borderColor=''; b.style.color=''; }
+  });
+  if (btn) { btn.style.background='var(--accent)33'; btn.style.borderColor='var(--accent)'; btn.style.color='var(--accent)'; }
+  const title = document.getElementById('preop-title-tab');
+  if (title) title.textContent = tab === 'TRF' ? 'Pre-OP UUNN' : 'Cheques';
+  // Update thead for CHQ tab
+  const thead = document.getElementById('preop-thead');
+  if (thead) {
+    if (tab === 'CHQ') {
+      thead.innerHTML = '<tr><th>Nro. Cheque</th><th>Fecha</th><th>Proveedor</th><th style="text-align:right">Importe</th><th>UUNN/APIES</th><th>Vencimiento</th><th>Comprobante</th><th>Estado</th><th>Cliente</th><th>Nro. Factura</th></tr>';
+    } else {
+      thead.innerHTML = '<tr><th>N° Pre-OP</th><th>Fecha</th><th>Proveedor</th><th style="text-align:right">Importe</th><th>UUNN</th><th>Fecha Pago</th><th>Forma Pago</th><th>Estado</th><th>Bco. Pagador</th><th>Tipo</th></tr>';
+    }
+  }
+  renderPreOp();
+}
+
 function preOpLimpiar() {
   ['preop-search','preop-desde','preop-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['preop-estado','preop-uunn','preop-forma'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -11471,7 +11889,9 @@ function renderPreOp() {
   const desde   = document.getElementById('preop-desde')?.value||'';
   const hasta   = document.getElementById('preop-hasta')?.value||'';
 
+  const tab = (typeof _preOpTab !== 'undefined') ? _preOpTab : 'TRF';
   let filtered = data
+    .filter(r => r.hoja === tab)
     .filter(r => !estado || (r.estado||'').toUpperCase().includes(estado))
     .filter(r => !uunn   || r.uunn === uunn)
     .filter(r => !forma  || (r.formaPago||'').toUpperCase().includes(forma))
@@ -11516,18 +11936,33 @@ function renderPreOp() {
       if (eu.includes('ANULADO')) return 'var(--red)';
       return 'var(--text3)';
     };
-    tbody.innerHTML = filtered.map(r=>`<tr style="border-bottom:1px solid var(--border)">
-      <td style="font-family:var(--mono);font-weight:700;color:var(--accent)">${r.nro||'—'}</td>
-      <td style="font-family:var(--mono);font-size:11px">${r.fecha||'—'}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${r.proveedor||''}">${r.proveedor||'—'}</td>
-      <td style="font-family:var(--mono);text-align:right;font-weight:700;color:${(r.importe||0)<0?'var(--red)':'var(--text)'}">$ ${fmtARS(Math.abs(r.importe||0))}</td>
-      <td style="font-size:11px">${r.uunn||'—'}</td>
-      <td style="font-family:var(--mono);font-size:11px">${r.fechaPago||'—'}</td>
-      <td style="font-size:11px">${r.formaPago||'—'}</td>
-      <td><span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;background:${colorEstado(r.estado)+'22'};color:${colorEstado(r.estado)}">${r.estado||'—'}</span></td>
-      <td style="font-size:10px;color:var(--text3)">${r.hoja||''}</td>
-      <td style="font-size:11px;color:var(--text3)">${r.bcoPagador||r.cliente||'—'}</td>
-    </tr>`).join('');
+    if (tab === 'CHQ') {
+      tbody.innerHTML = filtered.map(r=>`<tr style="border-bottom:1px solid var(--border)">
+        <td style="font-family:var(--mono);font-weight:700;color:var(--accent)">${r.nro||'—'}</td>
+        <td style="font-family:var(--mono);font-size:11px">${r.fecha||'—'}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${r.proveedor||''}">${r.proveedor||'—'}</td>
+        <td style="font-family:var(--mono);text-align:right;font-weight:700;color:${(r.importe||0)<0?'var(--red)':'var(--green)'}">$ ${fmtARS(Math.abs(r.importe||0))}</td>
+        <td style="font-size:11px">${r.uunn||'—'}</td>
+        <td style="font-family:var(--mono);font-size:11px">${r.fechaPago||'—'}</td>
+        <td style="font-size:11px">${r.formaPago||'—'}</td>
+        <td><span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;background:${colorEstado(r.estado)+'22'};color:${colorEstado(r.estado)}">${r.estado||'—'}</span></td>
+        <td style="font-size:11px;color:var(--text3)">${r.cliente||'—'}</td>
+        <td style="font-size:11px;color:var(--text3)">${r.nroFactura||'—'}</td>
+      </tr>`).join('');
+    } else {
+      tbody.innerHTML = filtered.map(r=>`<tr style="border-bottom:1px solid var(--border)">
+        <td style="font-family:var(--mono);font-weight:700;color:var(--accent)">${r.nro||'—'}</td>
+        <td style="font-family:var(--mono);font-size:11px">${r.fecha||'—'}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${r.proveedor||''}">${r.proveedor||'—'}</td>
+        <td style="font-family:var(--mono);text-align:right;font-weight:700;color:${(r.importe||0)<0?'var(--red)':'var(--text)'}">$ ${fmtARS(Math.abs(r.importe||0))}</td>
+        <td style="font-size:11px">${r.uunn||'—'}</td>
+        <td style="font-family:var(--mono);font-size:11px">${r.fechaPago||'—'}</td>
+        <td style="font-size:11px">${r.formaPago||'—'}</td>
+        <td><span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;background:${colorEstado(r.estado)+'22'};color:${colorEstado(r.estado)}">${r.estado||'—'}</span></td>
+        <td style="font-size:11px;color:var(--text3)">${r.bcoPagador||'—'}</td>
+        <td style="font-size:10px;color:var(--text3)">${r.hoja||''}</td>
+      </tr>`).join('');
+    }
   }
 
   // Footer
@@ -11558,9 +11993,21 @@ function parsePreOp(wb) {
 
   function parseFecha(v) {
     if (!v) return '';
-    if (typeof v === 'string' && v.match(/^\d{4}-\d{2}-\d{2}/)) return v.slice(0,10);
-    if (v instanceof Date) return v.toISOString().slice(0,10);
-    return String(v).slice(0,10);
+    if (typeof v === 'number') {
+      try { const d=XLSX.SSF.parse_date_code(v); if(d) return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0'); } catch(e){}
+    }
+    if (v instanceof Date || (typeof v==='object'&&v.getFullYear)) {
+      const d=new Date(v); return isNaN(d)?'':d.toISOString().slice(0,10);
+    }
+    const s = String(v).trim();
+    if (s.match(/^\d{4}-\d{2}-\d{2}/)) return s.slice(0,10);
+    // DD/MM/YYYY or D/M/YY
+    const m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
+    if (m) { let [,d,mo,y]=m; if(y.length===2)y='20'+y; return y+'-'+mo.padStart(2,'0')+'-'+d.padStart(2,'0'); }
+    // MM/DD/YYYY fallback (from raw:false)
+    const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m2) { const [,mo,d,y]=m2; return y+'-'+mo.padStart(2,'0')+'-'+d.padStart(2,'0'); }
+    return s.slice(0,10);
   }
 
   // ── Hoja 1: PAGOS PRE-OP UUNN ─────────────────────────────
@@ -11631,6 +12078,339 @@ function parsePreOp(wb) {
 
 // ── Agregar detección en handleFile ──────────────────────────
 // (se integra via el mecanismo de sheetsByType existente)
+
+
+// ═══════════════════════════════════════════════════════════════
+// CONCILIACIONES BANCARIAS
+// ═══════════════════════════════════════════════════════════════
+
+let _concResultados = [];
+let _concTab = 'all';
+
+function concSetTab(tab, btn) {
+  _concTab = tab;
+  ['conc-tab-all','conc-tab-noplam','conc-tab-nobco'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) { b.style.background='var(--bg3)'; b.style.borderColor='var(--border)'; b.style.color='var(--text3)'; }
+  });
+  if (btn) { btn.style.background='var(--accent)33'; btn.style.borderColor='var(--accent)'; btn.style.color='var(--accent)'; }
+  renderConciliaciones();
+}
+
+function _simScore(a, b) {
+  if (!a || !b) return 0;
+  const wa = a.toLowerCase().split(/[\s\-\.]+/).filter(x=>x.length>2);
+  const wb2 = b.toLowerCase().split(/[\s\-\.]+/).filter(x=>x.length>2);
+  if (!wa.length || !wb2.length) return 0;
+  let hits = 0;
+  wa.forEach(w => { if (wb2.some(w2 => w2.includes(w) || w.includes(w2))) hits++; });
+  return hits / Math.max(wa.length, wb2.length);
+}
+
+function _dateDiff(a, b) {
+  if (!a || !b) return 999;
+  return Math.abs((new Date(a) - new Date(b)) / 86400000);
+}
+
+function conciliarAhora() {
+  const extractos = (appState.extractoBancario || []).filter(m => m.tipo === 'gasto');
+  const planilla  = (appState.preopData || []);
+
+  if (!extractos.length && !planilla.length) {
+    showToast('⚠️ Importá el Extracto Bancario y la Planilla Maestra primero');
+    renderConciliaciones();
+    return;
+  }
+
+  // Filtros de período y empresa
+  const periodo = document.getElementById('conc-periodo')?.value || '';
+  const emp     = document.getElementById('conc-emp')?.value || '';
+  const banco   = document.getElementById('conc-banco')?.value || '';
+
+  const extFilt = extractos.filter(m => {
+    if (emp && m.empTag !== emp) return false;
+    if (banco && m.banco !== banco) return false;
+    if (periodo && !(m.fecha||'').startsWith(periodo)) return false;
+    return true;
+  });
+
+  const planFilt = planilla.filter(r => {
+    if (periodo && !(r.fecha||'').startsWith(periodo)) return false;
+    return true;
+  });
+
+  // Populate periodo select
+  const periodos = [...new Set([
+    ...extractos.map(m=>(m.fecha||'').slice(0,7)),
+    ...planilla.map(r=>(r.fecha||'').slice(0,7))
+  ].filter(Boolean))].sort().reverse();
+  const pSel = document.getElementById('conc-periodo');
+  if (pSel) {
+    const cur = pSel.value;
+    pSel.innerHTML = '<option value="">Todos</option>' +
+      periodos.map(p=>`<option value="${p}">${p}</option>`).join('');
+    if (periodos.includes(cur)) pSel.value = cur;
+  }
+
+  // Populate banco select
+  const bancos = [...new Set(extractos.map(m=>m.banco).filter(Boolean))].sort();
+  const bSel = document.getElementById('conc-banco');
+  if (bSel && bSel.options.length <= 1) {
+    bSel.innerHTML = '<option value="">Todos</option>' +
+      bancos.map(b=>`<option value="${b}">${b}</option>`).join('');
+  }
+
+  const usedExt = new Set();
+  const resultados = [];
+
+  // Para cada item de planilla, buscar match en extracto
+  planFilt.forEach(r => {
+    const impPlan = Math.abs(r.importe || 0);
+    if (!impPlan) return;
+
+    // Cheques: buscar por número en detalle bancario
+    if (r.hoja === 'CHQ') {
+      const nroCheq = String(r.nro || '').trim();
+      const vto = r.fechaPago || '';
+      const hoy = new Date().toISOString().slice(0,10);
+      // Buscar en extracto por número de cheque en detalle/descripcion
+      let matchExt = null;
+      if (nroCheq) {
+        matchExt = extFilt.find(m =>
+          !usedExt.has(m) &&
+          ((m.detalle||'').includes(nroCheq) || (m.descripcion||'').includes(nroCheq)) &&
+          Math.abs(Math.abs(m.importe) - impPlan) < 1
+        );
+      }
+      if (!matchExt) {
+        // No aparece en banco — alerta cheque
+        const vencido = vto && vto < hoy;
+        resultados.push({
+          estado: 'chq', origen: 'CHQ',
+          nro: nroCheq, fechaPlan: r.fecha, proveedor: r.proveedor,
+          importePlan: impPlan, fechaBco: vto ? 'Vto: '+vto : '—',
+          descBco: vencido ? '🚨 Cheque VENCIDO sin cobrar' : '🔔 No presentado al banco',
+          importeBco: 0, diferencia: impPlan, confianza: 0,
+          banco: '', vencido,
+        });
+      } else {
+        usedExt.add(matchExt);
+        resultados.push({
+          estado: 'ok', origen: 'CHQ',
+          nro: nroCheq, fechaPlan: r.fecha, proveedor: r.proveedor,
+          importePlan: impPlan, fechaBco: matchExt.fecha,
+          descBco: matchExt.detalle || matchExt.descripcion || '',
+          importeBco: matchExt.importe, diferencia: 0, confianza: 100,
+          banco: matchExt.banco,
+        });
+      }
+      return;
+    }
+
+    // TRF: buscar por importe + nombre + fecha
+    const candidates = extFilt.filter(m => !usedExt.has(m));
+    let bestMatch = null;
+    let bestScore = 0;
+
+    candidates.forEach(m => {
+      const impBco = Math.abs(m.importe);
+      const impDiff = Math.abs(impBco - impPlan);
+      if (impDiff > impPlan * 0.001) return; // importe debe ser exacto (0.1% tolerancia)
+
+      const nomScore = Math.max(
+        _simScore(r.proveedor, m.denominacion),
+        _simScore(r.proveedor, m.descripcion),
+        _simScore(r.proveedor, m.detalle)
+      );
+      const dias = _dateDiff(r.fecha, m.fecha);
+      const fechaScore = dias <= 1 ? 1 : dias <= 3 ? 0.8 : dias <= 7 ? 0.5 : 0.2;
+      const score = (nomScore * 0.5) + (fechaScore * 0.3) + 0.2; // importe ya coincide
+
+      if (score > bestScore) { bestScore = score; bestMatch = m; }
+    });
+
+    if (bestMatch && bestScore >= 0.4) {
+      usedExt.add(bestMatch);
+      const dias = _dateDiff(r.fecha, bestMatch.fecha);
+      const estado = dias <= 3 && bestScore >= 0.7 ? 'ok' : 'warn';
+      const pct = Math.round(bestScore * 100);
+      resultados.push({
+        estado, origen: 'TRF',
+        nro: r.nro, fechaPlan: r.fecha, proveedor: r.proveedor,
+        importePlan: impPlan, fechaBco: bestMatch.fecha,
+        descBco: bestMatch.detalle || bestMatch.descripcion || '',
+        importeBco: bestMatch.importe,
+        diferencia: Math.abs(bestMatch.importe - impPlan),
+        confianza: pct, banco: bestMatch.banco,
+      });
+    } else {
+      resultados.push({
+        estado: 'err', origen: 'TRF',
+        nro: r.nro, fechaPlan: r.fecha, proveedor: r.proveedor,
+        importePlan: impPlan, fechaBco: '—', descBco: 'Sin match en banco',
+        importeBco: 0, diferencia: impPlan, confianza: 0, banco: '',
+      });
+    }
+  });
+
+  // Movimientos bancarios sin match (huérfanos)
+  extFilt.forEach(m => {
+    if (!usedExt.has(m)) {
+      resultados.push({
+        estado: 'huerfa', origen: 'BANCO',
+        nro: '—', fechaPlan: '—', proveedor: '—',
+        importePlan: 0, fechaBco: m.fecha,
+        descBco: m.detalle || m.descripcion || '',
+        importeBco: m.importe, diferencia: m.importe,
+        confianza: 0, banco: m.banco,
+      });
+    }
+  });
+
+  _concResultados = resultados;
+  renderConciliaciones();
+  showToast('✅ Conciliación completada — '+resultados.length+' registros');
+}
+
+function renderConciliaciones() {
+  const res = _concResultados;
+
+  // KPIs
+  const kpis = document.getElementById('conc-kpis');
+  if (kpis) {
+    const tot   = res.filter(r=>r.origen!=='BANCO');
+    const ok    = res.filter(r=>r.estado==='ok');
+    const warn  = res.filter(r=>r.estado==='warn');
+    const err   = res.filter(r=>r.estado==='err');
+    const chq   = res.filter(r=>r.estado==='chq');
+    const sum   = arr => arr.reduce((s,r)=>s+(r.importePlan||0),0);
+    const totImp = sum(tot);
+    kpis.innerHTML = [
+      {l:'Total planilla', v:'$ '+fmtARS(totImp), s:tot.length+' registros', c:'var(--accent)'},
+      {l:'✅ Conciliados',  v:'$ '+fmtARS(sum(ok)),   s:ok.length+' · '+(!totImp?0:Math.round(sum(ok)/totImp*100))+'%', c:'var(--green)'},
+      {l:'⚠️ Revisar',      v:'$ '+fmtARS(sum(warn)), s:warn.length+' · '+(!totImp?0:Math.round(sum(warn)/totImp*100))+'%', c:'var(--yellow)'},
+      {l:'❌ No conciliados',v:'$ '+fmtARS(sum(err)),  s:err.length+' · '+(!totImp?0:Math.round(sum(err)/totImp*100))+'%', c:'var(--red)'},
+      {l:'🔔 Cheques pend.',v:'$ '+fmtARS(sum(chq)),  s:chq.length+' cheque/s', c:'#a78bfa'},
+    ].map(k=>`<div class="card" style="padding:12px 14px">
+      <div style="font-size:9px;font-weight:700;color:${k.c};text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${k.l}</div>
+      <div style="font-family:var(--mono);font-size:15px;font-weight:800;color:${k.c}">${k.v}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">${k.s}</div>
+    </div>`).join('');
+
+    // Barra progreso
+    const prog = document.getElementById('conc-progreso');
+    if (prog && tot.length) {
+      prog.style.display = 'block';
+      const pct = Math.round(sum(ok)/totImp*100)||0;
+      document.getElementById('conc-pct').textContent = pct+'% conciliado';
+      document.getElementById('conc-bar-ok').style.width   = (!totImp?0:sum(ok)/totImp*100)+'%';
+      document.getElementById('conc-bar-warn').style.width = (!totImp?0:sum(warn)/totImp*100)+'%';
+      document.getElementById('conc-bar-err').style.width  = (!totImp?0:sum(err)/totImp*100)+'%';
+      document.getElementById('conc-bar-chq').style.width  = (!totImp?0:sum(chq)/totImp*100)+'%';
+    }
+  }
+
+  // Alertas
+  const alertas = document.getElementById('conc-alertas');
+  if (alertas) {
+    const chqVencidos  = res.filter(r=>r.estado==='chq'&&r.vencido);
+    const chqPendientes= res.filter(r=>r.estado==='chq'&&!r.vencido);
+    const noConcil     = res.filter(r=>r.estado==='err');
+    let html = '';
+    if (chqVencidos.length) html += `<div style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:12px;color:#f87171;display:flex;gap:8px"><span>🚨</span><div><strong>${chqVencidos.length} cheque/s VENCIDO/S sin presentar al banco</strong> — ${chqVencidos.map(r=>r.nro+'·'+r.proveedor).join(' / ')}</div></div>`;
+    if (chqPendientes.length) html += `<div style="background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:12px;color:#a78bfa;display:flex;gap:8px"><span>🔔</span><div><strong>${chqPendientes.length} cheque/s sin presentar al banco</strong> — ${chqPendientes.map(r=>r.nro).join(', ')}</div></div>`;
+    if (noConcil.length) html += `<div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:12px;color:#f87171;display:flex;gap:8px"><span>❌</span><div><strong>${noConcil.length} registros sin match en el banco</strong> — Verificar si el pago fue realizado por otro medio o está pendiente.</div></div>`;
+    alertas.innerHTML = html;
+  }
+
+  // Filtros
+  const estadoFil  = document.getElementById('conc-estado')?.value || '';
+  const searchFil  = (document.getElementById('conc-search')?.value || '').toLowerCase();
+
+  let filtered = res;
+  if (_concTab === 'noplam') filtered = res.filter(r=>r.estado==='huerfa');
+  else if (_concTab === 'nobco') filtered = res.filter(r=>r.estado==='err'||r.estado==='chq');
+  else filtered = res.filter(r=>r.estado!=='huerfa');
+
+  if (estadoFil) filtered = filtered.filter(r=>r.estado===estadoFil);
+  if (searchFil) filtered = filtered.filter(r=>
+    (r.proveedor||'').toLowerCase().includes(searchFil) ||
+    (r.descBco||'').toLowerCase().includes(searchFil) ||
+    (r.nro||'').toLowerCase().includes(searchFil)
+  );
+
+  const ESTADO_MAP = {
+    ok:     {icon:'✅', label:'Conciliado',     col:'#4ade80'},
+    warn:   {icon:'⚠️', label:'Revisar',        col:'#fbbf24'},
+    err:    {icon:'❌', label:'No conciliado',   col:'#f87171'},
+    chq:    {icon:'🔔', label:'Cheque pend.',    col:'#a78bfa'},
+    huerfa: {icon:'🔍', label:'Sin identificar', col:'#4a9fd4'},
+  };
+
+  const tbody = document.getElementById('conc-tbody');
+  if (tbody) {
+    if (!filtered.length) {
+      const msg = !res.length
+        ? 'Importá el Extracto Bancario y la Planilla Maestra, luego presioná ⚡ Conciliar ahora'
+        : 'Sin resultados para los filtros seleccionados';
+      tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:40px">${msg}</td></tr>`;
+    } else {
+      tbody.innerHTML = filtered.map(r => {
+        const e = ESTADO_MAP[r.estado] || ESTADO_MAP.huerfa;
+        const rowBg = r.estado==='ok'?'rgba(74,222,128,0.03)':r.estado==='warn'?'rgba(251,191,36,0.03)':r.estado==='err'||r.estado==='chq'?'rgba(248,113,113,0.03)':'';
+        const pct = r.confianza > 0 ? r.confianza+'%' : '—';
+        const pctCol = r.confianza>=90?'#4ade80':r.confianza>=60?'#fbbf24':'#f87171';
+        const difCol = r.diferencia===0?'var(--green)':r.diferencia>0?'var(--red)':'var(--text3)';
+        return `<tr style="border-bottom:1px solid var(--border);background:${rowBg}">
+          <td style="padding:6px 10px"><span style="font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;background:${e.col}22;color:${e.col};white-space:nowrap">${e.icon} ${e.label}</span></td>
+          <td style="padding:6px 10px"><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--bg3);color:var(--text3)">${r.origen}</span></td>
+          <td style="padding:6px 10px;font-family:var(--mono);font-size:11px;color:var(--accent)">${r.nro||'—'}</td>
+          <td style="padding:6px 10px;font-family:var(--mono);font-size:11px;white-space:nowrap">${r.fechaPlan||'—'}</td>
+          <td style="padding:6px 10px;font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.proveedor||''}">${r.proveedor||'—'}</td>
+          <td style="padding:6px 10px;font-family:var(--mono);font-size:12px;text-align:right;font-weight:700;color:var(--red);white-space:nowrap">${r.importePlan?'-$ '+fmtARS(r.importePlan):'—'}</td>
+          <td style="padding:6px 10px;font-family:var(--mono);font-size:11px;white-space:nowrap">${r.fechaBco||'—'}</td>
+          <td style="padding:6px 10px;font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.descBco||''}">${r.descBco||'—'}</td>
+          <td style="padding:6px 10px;font-family:var(--mono);font-size:12px;text-align:right;font-weight:700;color:var(--red);white-space:nowrap">${r.importeBco?'-$ '+fmtARS(r.importeBco):'—'}</td>
+          <td style="padding:6px 10px;font-family:var(--mono);font-size:12px;text-align:right;font-weight:700;color:${difCol};white-space:nowrap">${r.diferencia?'$ '+fmtARS(r.diferencia):'$ 0'}</td>
+          <td style="padding:6px 10px;font-weight:700;color:${pctCol};font-size:12px">${pct}</td>
+          <td style="padding:6px 10px;font-size:11px;color:var(--text3)">${r.banco||'—'}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  const fcount = document.getElementById('conc-footer-count');
+  const ftotal = document.getElementById('conc-footer-total');
+  if (fcount) fcount.textContent = filtered.length.toLocaleString()+' registros';
+  if (ftotal) {
+    const difNeta = filtered.reduce((s,r)=>s+(r.diferencia||0),0);
+    ftotal.textContent = 'Diferencia neta: '+(difNeta===0?'$ 0':'-$ '+fmtARS(difNeta));
+    ftotal.style.color = difNeta===0?'var(--green)':'var(--red)';
+  }
+}
+
+function conciliarExportExcel() {
+  if (!_concResultados.length) { showToast('⚠️ Primero ejecutá la conciliación'); return; }
+  const ESTADO_MAP = {ok:'Conciliado',warn:'Revisar',err:'No conciliado',chq:'Cheque pendiente',huerfa:'Sin identificar'};
+  const rows = _concResultados.map(r=>({
+    'Estado':         ESTADO_MAP[r.estado]||r.estado,
+    'Origen':         r.origen,
+    'N°/Cheque':      r.nro,
+    'Fecha planilla': r.fechaPlan,
+    'Proveedor':      r.proveedor,
+    'Importe planilla': r.importePlan,
+    'Fecha banco':    r.fechaBco,
+    'Descripción banco': r.descBco,
+    'Importe banco':  r.importeBco,
+    'Diferencia':     r.diferencia,
+    'Confianza %':    r.confianza,
+    'Banco':          r.banco,
+  }));
+  const wb2 = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2, XLSX.utils.json_to_sheet(rows), 'Conciliacion');
+  XLSX.writeFile(wb2, 'Conciliacion_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  showToast('📥 Exportado');
+}
 
 </script>
 </body>
