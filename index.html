@@ -5078,8 +5078,10 @@ function parseMinutaDiaria(wb) {
   // ── Parsear hoja HOY (datos parciales del día en curso, NUNCA se mezcla con histórico) ──
   appState.hoyData = null;
   if (hoySheetName) {
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const hoyDt = new Date(todayStr + 'T12:00:00');
+    // HOY = día siguiente a la última hoja de fecha confirmada
+    const lastConfirmedDt = dateSheets.length > 0 ? dateSheets[dateSheets.length-1].dt : new Date();
+    const hoyDt = new Date(lastConfirmedDt.getTime() + 86400000);
+    const todayStr = hoyDt.toISOString().slice(0, 10);
     // Contar tx antes de parsear para aislar solo las de hoy
     const txCountBefore = {};
     appState.empresas.forEach(e => { txCountBefore[e.name] = (e.transactions||[]).length; });
