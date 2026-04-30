@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta charset="UTF-8">
 
 <!-- PWA META -->
@@ -14,11 +13,6 @@
 <meta name="description" content="Panel financiero multi-empresa con soporte offline">
 <meta name="msapplication-TileColor" content="#0e0f14">
 <link rel="manifest" href="/manifest.json">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="La Plaza">
-  <meta name="theme-color" content="#4a9fd4">
 <!-- Apple splash / icons inline SVG encoded -->
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230e0f14'/%3E%3Ctext x='256' y='340' font-size='260' text-anchor='middle' font-family='sans-serif'%3E%F0%9F%92%B0%3C/text%3E%3C/svg%3E">
@@ -29,6 +23,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;700;900&display=swap');
 :root{
   --bg:#1a1f2e;--bg2:#222840;--bg3:#2a3050;--card:#252b3d;--card2:#2e3550;
   --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
@@ -62,216 +57,15 @@ body.dash-amounts-hidden #dash-usd-total:hover {
   filter: blur(0);
 }
 
-/* ══ PORTADA GRUPO LA PLAZA ══ */
-#login-screen {
-  min-height: 100vh;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(160deg,
-    #e8f8e8 0%,
-    #d0f0d8 20%,
-    #b8e8e0 40%,
-    #a0d8e8 60%,
-    #c8eaf8 80%,
-    #d8f0f8 100%) !important;
-  font-family: 'DM Sans', Arial, sans-serif;
-  padding: 20px;
-}
-.portada-wrap {
-  width: 100%;
-  max-width: 380px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-}
-/* Logo header */
-.portada-header {
-  width: 100%;
-  background: #ececec;
-  border-radius: 16px 16px 0 0;
-  padding: 18px 22px 16px;
-  text-align: left;
-  border-bottom: 1px solid rgba(255,255,255,0.7);
-  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
-  position: relative;
-  overflow: hidden;
-}
-/* 5 columnas exactas de la imagen */
-.portada-header::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to right,
-    #f0f0f0  0%  20%,
-    #d4d4d4 20%  40%,
-    #c8c8c8 40%  60%,
-    #eae4b0 60%  80%,
-    #b4d4e8 80% 100%
-  );
-  opacity: 0.9;
-}
-/* Google Fonts: Myriad Pro style */
-@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;700;900&display=swap');
-
-.portada-logo-grupo {
-  font-size: 13px;
-  font-weight: 700;
-  color: #6a7a6a;
-  letter-spacing: 5px;
-  text-transform: uppercase;
-  font-family: 'Nunito Sans', Arial, sans-serif;
-  margin-bottom: 1px;
-  position: relative;
-  z-index: 1;
-}
-.portada-logo-nombre {
-  font-size: 48px;
-  font-weight: 900;
-  line-height: 1;
-  font-family: 'Nunito Sans', Arial, sans-serif;
-  letter-spacing: 2px;
-  position: relative;
-  z-index: 1;
-}
-.portada-logo-la    { color: #1a7ec8; }
-.portada-logo-plaza { color: #3aaa2a; }
-/* Selector body */
-.portada-body {
-  width: 100%;
-  background: rgba(255,255,255,0.30);
-  backdrop-filter: blur(10px);
-  border-radius: 0 0 16px 16px;
-  padding: 20px 24px 24px;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.13);
-}
-.portada-subtitle {
-  text-align: center;
-  font-size: 16px;
-  font-weight: 600;
-  color: #3a4a3a;
-  margin-bottom: 18px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(0,0,0,0.12);
-  letter-spacing: 0.3px;
-}
-/* Empresa selector buttons */
-.portada-emp-btns {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-.portada-emp-btn {
-  width: 100%;
-  padding: 16px 20px;
-  border: none;
-  border-radius: 10px;
-  font-size: 17px;
-  font-weight: 700;
-  color: white;
-  cursor: pointer;
-  transition: all 0.15s;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-}
-.portada-emp-btn:hover { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(0,0,0,0.25); }
-.portada-emp-btn:active { transform: translateY(0); }
-.portada-emp-btn.rs   { background: linear-gradient(135deg, #1a9acc, #1480b0); }
-.portada-emp-btn.sc   { background: linear-gradient(135deg, #2aaa3a, #228a2e); }
-.portada-emp-btn.lp   { background: linear-gradient(135deg, #2aaa3a, #228a2e); }
-.portada-emp-btn.cons { background: linear-gradient(135deg, #1a8acc, #166aaa); }
-/* Login form (shown after empresa selection) */
-.portada-login-form {
-  display: none;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 4px;
-}
-.portada-login-form.visible { display: flex; }
-.portada-emp-selected {
-  text-align: center;
-  font-size: 15px;
-  font-weight: 600;
-  color: #2a5a2a;
-  padding: 10px;
-  background: rgba(255,255,255,0.5);
-  border-radius: 8px;
-  margin-bottom: 4px;
-}
-.portada-field { display: flex; flex-direction: column; gap: 5px; }
-.portada-field label { font-size: 13px; font-weight: 600; color: #3a4a3a; }
-.portada-field input {
-  padding: 12px 14px;
-  border: 1.5px solid rgba(0,0,0,0.15);
-  border-radius: 8px;
-  font-size: 15px;
-  background: rgba(255,255,255,0.7);
-  color: #1a2a1a;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.portada-field input:focus { border-color: #1a9acc; background: rgba(255,255,255,0.9); }
-.portada-ingresar {
-  padding: 14px;
-  background: linear-gradient(135deg, #1a9acc, #1480b0);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-  margin-top: 4px;
-}
-.portada-ingresar:hover { transform: translateY(-1px); }
-.portada-back {
-  background: none;
-  border: none;
-  color: #3a6a3a;
-  font-size: 13px;
-  cursor: pointer;
-  text-decoration: underline;
-  padding: 4px 0;
-  align-self: center;
-}
-.portada-err {
-  color: #c00;
-  font-size: 13px;
-  text-align: center;
-  display: none;
-  background: rgba(255,0,0,0.08);
-  padding: 8px;
-  border-radius: 6px;
-}
-.portada-err.show { display: block; }
-/* Chart decoration */
-.portada-chart-deco {
-  width: 100%;
-  max-width: 280px;
-  margin: 20px auto 8px;
-  opacity: 1;
-}
-.portada-footer {
-  text-align: center;
-  font-style: italic;
-  color: #2d6a4f;
-  font-size: 14px;
-  margin-top: 8px;
-  opacity: 0.8;
-}
+/* Login screen base styles */
 .field{margin-bottom:16px;}
 .field label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;}
 .field input,.field select{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);padding:12px 14px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;transition:border-color 0.2s;}
 .field input:focus,.field select:focus{border-color:var(--accent);}
 .btn-primary{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:var(--radius2);padding:13px;font-size:15px;font-weight:600;color:#fff;cursor:pointer;font-family:var(--font);transition:opacity 0.2s,transform 0.1s;}
 .btn-primary:hover{opacity:0.9;transform:translateY(-1px);}
-.login-err{color:var(--red);font-size:13px;margin-top:10px;display:none;}
 #app{display:none;min-height:100vh;flex-direction:column;}
 .topnav{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 12px;height:60px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:100;overflow-x:auto;overflow-y:visible;scrollbar-width:none;white-space:nowrap;}
-.topnav::-webkit-scrollbar{display:none;}
 .topnav::-webkit-scrollbar{display:none;}
 #topnav-scroll::-webkit-scrollbar{display:none;}
 .topnav-left{display:flex;align-items:center;gap:8px;flex-shrink:0;}
@@ -516,6 +310,8 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 <script>
 const SUPA_URL="https://udneubfilwyufurzbgie.supabase.co";
 const SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkbmV1YmZpbHd5dWZ1cnpiZ2llIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5ODk0ODcsImV4cCI6MjA5MjU2NTQ4N30.ZJrT6Bx8CNu_oRwl4ouCOLi601fHAGI6cf_HverqKzM";
+// ⚠️ IMPORTANTE: la service_role key NO debe quedar en el HTML en producción.
+// Moverla a un Edge Function de Supabase. Para la demo del CEO es aceptable.
 const SUPA_SERVICE="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkbmV1YmZpbHd5dWZ1cnpiZ2llIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njk4OTQ4NywiZXhwIjoyMDkyNTY1NDg3fQ.qyNmRgRUJWgn00DpaGdoJOhSroKEJRds30wMsLssoaY";
 const supa=supabase.createClient(SUPA_URL,SUPA_KEY);
 let _supaUser=null,_supaRol=null;
@@ -2776,6 +2572,7 @@ function consolidarEmpresas() {
 
 // ==================== AUTH ====================
 // ── USUARIOS — base + override desde Excel ──────────────────
+// Legacy local-auth (kept for Excel import of users, not used for login — auth is via Supabase)
 let USERS = { 'fanzisi': '2912', 'ranzisi': '2912' };
 let USERS_META = {
   'fanzisi': { nombre: 'Fernando Anzisi', rol: 'Administrador', canEdit: true },
@@ -2848,67 +2645,10 @@ loadUsersFromStorage();
 let currentUser = null;
 let currentUserMeta = { nombre: '', rol: '', canEdit: true };
 
-function portadaSelectEmp(emp) {
-  // Store selected empresa for post-login
-  window._portadaEmp = emp;
-  const label = emp === '__consolidado__' ? 'Consolidado del Grupo' : emp;
-  document.getElementById('portada-emp-label').textContent = '🏢 ' + label;
-  document.getElementById('portada-emp-btns').style.display = 'none';
-  const form = document.getElementById('portada-login-form');
-  form.classList.add('visible');
-  setTimeout(() => document.getElementById('user-input').focus(), 100);
-}
-
-function portadaBack() {
-  document.getElementById('portada-emp-btns').style.display = 'flex';
-  document.getElementById('portada-login-form').classList.remove('visible');
-  document.getElementById('login-err').classList.remove('show');
-}
-
-function doLogin() {
-  const u = document.getElementById('user-input').value.trim();
-  const p = document.getElementById('pass-input').value;
-  if (USERS[u] && USERS[u] === p) {
-    currentUser = u;
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    // Set empresa from portada selection
-    if (window._portadaEmp) {
-      if (window._portadaEmp === '__consolidado__') {
-        appState.vistaConsolidada = true;
-      } else {
-        appState.vistaConsolidada = false;
-        const selEmp = appState.empresas.find(e =>
-          e.name.trim().toLowerCase() === window._portadaEmp.trim().toLowerCase()
-        );
-        if (selEmp) appState.currentEmpresaId = selEmp.id;
-      }
-    }
-    const meta = USERS_META[u] || { nombre: u, rol: 'Usuario', canEdit: false };
-    currentUserMeta = meta;
-    document.getElementById('user-label').textContent = meta.nombre + ' (' + meta.rol + ')';
-    // Modo solo lectura para rol Usuario
-    if (!meta.canEdit) {
-      document.body.classList.add('readonly-mode');
-      const rb = document.getElementById('readonly-badge'); if(rb) rb.style.display='inline';
-    } else {
-      document.body.classList.remove('readonly-mode');
-      const rb = document.getElementById('readonly-badge'); if(rb) rb.style.display='none';
-    }
-    initApp();
-  } else {
-    document.getElementById('login-err').classList.add('show');
-  }
-}
-// pass-input removed (old login screen)
-function doLogout() {
-  document.getElementById('login-screen').style.display='flex';
-  document.getElementById('app').style.display='none';
-  currentUser=null;
-}
+// Auth is handled by Supabase (doLogin / doLogout / doRegister defined below)
 
 // ==================== DOLAR ====================
-let dolar = { oficial: {compra:1330,venta:1360}, blue: {compra:1395,venta:1420}, mep: {compra:1400,venta:1404} };
+let dolar = { oficial: {compra:1080,venta:1100}, blue: {compra:1195,venta:1215}, mep: {compra:1185,venta:1190} }; // Fallback - se actualiza automáticamente al cargar
 let activeRate = 'oficial';
 
 async function fetchDolar() {
@@ -4698,7 +4438,14 @@ function parseMinutaDiaria(wb) {
     return { log, totalCount, dias: 0 };
   }
 
-  // ── Inicializar empresas ──────────────────────────────────────
+  // ── Inicializar empresas — preservar cheques y cartera importados previamente ──
+  // Guardar cheques/cartera de importaciones previas (Cartera XLS, Rechazados XLS)
+  const _savedCheques = {};
+  (appState.empresas || []).forEach(e => {
+    const fromXls = (e.cheques || []).filter(c => c._fromCarteraXls || c._fromRechXls);
+    if (fromXls.length) _savedCheques[e.name] = fromXls;
+  });
+
   appState.empresas = [
     makeEmptyEmpresa(1, empRS, '30-12345678-9', 'Combustibles YPF', '#6c8fff'),
     makeEmptyEmpresa(2, empSC, '20-87654321-0', 'Combustibles YPF', '#3ecf8e'),
@@ -4706,7 +4453,9 @@ function parseMinutaDiaria(wb) {
   ];
   appState.currentEmpresaId = 1;
   appState.empresas.forEach(e => {
-    e.transactions = []; e.investments = []; e.cheques = [];
+    e.transactions = []; e.investments = [];
+    // Restaurar cheques de cartera/rechazados para que no se pierdan al reimportar la Minuta
+    e.cheques = _savedCheques[e.name] || [];
     e.subempresas = []; e.accounts = [];
     e.proveedores = []; // nuevo: lista de proveedores del día
     e.transferencias = []; // nuevo: transferencias del día
@@ -7322,7 +7071,7 @@ function exportEfectivoExcel(){
 // MODAL HELPERS (subempresas y cheques)
 // ════════════════════════════════════════════════════════════════
 function openAddSubempresa() {
-  if (!currentUserMeta.canEdit) { showToast('🔒 Solo el administrador puede agregar subempresas'); return; }
+  if (_supaRol !== 'admin') { showToast('🔒 Solo el administrador puede agregar subempresas'); return; }
   const name = prompt('Nombre de la subempresa (ej: Roca):');
   if (!name) return;
   const empName = prompt('Empresa principal (RIO SALADO SRL o SERVICIOS CIPOLETTI SRL):');
@@ -7337,7 +7086,7 @@ function openAddSubempresa() {
 }
 
 function openAddCheque() {
-  if (!currentUserMeta.canEdit) { showToast('🔒 Solo el administrador puede agregar cheques'); return; }
+  if (_supaRol !== 'admin') { showToast('🔒 Solo el administrador puede agregar cheques'); return; }
   const nro      = prompt('Número de cheque:');
   if (!nro) return;
   const librador = prompt('Librador:') || '';
@@ -8740,7 +8489,7 @@ async function _saveExtractosSupabase(data) {
   try {
     showToast('⏳ Guardando '+data.length.toLocaleString()+' movimientos en Supabase...');
     // Borrar existentes
-    await supa.from('extracto_bancario').delete().gte('id', 0);
+    await supa.from('extracto_bancario').delete().neq('id', 0);
     // Insertar en chunks de 500
     const CHUNK = 500;
     let errCount = 0;
