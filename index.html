@@ -1376,6 +1376,7 @@ let _supaUser=null,_supaRol=null;
       <button class="btn-sm" onclick="filterExtractos('RS',this)" id="exf-RS">🔵 RS</button>
       <button class="btn-sm" onclick="filterExtractos('SC',this)" id="exf-SC">🟢 SC</button>
       <button class="btn-sm" onclick="filterExtractos('LP',this)" id="exf-LP">🟡 LP</button>
+      <button class="btn-sm" onclick="limpiarFiltrosExtractos()" style="background:var(--bg3);color:var(--text3);border-color:var(--border)">✕ Limpiar</button>
       <button class="btn-sm" onclick="exportExtractosExcel()" style="background:var(--green)22;color:var(--green);border-color:var(--green)">📥 Excel</button>
     </div>
   </div>
@@ -1421,9 +1422,9 @@ let _supaUser=null,_supaRol=null;
       </select>
     </div>
     <div>
-      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Mes</div>
-      <select id="exf-filter-mes" onchange="renderExtractos()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
-        <option value="">Todos</option>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📅 Mes del extracto</div>
+      <select id="exf-filter-mes" onchange="renderExtractos()" style="width:100%;background:var(--bg3);border:1px solid var(--accent);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;font-weight:600">
+        <option value="">Todos los meses</option>
       </select>
     </div>
     <div>
@@ -1441,9 +1442,24 @@ let _supaUser=null,_supaRol=null;
       </select>
     </div>
     <div>
-      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Buscar descripción / CUIT</div>
-      <input type="text" id="extractos-search" placeholder="Ej: Cabal, 30672..." oninput="renderExtractos()"
-        style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--text);outline:none">
+      <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🔍 Buscar en todos los campos</div>
+      <div style="position:relative">
+        <input type="text" id="extractos-search" placeholder="Descripción, CUIT, concepto, banco, importe, categoría..." oninput="syncExtractosSearch(this.value)"
+          style="width:100%;background:var(--bg3);border:1.5px solid var(--accent);border-radius:8px;padding:7px 32px 7px 12px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
+        <button onclick="document.getElementById('extractos-search').value='';renderExtractos()"
+          style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0;line-height:1" title="Limpiar búsqueda">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTRO BÚSQUEDA FULL WIDTH -->
+  <div style="margin-bottom:14px">
+    <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🔍 Búsqueda global — descripción, CUIT, banco, concepto, categoría, importe, N° cta...</div>
+    <div style="position:relative">
+      <input type="text" id="extractos-search-full" placeholder="Escribí cualquier cosa: AMEX, 30-67234..., COBRO TJ, Galicia, FIMA, importe..." oninput="syncExtractosSearch(this.value)"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--accent);border-radius:10px;padding:10px 40px 10px 16px;font-size:13px;color:var(--text);outline:none;box-sizing:border-box">
+      <button onclick="document.getElementById('extractos-search-full').value='';document.getElementById('extractos-search').value='';renderExtractos()"
+        style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0;line-height:1" title="Limpiar">✕</button>
     </div>
   </div>
 
@@ -7843,6 +7859,35 @@ function _renderExtractosCharts(data) {
   }
 }
 
+function limpiarFiltrosExtractos() {
+  ['exf-filter-emp','extractos-filter-banco','extractos-filter-cuenta','exf-filter-cat',
+   'exf-filter-concepto','exf-filter-mes','exf-filter-tipo','exf-filter-nrocta'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value = el.options[0]?.value || ''; el.dataset.populated = ''; }
+  });
+  const sf = document.getElementById('extractos-search-full');
+  const ss = document.getElementById('extractos-search');
+  if (sf) sf.value = '';
+  if (ss) ss.value = '';
+  // Reset empresa tabs
+  ['todos','RS','SC','LP'].forEach(t => {
+    const b = document.getElementById('exf-tab-'+t);
+    if (b) b.classList.remove('active');
+  });
+  const btnTodos = document.getElementById('exf-tab-todos');
+  if (btnTodos) btnTodos.classList.add('active');
+  _exfTab = 'todos';
+  renderExtractos();
+  showToast('✅ Filtros limpiados');
+}
+
+function syncExtractosSearch(val) {
+  // Sincronizar el campo chico con el grande
+  const small = document.getElementById('extractos-search');
+  if (small) small.value = val;
+  renderExtractos();
+}
+
 function renderExtractos() {
   // Si no hay datos locales, intentar cargar desde Supabase primero
   if ((!appState.extractoBancario || appState.extractoBancario.length === 0) && _supaUser) {
@@ -7862,7 +7907,10 @@ function renderExtractos() {
     : _buildExtractosFromTransactions();
 
   // Filtros
-  const search    = (document.getElementById('extractos-search')?.value || '').toLowerCase();
+  // Search: leer del campo grande (full) o del chico (fila filtros), el que tenga valor
+  const _sA = (document.getElementById('extractos-search-full')?.value || '').trim().toLowerCase();
+  const _sB = (document.getElementById('extractos-search')?.value || '').trim().toLowerCase();
+  const search = _sA || _sB;
   const fFrom     = dateFilterFrom || '';
   const fTo       = dateFilterTo   || '';
   const bancoFil  = (document.getElementById('extractos-filter-banco')?.value || 'todos');
@@ -7883,15 +7931,25 @@ function renderExtractos() {
     if (cuentaFil !== 'todos' && m.cuenta !== cuentaFil) return false;
     if (catFil && (m.cat||'') !== catFil) return false;
     if (conceptoFil && (m.concepto||'') !== conceptoFil) return false;
-    if (mesFil && (m.mes||'') !== mesFil) return false;
+    if (mesFil && (m.fecha||'').slice(0,7) !== mesFil) return false;
     if (tipoFil && m.tipo !== tipoFil) return false;
     if (nroctaFil && (m.nroCta||'') !== nroctaFil) return false;
-    if (search && !( (m.detalle||'').toLowerCase().includes(search) ||
-                     (m.denominacion||'').toLowerCase().includes(search) ||
-                     (m.concepto||'').toLowerCase().includes(search) ||
-                     (m.banco||'').toLowerCase().includes(search) ||
-                     (m.cuenta||'').toLowerCase().includes(search) ||
-                     (m.cuit||'').toLowerCase().includes(search) )) return false;
+    if (search && !(
+      (m.detalle||'').toLowerCase().includes(search) ||
+      (m.descripcion||'').toLowerCase().includes(search) ||
+      (m.denominacion||'').toLowerCase().includes(search) ||
+      (m.concepto||'').toLowerCase().includes(search) ||
+      (m.banco||'').toLowerCase().includes(search) ||
+      (m.cuenta||'').toLowerCase().includes(search) ||
+      (m.cuit||'').toLowerCase().includes(search) ||
+      (m.nroCta||'').toLowerCase().includes(search) ||
+      (m.codigoBanco||'').toLowerCase().includes(search) ||
+      (m.compBco||'').toLowerCase().includes(search) ||
+      (m.suc||'').toLowerCase().includes(search) ||
+      (m.empTag||'').toLowerCase().includes(search) ||
+      (m.cat||'').toLowerCase().includes(search) ||
+      String(m.importe||'').includes(search)
+    )) return false;
     return true;
   });
 
@@ -8005,7 +8063,24 @@ function _updateExtractosFilters(allData) {
   fill('extractos-filter-cuenta',  [...new Set(allData.map(m=>m.cuenta).filter(Boolean))].sort(), 'Todas las cuentas', 'todos');
   fill('exf-filter-cat',           [...new Set(allData.map(m=>m.cat).filter(Boolean))].sort(), 'Todas', '');
   fill('exf-filter-concepto',      [...new Set(allData.map(m=>m.concepto).filter(Boolean))].sort(), 'Todos', '');
-  fill('exf-filter-mes',           [...new Set(allData.map(m=>m.mes).filter(Boolean))].sort(), 'Todos', '');
+  // Mes derivado de fecha (YYYY-MM), mostrado como "Ene 2026", ordenado cronológicamente
+  const mesSet = [...new Set(allData.map(m=>(m.fecha||'').slice(0,7)).filter(v=>v.length===7))].sort();
+  const mesNombres = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const elMes = document.getElementById('exf-filter-mes');
+  if (elMes) {
+    const key = mesSet.join('|');
+    if (elMes.dataset.populated !== key) {
+      const cur = elMes.value;
+      elMes.innerHTML = '<option value="">Todos los meses</option>' +
+        mesSet.map(v => {
+          const [y,m] = v.split('-');
+          const label = (mesNombres[parseInt(m)-1]||m) + ' ' + y;
+          return '<option value="'+v+'">'+label+'</option>';
+        }).join('');
+      elMes.dataset.populated = key;
+      if (mesSet.includes(cur)) elMes.value = cur;
+    }
+  }
   fill('exf-filter-nrocta',        [...new Set(allData.map(m=>m.nroCta).filter(Boolean))].sort(), 'Todos', '');
 }
 
