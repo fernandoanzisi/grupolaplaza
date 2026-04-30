@@ -2924,6 +2924,19 @@ function renderDashboard() {
   <button id="dash-btn-SC" onclick="dashSetView('SC')" style="padding:7px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(58,170,42,0.3);background:var(--bg3);color:var(--text2);cursor:pointer">🟢 Serv. Cipolletti</button>
   <button id="dash-btn-LP" onclick="dashSetView('LP')" style="padding:7px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(212,146,10,0.3);background:var(--bg3);color:var(--text2);cursor:pointer">🟡 La Plaza</button>
 </div>
+<div id="dash-hoy-banner" style="display:none;background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.28);border-radius:12px;padding:10px 16px;margin-bottom:14px">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div id="dash-hoy-pulse" style="width:9px;height:9px;border-radius:50%;background:#22c55e;flex-shrink:0;animation:hoyPulse 1.4s infinite"></div>
+    <div>
+      <div id="dash-hoy-title" style="font-size:12px;color:#86efac;font-weight:700"></div>
+      <div id="dash-hoy-sub" style="font-size:10px;color:rgba(134,239,172,0.5);margin-top:1px"></div>
+    </div>
+    <div id="dash-hoy-chips" style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"></div>
+    <div style="background:rgba(34,197,94,0.12);color:#4ade80;font-size:9px;font-weight:700;padding:3px 9px;border-radius:99px;border:1px solid rgba(34,197,94,0.2);white-space:nowrap">EN CURSO</div>
+  </div>
+</div>
+<style>@keyframes hoyPulse{0%,100%{opacity:1}50%{opacity:0.25}}</style>
+
 <div id="dash-view-grupo">
   <div style="display:grid;grid-template-columns:1.1fr 0.9fr;background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow)">
     <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#4a9fd4,#3aaa2a,#d4920a)"></div>
@@ -2996,6 +3009,49 @@ function renderDashboard() {
 }
 
 window._dashView = 'grupo';
+function _renderHoyBanner(empTag) {
+  // empTag: 'grupo' | 'RS' | 'SC' | 'LP'
+  const banner = document.getElementById('dash-hoy-banner');
+  if (!banner) return;
+  const hoy = appState.hoyData;
+  if (!hoy) { banner.style.display = 'none'; return; }
+
+  // Determinar qué mostrar según la pestaña activa
+  let hasData = false;
+  if (empTag === 'grupo') {
+    const total = Object.values(hoy.byEmp).reduce((s,e)=>s+e.ing,0);
+    hasData = total > 0;
+  } else {
+    hasData = hoy.byEmp[empTag] && hoy.byEmp[empTag].ing > 0;
+  }
+
+  if (!hasData) { banner.style.display = 'none'; return; }
+  banner.style.display = 'block';
+
+  const titleEl = document.getElementById('dash-hoy-title');
+  const subEl   = document.getElementById('dash-hoy-sub');
+  const chipsEl = document.getElementById('dash-hoy-chips');
+  const empColors = {RS:'#4a9fd4', SC:'#3aaa2a', LP:'#d4920a'};
+  const empNames  = {RS:'Rio Salado', SC:'Serv. Cipolletti', LP:'La Plaza'};
+
+  if (titleEl) titleEl.textContent = 'Hoy en curso — ' + hoy.fecha.split('-').reverse().join('/');
+  if (subEl)   subEl.textContent   = 'Datos parciales · último import ' + hoy.importedAt + ' hs · no incluido en las sumas del ' + (appState.lastMinutaDate||'').split('-').reverse().join('/');
+
+  if (chipsEl) {
+    const tags = empTag === 'grupo' ? ['RS','SC','LP'] : [empTag];
+    chipsEl.innerHTML = tags.map(tag => {
+      const d = hoy.byEmp[tag] || {ing:0, egr:0, saldo:0};
+      if (!d.ing && !d.egr) return '';
+      const c = empColors[tag];
+      return '<div style="background:'+c+'11;border:1px solid '+c+'33;border-radius:8px;padding:6px 10px;min-width:120px">' +
+        '<div style="font-size:9px;color:'+c+';font-weight:700;text-transform:uppercase;margin-bottom:3px">'+empNames[tag]+'</div>' +
+        '<div style="font-size:12px;font-weight:700;color:#4ade80">▲ $' + fmtARS(d.ing) + '</div>' +
+        (d.egr > 0 ? '<div style="font-size:11px;color:#f87171">▼ $' + fmtARS(d.egr) + '</div>' : '') +
+      '</div>';
+    }).join('');
+  }
+}
+
 function dashSetView(view) {
   window._dashView = view;
   const colors = {grupo:'var(--accent)',RS:'#4a9fd4',SC:'#3aaa2a',LP:'#d4920a'};
@@ -3117,6 +3173,7 @@ function dashSetView(view) {
     if(g('dash-bar-footer')) g('dash-bar-footer').innerHTML=[['Efectivo total',rsEf+scEf,'var(--green)'],['FIMA total',totalFIMA,'var(--purple)'],['Cartera total',totalCart,'var(--accent)']].map(([l,v,c])=>'<div style="text-align:center"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:2px">'+l+'</div><div style="font-family:var(--mono);font-size:12px;color:'+c+';font-weight:700">$ '+fmtARS(v)+'</div></div>').join('');
     try{const ctx=g('chart-dash-cartera');if(ctx&&totalCart>0){if(window._chDC)window._chDC.destroy();window._chDC=new Chart(ctx.getContext('2d'),{type:'doughnut',data:{labels:['Rio Salado','Serv. Cipolletti'],datasets:[{data:[rsCart,scCart],backgroundColor:['#4a9fd4','#3aaa2a'],borderWidth:0}]},options:{responsive:false,cutout:'68%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' $ '+fmtARS(c.raw)}}}}});}}catch(e){}
     if(g('dash-cartera-legend')) g('dash-cartera-legend').innerHTML=[{c:'#4a9fd4',n:'Rio Salado',v:rsCart},{c:'#3aaa2a',n:'Serv. Cip.',v:scCart}].map(x=>'<div style="display:flex;align-items:center;gap:8px;font-size:11px;margin-bottom:10px"><div style="width:9px;height:9px;border-radius:50%;background:'+x.c+';flex-shrink:0"></div><div><div style="font-weight:600;color:'+x.c+'">'+x.n+'</div><div style="font-family:var(--mono);font-size:11px;color:var(--text2)">$ '+fmtARS(x.v)+'</div></div></div>').join('')+'<div style="padding-top:8px;border-top:1px solid var(--border);text-align:center"><div style="font-size:9px;color:var(--text3)">TOTAL</div><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);margin-top:2px">$ '+fmtARS(totalCart)+'</div></div>';
+    _renderHoyBanner('grupo');
     return;
   }
   if (vG) vG.style.display='none';
@@ -3319,6 +3376,7 @@ function dashSetView(view) {
   // Render chart default
   setTimeout(()=>dashEmpBtn(document.querySelector('[data-emp="'+view+'"][data-k="ef"]')),50);
 
+  _renderHoyBanner(view);
 } // end dashSetView
 
 const DASH_EMP_METRICS = {
@@ -4449,7 +4507,10 @@ function parseMinutaDiaria(wb) {
     .filter(x => x.dt !== null)
     .sort((a, b) => a.dt - b.dt);
 
-  if (dateSheets.length === 0) {
+  // Detectar hoja HOY (tolerante a espacios y mayúsculas/minúsculas)
+  const hoySheetName = wb.SheetNames.find(sn => sn.trim().toUpperCase() === 'HOY') || null;
+
+  if (dateSheets.length === 0 && !hoySheetName) {
     log.push('<span style="color:var(--red)">❌ No se encontraron hojas con fechas</span>');
     return { log, totalCount, dias: 0 };
   }
@@ -5013,6 +5074,34 @@ function parseMinutaDiaria(wb) {
     const prov = (e.proveedores||[]).length;
     log.push('<span class="log-ok">🏢 ' + e.name + ': ' + e.transactions.length + ' tx · ' + inv + ' inv · ' + chq + ' cheques · ' + est + ' estaciones · ' + prov + ' proveedores</span>');
   });
+
+  // ── Parsear hoja HOY (datos parciales del día en curso, NUNCA se mezcla con histórico) ──
+  appState.hoyData = null;
+  if (hoySheetName) {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const hoyDt = new Date(todayStr + 'T12:00:00');
+    // Contar tx antes de parsear para aislar solo las de hoy
+    const txCountBefore = {};
+    appState.empresas.forEach(e => { txCountBefore[e.name] = (e.transactions||[]).length; });
+    const hoyCount = parseDateSheet(hoySheetName, hoyDt);
+    // Extraer y aislar transacciones de HOY (removerlas del histórico, guardar separado)
+    appState.hoyData = {
+      fecha: todayStr,
+      importedAt: new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}),
+      byEmp: {}
+    };
+    appState.empresas.forEach(emp => {
+      const tag = emp.name.includes('Rio') ? 'RS' : emp.name.includes('Cipolletti') ? 'SC' : 'LP';
+      const txHoy = (emp.transactions||[]).filter(t => t.date === todayStr);
+      const ing = txHoy.filter(t => t.type==='ingreso').reduce((s,t)=>s+(t.amount||0),0);
+      const egr = txHoy.filter(t => t.type==='gasto').reduce((s,t)=>s+(t.amount||0),0);
+      appState.hoyData.byEmp[tag] = { ing, egr, saldo: ing-egr, txCount: txHoy.length };
+      // ★ CRÍTICO: remover del histórico — HOY no contamina ninguna suma
+      emp.transactions = emp.transactions.filter(t => t.date !== todayStr);
+    });
+    const totalHoyIng = Object.values(appState.hoyData.byEmp).reduce((s,e)=>s+e.ing,0);
+    log.push('<span style="color:#4ade80">📊 HOY en curso (' + todayStr + '): ' + hoyCount + ' registros · Ing grupo: $' + fmtARS(totalHoyIng) + '</span>');
+  }
 
   return { log, totalCount, dias: dateSheets.length };
 }
@@ -9533,6 +9622,7 @@ async function loadFromSupabase() {
         try { saved = JSON.parse(saved); } catch(e) { console.warn('parse error', e); }
       }
       if (saved && saved.empresas) {
+        appState.hoyData = null; // HOY es siempre del import del dia, no se persiste
         appState.empresas = saved.empresas;
         appState.empresas.forEach(e => {
           if (!e.transactions)  e.transactions  = [];
