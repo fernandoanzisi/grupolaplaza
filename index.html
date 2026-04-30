@@ -13034,6 +13034,13 @@ function petroExcel() {
   showToast('📥 Exportado — '+rows.length.toLocaleString()+' registros');
 }
 
+
+function toggleDashAmounts() {
+  const hidden = document.body.classList.toggle('dash-amounts-hidden');
+  const btn = document.getElementById('dash-eye-btn');
+  if (btn) btn.textContent = hidden ? '🙈' : '👁';
+  localStorage.setItem('dashAmountsHidden', hidden ? '1' : '0');
+}
 // Init eye toggle state
 document.addEventListener('DOMContentLoaded', function() {
   if (localStorage.getItem('dashAmountsHidden') === '1') {
