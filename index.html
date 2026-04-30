@@ -12409,8 +12409,27 @@ function conciliarAhora() {
   const emp     = document.getElementById('conc-emp')?.value || '';
   const banco   = document.getElementById('conc-banco')?.value || '';
 
-  // Build period label for display
-  const periodoLabel = periodo || 'todo el período cargado';
+  // OBLIGAR a seleccionar período
+  if (!periodo) {
+    const pSel = document.getElementById('conc-periodo');
+    if (pSel) pSel.style.border = '2px solid var(--red)';
+    showToast('⚠️ Seleccioná un período (mes/año) antes de conciliar');
+    // Highlight el selector
+    setTimeout(() => {
+      const el = document.getElementById('conc-periodo');
+      if (el) { el.style.border = ''; el.focus(); }
+    }, 2000);
+    return;
+  }
+
+  // Armar label legible del período
+  const [py, pm] = periodo.split('-');
+  const meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const periodoLabel = meses[parseInt(pm)] + ' ' + py;
+
+  // Actualizar título del botón
+  const btnConc = document.querySelector('[onclick="conciliarAhora()"]');
+  if (btnConc) btnConc.textContent = '⚡ Conciliando ' + periodoLabel + '...';
 
   const extFilt = extractos.filter(m => {
     if (emp && m.empTag !== emp) return false;
@@ -12565,7 +12584,10 @@ function conciliarAhora() {
 
   _concResultados = resultados;
   renderConciliaciones();
-  showToast('✅ Conciliación completada — '+resultados.length+' registros');
+  // Restore button text
+  const btnConcEnd = document.querySelector('[onclick="conciliarAhora()"]');
+  if (btnConcEnd) btnConcEnd.textContent = '⚡ Conciliar — ' + periodoLabel;
+  showToast('✅ Conciliación ' + periodoLabel + ' completada — '+resultados.length+' registros');
 }
 
 function renderConciliaciones() {
