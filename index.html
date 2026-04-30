@@ -41,6 +41,27 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+/* Ocultar importes en dashboard */
+body.dash-amounts-hidden #dash-total-grupo,
+body.dash-amounts-hidden #dash-usd-total,
+body.dash-amounts-hidden #dash-cartera-total,
+body.dash-amounts-hidden #dash-fima-total,
+body.dash-amounts-hidden #dash-emp-chips,
+body.dash-amounts-hidden #dash-emp-total,
+body.dash-amounts-hidden .stat-card .value,
+body.dash-amounts-hidden #dash-usd-tc,
+body.dash-amounts-hidden #dash-usd-detail,
+body.dash-amounts-hidden #dash-cartera-detail,
+body.dash-amounts-hidden #dash-fima-detail {
+  filter: blur(8px);
+  user-select: none;
+  transition: filter 0.2s;
+}
+body.dash-amounts-hidden #dash-total-grupo:hover,
+body.dash-amounts-hidden #dash-usd-total:hover {
+  filter: blur(0);
+}
+
 /* ══ PORTADA GRUPO LA PLAZA ══ */
 #login-screen {
   min-height: 100vh;
@@ -621,6 +642,7 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('fci',this)"             data-page="fci">📊 FCI</button>
           <button class="nav-dd-item" onclick="navGo('preop',this)"           data-page="preop">📋 Planilla Maestra Prov.</button>
           <button class="nav-dd-item" onclick="navGo('conciliaciones',this)" data-page="conciliaciones">🔗 Conciliaciones Bancarias</button>
+          <button class="nav-dd-item" onclick="navGo('petroleras',this)"      data-page="petroleras">⛽ Pago a Petroleras</button>
           <hr style="border:none;border-top:1px solid var(--border);margin:4px 0">
           <button class="nav-dd-item" onclick="window.open('https://bancogalicia.com.ar','_blank')" style="color:#e30613">🏦 Galicia</button>
           <button class="nav-dd-item" onclick="window.open('https://interbanking.com.ar','_blank')" style="color:#4a9fd4">🔗 Interbanking</button>
@@ -1878,6 +1900,111 @@ let _supaUser=null,_supaRol=null;
   </div>
 </div>
 
+<div class="page" id="page-petroleras">
+  <div class="section-header mb" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <div>
+      <h2>⛽ Pago a Petroleras</h2>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px" id="petro-subtitle">Cargá el Excel para ver los datos</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-sm" onclick="petroExcel()" style="background:var(--green)22;color:var(--green);border-color:var(--green)">📥 Excel</button>
+    </div>
+  </div>
+
+  <!-- Tabs por hoja -->
+  <div style="display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap" id="petro-tabs"></div>
+
+  <!-- KPIs -->
+  <div id="petro-kpis" class="grid-4 mb"></div>
+
+  <!-- Alerta vencidos -->
+  <div id="petro-alerta" style="display:none;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--red);display:flex;gap:8px"></div>
+
+  <!-- Filtros fila 1 -->
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:8px">
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Tipo</div>
+      <select id="petro-tipo" onchange="renderPetrolerasPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Clase Doc</div>
+      <select id="petro-clase" onchange="renderPetrolerasPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todas</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">APIES / SGC</div>
+      <select id="petro-apies" onchange="renderPetrolerasPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Moneda</div>
+      <select id="petro-moneda" onchange="renderPetrolerasPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todas</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Deb / Cred</div>
+      <select id="petro-debcred" onchange="renderPetrolerasPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <option value="">Todos</option>
+        <option value="deb">deb — Pago (+)</option>
+        <option value="cred">cred — Deuda (-)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Filtros fila 2 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 2fr;gap:8px;margin-bottom:14px">
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">F. Doc. Desde</div>
+      <input type="date" id="petro-fdoc-desde" onchange="renderPetrolerasPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">F. Doc. Hasta</div>
+      <input type="date" id="petro-fdoc-hasta" onchange="renderPetrolerasPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">F. Venc. Desde</div>
+      <input type="date" id="petro-fvenc-desde" onchange="renderPetrolerasPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">F. Venc. Hasta</div>
+      <input type="date" id="petro-fvenc-hasta" onchange="renderPetrolerasPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Buscar Nro. Legal / SGC</div>
+      <input type="text" id="petro-search" placeholder="Ej: X009031948314, APIES..." oninput="renderPetrolerasPage()"
+        style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span id="petro-count" style="font-size:12px;color:var(--text3)">0 registros</span>
+    </div>
+    <div class="table-wrap" style="max-height:58vh;overflow-y:auto;overflow-x:auto">
+      <table style="font-size:11px;min-width:1400px">
+        <thead style="position:sticky;top:0;background:var(--card);z-index:1"><tr>
+          <th>Tipo</th><th>Nro. Legal</th><th>Clase Doc</th><th>Div.</th>
+          <th>Texto/SGC</th><th>T. Pos.</th><th>F. Doc.</th><th>F. Venc.</th>
+          <th>Moneda</th><th style="text-align:right">Pend. ARS</th>
+          <th style="text-align:right">Pend. USD</th><th style="text-align:right">Original ARS</th>
+          <th>Empresa</th><th>Deb/Cred</th><th style="text-align:right">Días</th><th>Fecha Pago</th>
+        </tr></thead>
+        <tbody id="petro-tbody"></tbody>
+        <tfoot><tr>
+          <td colspan="9" style="padding:8px 10px;font-size:11px;color:var(--text3)" id="petro-footer-count">0 registros</td>
+          <td style="padding:8px 10px;font-family:var(--mono);font-weight:700;text-align:right;color:var(--accent)" id="petro-footer-total" colspan="7">Saldo neto: $ 0</td>
+        </tr></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- CASH FLOW RS/SC -->
 <div class="page" id="page-cashflow">
   <!-- HEADER -->
@@ -2931,7 +3058,11 @@ function renderDashboard() {
   <div style="display:grid;grid-template-columns:1.1fr 0.9fr;background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow)">
     <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#4a9fd4,#3aaa2a,#d4920a)"></div>
     <div style="padding:22px 24px;border-right:1px solid var(--border)" id="dash-left-col">
-      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:7px">Total ingresos del grupo — día</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text3);text-transform:uppercase">Total ingresos del grupo — día</div>
+        <button onclick="toggleDashAmounts()" id="dash-eye-btn" title="Mostrar/ocultar importes"
+          style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:2px 6px;border-radius:6px;line-height:1">👁</button>
+      </div>
       <div id="dash-total-grupo" style="font-family:var(--mono);font-size:clamp(22px,3vw,36px);font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">$ —</div>
       <div style="font-size:10px;color:var(--text3);margin-top:5px;margin-bottom:18px">ARS (C71 Minuta, o B50+D50+F50) · USD al costado</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px" id="dash-emp-chips"></div>
@@ -4396,7 +4527,17 @@ function importChequesRechazados(wb) {
 
 function isMinutaDiaria(wb) {
   const dateSheets = wb.SheetNames.filter(s => /^\d{1,2}[-\/]\d{2}[-\/]\d{2,4}$/.test(s.trim()));
-  return dateSheets.length >= 3;
+  if (dateSheets.length < 3) return false;
+  // Excluir Límite de Crédito (muchas hojas con fecha pero contenido de riesgo/divisiones)
+  try {
+    const ws0 = wb.Sheets[wb.SheetNames[0]];
+    if (ws0) {
+      const rows = XLSX.utils.sheet_to_json(ws0, {header:1, defval:null, sheetRows:3});
+      const flat = (rows[0]||[]).concat(rows[1]||[]).map(c=>String(c||'').toLowerCase());
+      if (flat.some(c=>c.includes('riesgo')||c.includes('divisiones')||c.includes('eess')||c.includes('dist. diesel'))) return false;
+    }
+  } catch(e){}
+  return true;
 }
 
 function parseMinutaDiaria(wb) {
@@ -5143,6 +5284,16 @@ function handleFile(input) {
         return;
       }
 
+      // 3b. Pago a Petroleras
+      if (typeof isPagoPetroleras === 'function' && isPagoPetroleras(wb)) {
+        const result = parsePagoPetroleras(wb);
+        const logDiv = document.getElementById('import-log');
+        if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
+        showToast('✅ Pago a Petroleras — ' + result.total.toLocaleString() + ' registros');
+        if (typeof renderPetrolerasPage === 'function') renderPetrolerasPage();
+        if (typeof navGo === 'function') navGo('petroleras', null);
+        return;
+      }
       // 3. Extracto Bancario (antes de Clientes — ambos pueden tener Hoja1)
       if (typeof isExtractoBancario === 'function' && isExtractoBancario(wb)) {
         const result = parseExtractoBancario(wb);
@@ -7348,6 +7499,11 @@ function navGo(page, triggerEl) {
     'extractos':    ()=>renderExtractos(),
     'preop':        ()=>renderPreOp(),
     'conciliaciones':()=>renderConciliaciones(),
+    'limite_credito':()=>renderLimiteCredito(),
+    'nlp_comisiones':()=>renderNlpComisiones(),
+    'nlp':          ()=>renderNlpComisiones(),
+    'fci':          ()=>renderFci(),
+    'petroleras':   ()=>renderPetrolerasPage(),
     'cashflow':     ()=>renderCashFlow(),
     'obras':        ()=>renderObras(),
     'riesgo':       ()=>renderRiesgo(),
@@ -11583,6 +11739,7 @@ function renderNlpComisiones() {
 }
 
 function isNlpComisiones(wb) {
+  if (isMinutaDiaria(wb)) return false;
   return wb.SheetNames.some(s => s.toLowerCase().includes('nlp') || s.toLowerCase().includes('serviclub') || s.toLowerCase().includes('franquicia'));
 }
 
@@ -11765,6 +11922,7 @@ function renderFci() {
 }
 
 function isFci(wb) {
+  if (isMinutaDiaria(wb)) return false;
   return wb.SheetNames.some(s => {
     const sl = s.toLowerCase();
     return sl.includes('fima') || sl.includes('fci') || sl.includes('fondo') || sl.includes('resumen rendimiento') || sl.includes('posiciones');
@@ -11856,6 +12014,9 @@ function preOpSetTab(tab, btn) {
       thead.innerHTML = '<tr><th>N° Pre-OP</th><th>Fecha</th><th>Proveedor</th><th style="text-align:right">Importe</th><th>UUNN</th><th>Fecha Pago</th><th>Forma Pago</th><th>Estado</th><th>Bco. Pagador</th><th>Tipo</th></tr>';
     }
   }
+  // Reset UUNN filter on tab change so it repopulates correctly
+  const uunnEl = document.getElementById('preop-uunn');
+  if (uunnEl) uunnEl.value = '';
   renderPreOp();
 }
 
@@ -11972,11 +12133,15 @@ function renderPreOp() {
   if (fcount) fcount.textContent = filtered.length.toLocaleString() + ' registros';
   if (ftotal) ftotal.textContent = 'Total: $ ' + fmtARS(total);
 
-  // Populate UUNN select
+  // Populate UUNN select — filtered by current tab
   const uunnSel = document.getElementById('preop-uunn');
-  if (uunnSel && uunnSel.options.length <= 1) {
-    const uunns = [...new Set(data.map(r=>r.uunn).filter(Boolean))].sort();
-    uunns.forEach(u => { const o=document.createElement('option'); o.value=u; o.textContent=u; uunnSel.appendChild(o); });
+  if (uunnSel) {
+    const tabData = data.filter(r => r.hoja === tab);
+    const uunns = [...new Set(tabData.map(r=>r.uunn).filter(Boolean))].sort();
+    const curUunn = uunnSel.value;
+    uunnSel.innerHTML = '<option value="">Todas</option>' +
+      uunns.map(u=>`<option value="${u}">${u}</option>`).join('');
+    if (uunns.includes(curUunn)) uunnSel.value = curUunn;
   }
 }
 
@@ -12412,6 +12577,298 @@ function conciliarExportExcel() {
   showToast('📥 Exportado');
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// PAGO A PETROLERAS
+// ═══════════════════════════════════════════════════════════════
+
+let _petroTab = 'RS EESS';
+
+function isPagoPetroleras(wb) {
+  if (isMinutaDiaria(wb)) return false;
+  const sheets = wb.SheetNames.map(s => s.toLowerCase());
+  return sheets.some(s => s.includes('petrolera') || s.includes('rs eess') || s.includes('sc eess') || s.includes('gic rs') || s.includes('gic sc'));
+}
+
+function parsePagoPetroleras(wb) {
+  const log = []; let total = 0;
+  appState.petroData = {};
+
+  // Hojas válidas de datos
+  const VALID_SHEETS = wb.SheetNames.filter(s => {
+    const sl = s.toLowerCase().trim();
+    return sl === 'rs eess' || sl === 'sc eess' || sl === 'historial 2025' ||
+           sl === 'gic rs' || sl === 'gic sc' || sl.includes('rs eess') || sl.includes('sc eess');
+  });
+
+  function parseFecha(v) {
+    if (!v) return '';
+    if (typeof v === 'number') {
+      try { const d=XLSX.SSF.parse_date_code(v); if(d) return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0'); } catch(e){}
+    }
+    const s = String(v).trim().replace(' 00:00:00','');
+    if (s.match(/^\d{4}-\d{2}-\d{2}/)) return s.slice(0,10);
+    const m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
+    if (m) { let [,d,mo,y]=m; if(y.length===2)y='20'+y; return y+'-'+mo.padStart(2,'0')+'-'+d.padStart(2,'0'); }
+    return s.slice(0,10);
+  }
+
+  VALID_SHEETS.forEach(sn => {
+    try {
+      const ws = wb.Sheets[sn];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
+      if (rows.length < 2) return;
+      // Detect headers
+      const hdr = (rows[0]||[]).map(h => String(h||'').toLowerCase().trim());
+      const ci = name => hdr.findIndex(h => h.includes(name.toLowerCase()));
+      const iTipo    = ci('tipo') >= 0 ? ci('tipo') : 0;
+      const iNroLeg  = ci('nro. legal') >= 0 ? ci('nro. legal') : ci('nro.legal') >= 0 ? ci('nro.legal') : 1;
+      const iClase   = ci('clase') >= 0 ? ci('clase') : 2;
+      const iDiv     = ci('div') >= 0 ? ci('div') : 3;
+      const iSGC     = ci('texto') >= 0 ? ci('texto') : ci('sgc') >= 0 ? ci('sgc') : 4;
+      const iTPos    = ci('t. pos') >= 0 ? ci('t. pos') : ci('t.pos') >= 0 ? ci('t.pos') : 5;
+      const iFDoc    = ci('f. doc') >= 0 ? ci('f. doc') : ci('f.doc') >= 0 ? ci('f.doc') : 6;
+      const iFVenc   = ci('f. venc') >= 0 ? ci('f. venc') : ci('f.venc') >= 0 ? ci('f.venc') : 7;
+      const iMoneda  = ci('moneda') >= 0 ? ci('moneda') : 8;
+      const iPendARS = ci('pendiente ars') >= 0 ? ci('pendiente ars') : 9;
+      const iPendUSD = ci('pendiente usd') >= 0 ? ci('pendiente usd') : 10;
+      const iOrigARS = ci('original ars') >= 0 ? ci('original ars') : 11;
+      const iEmp     = ci('empresa') >= 0 ? ci('empresa') : 13;
+      const iDebCred = ci('debcred') >= 0 ? ci('debcred') : ci('deb') >= 0 ? ci('deb') : 14;
+      const iDias    = ci('dias') >= 0 ? ci('dias') : ci('día') >= 0 ? ci('día') : 15;
+      const iFPago   = ci('fecha pago') >= 0 ? ci('fecha pago') : 16;
+
+      const sheetData = [];
+      rows.slice(1).forEach(r => {
+        if (!r || !r[iTipo]) return;
+        const origARS = parseFloat(String(r[iOrigARS]||'0').replace(/[^0-9.,-]/g,'').replace(',','.')) || 0;
+        if (origARS === 0) return;
+        sheetData.push({
+          tipo:     String(r[iTipo]||'').trim(),
+          nroLegal: String(r[iNroLeg]||'').trim(),
+          claseDoc: String(r[iClase]||'').trim(),
+          div:      String(r[iDiv]||'').trim(),
+          sgc:      String(r[iSGC]||'').trim(),
+          tPos:     String(r[iTPos]||'').trim(),
+          fDoc:     parseFecha(r[iFDoc]),
+          fVenc:    parseFecha(r[iFVenc]),
+          moneda:   String(r[iMoneda]||'ARS').trim(),
+          pendARS:  parseFloat(String(r[iPendARS]||'0').replace(/[^0-9.,-]/g,'').replace(',','.')) || 0,
+          pendUSD:  parseFloat(String(r[iPendUSD]||'0').replace(/[^0-9.,-]/g,'').replace(',','.')) || 0,
+          origARS,
+          empresa:  String(r[iEmp]||'').trim(),
+          debcred:  origARS >= 0 ? 'deb' : 'cred',
+          dias:     String(r[iDias]||'').trim(),
+          fechaPago:parseFecha(r[iFPago]),
+        });
+      });
+      appState.petroData[sn] = sheetData;
+      total += sheetData.length;
+      log.push(`<span style="color:var(--green)">✅ ${sn}: ${sheetData.length.toLocaleString()} registros</span>`);
+    } catch(e) {
+      log.push(`<span style="color:var(--red)">❌ Error en hoja ${sn}: ${e.message}</span>`);
+    }
+  });
+
+  log.push(`<span style="color:var(--accent)">📋 Total: ${total.toLocaleString()} registros en ${VALID_SHEETS.length} hojas</span>`);
+  // Set default tab to first valid sheet
+  if (VALID_SHEETS.length) _petroTab = VALID_SHEETS[0];
+  saveState();
+  return { log, total };
+}
+
+function petroSetTab(sn, btn) {
+  _petroTab = sn;
+  document.querySelectorAll('.petro-tab-btn').forEach(b => {
+    b.style.background='var(--bg3)'; b.style.borderColor='var(--border)'; b.style.color='var(--text3)';
+  });
+  if (btn) { btn.style.background='var(--accent)33'; btn.style.borderColor='var(--accent)'; btn.style.color='var(--accent)'; }
+  // Clear filters
+  ['petro-tipo','petro-clase','petro-apies','petro-moneda','petro-debcred'].forEach(id=>{
+    const el=document.getElementById(id); if(el)el.value='';
+  });
+  renderPetrolerasPage();
+}
+
+function renderPetrolerasPage() {
+  const petroData = appState.petroData || {};
+  const sheets = Object.keys(petroData);
+
+  // Build tabs
+  const tabsEl = document.getElementById('petro-tabs');
+  if (tabsEl && sheets.length) {
+    if (tabsEl.children.length !== sheets.length) {
+      const COLORS = {'RS EESS':'#4a9fd4','SC EESS':'#3aaa2a','Historial 2025':'#fbbf24','GIC RS':'#a78bfa','GIC SC':'#2dd4bf'};
+      tabsEl.innerHTML = sheets.map(sn => {
+        const col = COLORS[sn] || 'var(--accent)';
+        const active = sn === _petroTab;
+        return `<button class="btn-sm petro-tab-btn" onclick="petroSetTab('${sn.replace(/'/g,"\'")}',this)"
+          style="background:${active?col+'33':'var(--bg3)'};border-color:${active?col:'var(--border)'};color:${active?col:'var(--text3)'}">${sn}</button>`;
+      }).join('');
+    }
+  }
+
+  const data = petroData[_petroTab] || [];
+  const sub = document.getElementById('petro-subtitle');
+  if (sub) sub.textContent = _petroTab + ' · ' + data.length.toLocaleString() + ' registros totales';
+
+  // Filters
+  const tipoFil    = document.getElementById('petro-tipo')?.value || '';
+  const claseFil   = document.getElementById('petro-clase')?.value || '';
+  const apiesFil   = document.getElementById('petro-apies')?.value || '';
+  const monedaFil  = document.getElementById('petro-moneda')?.value || '';
+  const debcredFil = document.getElementById('petro-debcred')?.value || '';
+  const fdocDesde  = document.getElementById('petro-fdoc-desde')?.value || '';
+  const fdocHasta  = document.getElementById('petro-fdoc-hasta')?.value || '';
+  const fvencDesde = document.getElementById('petro-fvenc-desde')?.value || '';
+  const fvencHasta = document.getElementById('petro-fvenc-hasta')?.value || '';
+  const search     = (document.getElementById('petro-search')?.value || '').toLowerCase();
+
+  let filtered = data
+    .filter(r => !tipoFil    || r.tipo === tipoFil)
+    .filter(r => !claseFil   || r.claseDoc === claseFil)
+    .filter(r => !apiesFil   || r.sgc === apiesFil || r.tPos === apiesFil)
+    .filter(r => !monedaFil  || r.moneda === monedaFil)
+    .filter(r => !debcredFil || r.debcred === debcredFil)
+    .filter(r => !fdocDesde  || r.fDoc >= fdocDesde)
+    .filter(r => !fdocHasta  || r.fDoc <= fdocHasta)
+    .filter(r => !fvencDesde || r.fVenc >= fvencDesde)
+    .filter(r => !fvencHasta || r.fVenc <= fvencHasta)
+    .filter(r => !search     || r.nroLegal.toLowerCase().includes(search) ||
+                                r.sgc.toLowerCase().includes(search) ||
+                                r.tPos.toLowerCase().includes(search) ||
+                                r.tipo.toLowerCase().includes(search));
+
+  // Populate dynamic filters
+  function fillSel(id, vals) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const key = vals.join('|');
+    if (el.dataset.pop === key) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="">Todos</option>' + vals.map(v=>`<option value="${v}">${v}</option>`).join('');
+    el.dataset.pop = key;
+    if (vals.includes(cur)) el.value = cur;
+  }
+  fillSel('petro-tipo',   [...new Set(data.map(r=>r.tipo).filter(Boolean))].sort());
+  fillSel('petro-clase',  [...new Set(data.map(r=>r.claseDoc).filter(Boolean))].sort());
+  fillSel('petro-apies',  [...new Set(data.map(r=>r.sgc).filter(Boolean))].sort());
+  fillSel('petro-moneda', [...new Set(data.map(r=>r.moneda).filter(Boolean))].sort());
+
+  // KPIs
+  const hoy = new Date().toISOString().slice(0,10);
+  const pagos  = filtered.filter(r=>r.origARS>0).reduce((s,r)=>s+r.origARS,0);
+  const deuda  = filtered.filter(r=>r.origARS<0).reduce((s,r)=>s+r.origARS,0);
+  const saldo  = pagos + deuda;
+  const vencidos = filtered.filter(r=>r.fVenc && r.fVenc < hoy && r.origARS < 0).length;
+  const pendARS = filtered.reduce((s,r)=>s+(r.pendARS||0),0);
+  const kpis = document.getElementById('petro-kpis');
+  if (kpis) kpis.innerHTML = [
+    {l:'Total Pagos',      v:'$ '+fmtARS(pagos),     c:'var(--green)',  s:'Rendiciones (+)'},
+    {l:'Total Deuda',      v:'-$ '+fmtARS(Math.abs(deuda)), c:'var(--red)', s:'Recibos (-)'},
+    {l:'Saldo Neto',       v:'$ '+fmtARS(saldo),     c:'var(--accent)', s:'Pagos - Deuda'},
+    {l:'Vencidos s/pagar', v:vencidos.toLocaleString(), c:vencidos>0?'var(--red)':'var(--green)', s:'F.Venc < hoy'},
+    {l:'Pendiente ARS',    v:'$ '+fmtARS(Math.abs(pendARS)), c:'var(--yellow)', s:'TC Emisión'},
+  ].map(k=>`<div class="card" style="padding:12px 14px">
+    <div style="font-size:9px;font-weight:700;color:${k.c};text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${k.l}</div>
+    <div style="font-family:var(--mono);font-size:15px;font-weight:800;color:${k.c}">${k.v}</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:2px">${k.s}</div>
+  </div>`).join('');
+
+  // Alert vencidos
+  const alertEl = document.getElementById('petro-alerta');
+  if (alertEl) {
+    if (vencidos > 0) {
+      alertEl.style.display = 'flex';
+      alertEl.innerHTML = '<span>🚨</span><div><strong>'+vencidos+' documentos con vencimiento vencido</strong> — Revisá los recibos pendientes de cobro.</div>';
+    } else {
+      alertEl.style.display = 'none';
+    }
+  }
+
+  // Count
+  const countEl = document.getElementById('petro-count');
+  if (countEl) countEl.textContent = filtered.length.toLocaleString()+' registros';
+
+  // Table
+  const tbody = document.getElementById('petro-tbody');
+  if (!tbody) return;
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;color:var(--text3);padding:40px">Importá el Excel de Pago a Petroleras</td></tr>';
+    return;
+  }
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;color:var(--text3);padding:32px">Sin resultados para los filtros seleccionados</td></tr>';
+    return;
+  }
+
+  const MAX = 500;
+  const visible = filtered.slice(0, MAX);
+  tbody.innerHTML = visible.map(r => {
+    const isPos = r.origARS >= 0;
+    const impCol = isPos ? 'var(--green)' : 'var(--red)';
+    const isVencido = r.fVenc && r.fVenc < hoy && !isPos;
+    const tipoTag = r.tipo.toLowerCase().includes('rendicion') || r.tipo.toLowerCase().includes('rendición')
+      ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#4a9fd422;color:#4a9fd4">${r.tipo}</span>`
+      : `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fbbf2422;color:#fbbf24">${r.tipo}</span>`;
+    return `<tr style="border-bottom:1px solid var(--border)${isVencido?';background:rgba(248,113,113,0.05)':''}">
+      <td style="padding:5px 8px">${tipoTag}</td>
+      <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--text3)">${r.nroLegal||'—'}</td>
+      <td style="padding:5px 8px"><span style="font-size:10px;padding:2px 5px;border-radius:4px;background:var(--bg3);color:var(--text2)">${r.claseDoc||'—'}</span></td>
+      <td style="padding:5px 8px;font-size:10px;color:var(--text3)">${r.div||'—'}</td>
+      <td style="padding:5px 8px;font-size:11px;font-weight:500">${r.sgc||'—'}</td>
+      <td style="padding:5px 8px;font-size:10px;color:var(--text3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.tPos||'—'}</td>
+      <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;white-space:nowrap">${r.fDoc||'—'}</td>
+      <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;white-space:nowrap;color:${isVencido?'var(--red)':'inherit'}">${r.fVenc||'—'}${isVencido?' ⚠️':''}</td>
+      <td style="padding:5px 8px;font-size:10px;color:var(--text3)">${r.moneda||'—'}</td>
+      <td style="padding:5px 8px;font-family:var(--mono);font-size:11px;text-align:right;color:${impCol};font-weight:700;white-space:nowrap">${r.pendARS?fmtARS(r.pendARS):'—'}</td>
+      <td style="padding:5px 8px;font-family:var(--mono);font-size:11px;text-align:right;color:var(--yellow);white-space:nowrap">${r.pendUSD?fmtARS(r.pendUSD):'—'}</td>
+      <td style="padding:5px 8px;font-family:var(--mono);font-size:12px;text-align:right;font-weight:700;color:${impCol};white-space:nowrap">${isPos?'':'-'}$ ${fmtARS(Math.abs(r.origARS))}</td>
+      <td style="padding:5px 8px;font-size:10px;color:var(--text3)">${r.empresa||'—'}</td>
+      <td style="padding:5px 8px"><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${isPos?'#4ade8022':'#f8717122'};color:${isPos?'#4ade80':'#f87171'}">${r.debcred}</span></td>
+      <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;text-align:right;color:${isVencido?'var(--red)':'var(--text3)'}">${r.dias||'—'}</td>
+      <td style="padding:5px 8px;font-family:var(--mono);font-size:10px;white-space:nowrap;color:var(--text3)">${r.fechaPago||'—'}</td>
+    </tr>`;
+  }).join('');
+  if (filtered.length > MAX) {
+    tbody.innerHTML += `<tr><td colspan="16" style="text-align:center;padding:10px;font-size:11px;color:var(--text3)">Mostrando ${MAX.toLocaleString()} de ${filtered.length.toLocaleString()} · usá los filtros para acotar</td></tr>`;
+  }
+
+  // Footer
+  const fcount = document.getElementById('petro-footer-count');
+  const ftotal = document.getElementById('petro-footer-total');
+  if (fcount) fcount.textContent = filtered.length.toLocaleString()+' registros';
+  if (ftotal) {
+    ftotal.textContent = 'Saldo neto: '+(saldo>=0?'':'- ')+'$ '+fmtARS(Math.abs(saldo));
+    ftotal.style.color = saldo>=0?'var(--green)':'var(--red)';
+  }
+}
+
+function petroExcel() {
+  const petroData = appState.petroData || {};
+  const data = petroData[_petroTab] || [];
+  if (!data.length) { showToast('⚠️ Sin datos para exportar'); return; }
+  const rows = data.map(r=>({
+    Tipo:r.tipo, 'Nro. Legal':r.nroLegal, 'Clase Doc':r.claseDoc, 'Div.':r.div,
+    'Texto/SGC':r.sgc, 'T. Pos.':r.tPos, 'F. Doc.':r.fDoc, 'F. Venc.':r.fVenc,
+    Moneda:r.moneda, 'Pendiente ARS':r.pendARS, 'Pendiente USD':r.pendUSD,
+    'Original ARS':r.origARS, Empresa:r.empresa, 'Deb/Cred':r.debcred,
+    Dias:r.dias, 'Fecha Pago':r.fechaPago
+  }));
+  const wb2 = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2, XLSX.utils.json_to_sheet(rows), _petroTab.slice(0,31));
+  XLSX.writeFile(wb2, 'PagoPetroleras_'+_petroTab.replace(/\s/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  showToast('📥 Exportado — '+rows.length.toLocaleString()+' registros');
+}
+
+// Init eye toggle state
+document.addEventListener('DOMContentLoaded', function() {
+  if (localStorage.getItem('dashAmountsHidden') === '1') {
+    document.body.classList.add('dash-amounts-hidden');
+    const btn = document.getElementById('dash-eye-btn');
+    if (btn) btn.textContent = '🙈';
+  }
+});
 </script>
 </body>
 </html>
