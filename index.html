@@ -2005,6 +2005,120 @@ let _supaUser=null,_supaRol=null;
   </div>
 </div>
 
+<div class="page" id="page-limite_credito">
+  <div class="section-header mb" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <h2>💳 Límite de Crédito</h2>
+    <div style="display:flex;gap:8px">
+      <button class="btn-sm" onclick="renderLimiteCredito()" style="background:var(--accent)33;color:var(--accent);border-color:var(--accent)">🔄 Actualizar</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px" id="lc-kpis"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:8px;margin-bottom:14px">
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">División</div>
+      <select id="lc-division" onchange="renderLimiteCredito()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"><option value="">Todas</option></select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Desde</div>
+      <input type="date" id="lc-desde" onchange="renderLimiteCredito()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Hasta</div>
+      <input type="date" id="lc-hasta" onchange="renderLimiteCredito()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Buscar</div>
+      <input type="text" id="lc-search" placeholder="División, fecha..." oninput="renderLimiteCredito()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+    </div>
+  </div>
+  <div class="card">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px" id="lc-count">0 registros</div>
+    <div class="table-wrap" style="max-height:62vh;overflow-y:auto;overflow-x:auto">
+      <table style="font-size:12px;min-width:700px">
+        <thead style="position:sticky;top:0;background:var(--card);z-index:1" id="lc-thead">
+          <tr><th>Fecha</th><th>División</th><th style="text-align:right">Riesgo Otorgado</th><th style="text-align:right">Capital Trabajo</th><th style="text-align:right">OP Abiertas</th><th style="text-align:right">Total Consumo</th><th style="text-align:right">Saldo Disponible</th></tr>
+        </thead>
+        <tbody id="lc-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-nlp_comisiones">
+  <div class="section-header mb" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <h2>💰 NLP — Comisiones</h2>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:8px;margin-bottom:14px">
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Año</div>
+      <select id="nlp-anio" onchange="renderNlpComisiones()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"><option value="">Todos</option></select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Estación</div>
+      <select id="nlp-estacion" onchange="renderNlpComisiones()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"><option value="">Todas</option></select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Tipo</div>
+      <select id="nlp-tipo" onchange="renderNlpComisiones()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"><option value="">Todos</option></select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Buscar</div>
+      <input type="text" id="nlp-search" placeholder="Estación, tipo..." oninput="renderNlpComisiones()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+    </div>
+  </div>
+  <div class="card">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px" id="nlp-count">0 registros</div>
+    <div class="table-wrap" style="max-height:62vh;overflow-y:auto">
+      <table style="font-size:12px">
+        <thead style="position:sticky;top:0;background:var(--card);z-index:1">
+          <tr><th>Año</th><th>Mes</th><th>Estación</th><th>Tipo</th><th style="text-align:right">Importe</th></tr>
+        </thead>
+        <tbody id="nlp-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-fci">
+  <div class="section-header mb" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <h2>📈 FCI — Fondos de Inversión</h2>
+  </div>
+  <div class="grid-4 mb" id="fci-kpis"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Empresa</div>
+      <select id="fci-empresa" onchange="renderFci()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"><option value="">Todas</option></select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Fondo</div>
+      <select id="fci-fondo" onchange="renderFci()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"><option value="">Todos</option></select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Tipo</div>
+      <select id="fci-tipo" onchange="renderFci()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none"><option value="">Todos</option></select>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Desde</div>
+      <input type="date" id="fci-desde" onchange="renderFci()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Hasta</div>
+      <input type="date" id="fci-hasta" onchange="renderFci()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
+    </div>
+  </div>
+  <div class="card">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px" id="fci-count">0 movimientos</div>
+    <div class="table-wrap" style="max-height:60vh;overflow-y:auto">
+      <table style="font-size:12px">
+        <thead style="position:sticky;top:0;background:var(--card);z-index:1">
+          <tr><th>Fecha Op.</th><th>Fecha Liq.</th><th>Empresa</th><th>Fondo</th><th>Tipo</th><th style="text-align:right">Cuotapartes</th><th style="text-align:right">Importe</th><th>Estado</th></tr>
+        </thead>
+        <tbody id="fci-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- CASH FLOW RS/SC -->
 <div class="page" id="page-cashflow">
   <!-- HEADER -->
@@ -11726,16 +11840,19 @@ function renderNlpComisiones() {
   </tr>`;
 
   // Populate selects
-  const anioSel = document.getElementById('nlp-anio');
-  if (anioSel && anioSel.options.length <= 1) {
-    const anios = [...new Set(data.map(r=>r.anio))].sort().reverse();
-    anios.forEach(a => { const o=document.createElement('option'); o.value=a; o.textContent=a; anioSel.appendChild(o); });
+  function fillNlpSel(id, vals) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const key = vals.join('|');
+    if (el.dataset.pop === key) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="">Todos</option>' + vals.map(v=>`<option value="${v}">${v}</option>`).join('');
+    el.dataset.pop = key;
+    if (vals.includes(cur)) el.value = cur;
   }
-  const estSel = document.getElementById('nlp-estacion');
-  if (estSel && estSel.options.length <= 1) {
-    const ests = [...new Set(data.map(r=>r.estacion))].sort();
-    ests.forEach(e => { const o=document.createElement('option'); o.value=e; o.textContent=e; estSel.appendChild(o); });
-  }
+  fillNlpSel('nlp-anio',     [...new Set(data.map(r=>r.anio).filter(Boolean))].sort().reverse());
+  fillNlpSel('nlp-estacion', [...new Set(data.map(r=>r.estacion).filter(Boolean))].sort());
+  fillNlpSel('nlp-tipo',     [...new Set(data.map(r=>r.tipo).filter(Boolean))].sort());
 }
 
 function isNlpComisiones(wb) {
@@ -12292,17 +12409,31 @@ function conciliarAhora() {
   const emp     = document.getElementById('conc-emp')?.value || '';
   const banco   = document.getElementById('conc-banco')?.value || '';
 
+  // Build period label for display
+  const periodoLabel = periodo || 'todo el período cargado';
+
   const extFilt = extractos.filter(m => {
     if (emp && m.empTag !== emp) return false;
     if (banco && m.banco !== banco) return false;
+    // Si hay período seleccionado, filtrar por mes/año exacto
     if (periodo && !(m.fecha||'').startsWith(periodo)) return false;
     return true;
   });
 
   const planFilt = planilla.filter(r => {
-    if (periodo && !(r.fecha||'').startsWith(periodo)) return false;
+    // Para planilla usamos fechaPago si existe, sino fecha
+    const fechaRef = r.fechaPago || r.fecha || '';
+    if (periodo && !fechaRef.startsWith(periodo)) return false;
     return true;
   });
+
+  if (extFilt.length === 0 && planFilt.length === 0) {
+    showToast('⚠️ Sin datos para el período ' + periodoLabel + '. Verificá que los extractos y la planilla estén cargados.');
+    renderConciliaciones();
+    return;
+  }
+  if (extFilt.length === 0) showToast('⚠️ Sin movimientos bancarios para ' + periodoLabel);
+  if (planFilt.length === 0) showToast('⚠️ Sin pagos en planilla para ' + periodoLabel + ' — revisá fechaPago');
 
   // Populate periodo select
   const periodos = [...new Set([
@@ -12613,7 +12744,18 @@ function parsePagoPetroleras(wb) {
     return s.slice(0,10);
   }
 
+  // Store workbook reference for lazy loading
+  appState._petroWb = wb;
+  appState._petroSheets = VALID_SHEETS;
+
+  // Only parse first sheet immediately to avoid OOM
+  const INITIAL_SHEET = VALID_SHEETS[0];
   VALID_SHEETS.forEach(sn => {
+    if (sn !== INITIAL_SHEET) {
+      appState.petroData[sn] = null; // placeholder - will lazy load
+      log.push(`<span style="color:var(--yellow)">⏳ ${sn}: carga al seleccionar</span>`);
+      return;
+    }
     try {
       const ws = wb.Sheets[sn];
       const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
@@ -12683,10 +12825,41 @@ function petroSetTab(sn, btn) {
     b.style.background='var(--bg3)'; b.style.borderColor='var(--border)'; b.style.color='var(--text3)';
   });
   if (btn) { btn.style.background='var(--accent)33'; btn.style.borderColor='var(--accent)'; btn.style.color='var(--accent)'; }
-  // Clear filters
   ['petro-tipo','petro-clase','petro-apies','petro-moneda','petro-debcred'].forEach(id=>{
     const el=document.getElementById(id); if(el)el.value='';
   });
+  // Lazy load sheet if not yet parsed
+  const petroData = appState.petroData || {};
+  if (petroData[sn] === null && appState._petroWb) {
+    try {
+      showToast('⏳ Cargando hoja '+sn+'...');
+      const wb2 = appState._petroWb;
+      const ws = wb2.Sheets[sn];
+      if (ws) {
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
+        // reuse parse logic
+        const hdr = (rows[0]||[]).map(h => String(h||'').toLowerCase().trim());
+        const ci = name => hdr.findIndex(h => h.includes(name.toLowerCase()));
+        const iTipo=ci('tipo')>=0?ci('tipo'):0, iNroLeg=ci('nro. legal')>=0?ci('nro. legal'):1;
+        const iClase=ci('clase')>=0?ci('clase'):2, iDiv=ci('div')>=0?ci('div'):3;
+        const iSGC=ci('texto')>=0?ci('texto'):4, iTPos=ci('t. pos')>=0?ci('t. pos'):5;
+        const iFDoc=ci('f. doc')>=0?ci('f. doc'):6, iFVenc=ci('f. venc')>=0?ci('f. venc'):7;
+        const iMoneda=ci('moneda')>=0?ci('moneda'):8, iPendARS=ci('pendiente ars')>=0?ci('pendiente ars'):9;
+        const iPendUSD=ci('pendiente usd')>=0?ci('pendiente usd'):10, iOrigARS=ci('original ars')>=0?ci('original ars'):11;
+        const iDias=ci('dias')>=0?ci('dias'):15, iFPago=ci('fecha pago')>=0?ci('fecha pago'):16;
+        function pf(v){if(!v)return'';if(typeof v==='number'){try{const d=XLSX.SSF.parse_date_code(v);if(d)return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');}catch(e){}}const s=String(v).trim().replace(' 00:00:00','');if(s.match(/^\d{4}-\d{2}-\d{2}/))return s.slice(0,10);return s.slice(0,10);}
+        const sheetData = [];
+        rows.slice(1).forEach(r=>{
+          if(!r||!r[iTipo])return;
+          const origARS=parseFloat(String(r[iOrigARS]||'0').replace(/[^0-9.,-]/g,'').replace(',','.'))||0;
+          if(origARS===0)return;
+          sheetData.push({tipo:String(r[iTipo]||'').trim(),nroLegal:String(r[iNroLeg]||'').trim(),claseDoc:String(r[iClase]||'').trim(),div:String(r[iDiv]||'').trim(),sgc:String(r[iSGC]||'').trim(),tPos:String(r[iTPos]||'').trim(),fDoc:pf(r[iFDoc]),fVenc:pf(r[iFVenc]),moneda:String(r[iMoneda]||'ARS').trim(),pendARS:parseFloat(String(r[iPendARS]||'0').replace(/[^0-9.,-]/g,''))||0,pendUSD:parseFloat(String(r[iPendUSD]||'0').replace(/[^0-9.,-]/g,''))||0,origARS,empresa:String(r[13]||'').trim(),debcred:origARS>=0?'deb':'cred',dias:String(r[iDias]||'').trim(),fechaPago:pf(r[iFPago])});
+        });
+        appState.petroData[sn] = sheetData;
+        showToast('✅ '+sn+' cargada — '+sheetData.length.toLocaleString()+' registros');
+      }
+    } catch(e) { showToast('❌ Error cargando '+sn+': '+e.message); }
+  }
   renderPetrolerasPage();
 }
 
