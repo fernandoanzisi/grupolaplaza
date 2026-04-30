@@ -12571,6 +12571,36 @@ function conciliarAhora() {
 function renderConciliaciones() {
   const res = _concResultados;
 
+  // Poblar selector de período con datos disponibles (extracto + planilla)
+  const pSel = document.getElementById('conc-periodo');
+  if (pSel) {
+    const extractos = (appState.extractoBancario || []);
+    const planilla  = (appState.preopData || []);
+    const periodos = [...new Set([
+      ...extractos.map(m=>(m.fecha||'').slice(0,7)),
+      ...planilla.map(r=>((r.fechaPago||r.fecha)||'').slice(0,7))
+    ].filter(p=>p && p.length===7))].sort().reverse();
+    const cur = pSel.value;
+    const key = periodos.join('|');
+    if (pSel.dataset.pop !== key) {
+      pSel.innerHTML = '<option value="">Todos</option>' +
+        periodos.map(p => {
+          const [y,m] = p.split('-');
+          const meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+          return `<option value="${p}">${meses[parseInt(m)]} ${y}</option>`;
+        }).join('');
+      pSel.dataset.pop = key;
+      if (periodos.includes(cur)) pSel.value = cur;
+    }
+    // Poblar banco select
+    const bSel = document.getElementById('conc-banco');
+    if (bSel && bSel.options.length <= 1) {
+      const bancos = [...new Set(extractos.map(m=>m.banco).filter(Boolean))].sort();
+      bSel.innerHTML = '<option value="">Todos</option>' +
+        bancos.map(b=>`<option value="${b}">${b}</option>`).join('');
+    }
+  }
+
   // KPIs
   const kpis = document.getElementById('conc-kpis');
   if (kpis) {
