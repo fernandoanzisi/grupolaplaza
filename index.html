@@ -430,7 +430,6 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('obras',this)"         data-page="obras">🏗️ Obras</button>
           <button class="nav-dd-item" onclick="navGo('riesgo',this)"        data-page="riesgo">🎯 Riesgo Crediticio</button>
           <button class="nav-dd-item" onclick="navGo('mercados',this)"      data-page="mercados">📈 Mercados & Tasas</button>
-          <button class="nav-dd-item" onclick="navGo('presupuesto',this)"   data-page="presupuesto">🎯 Presupuesto</button>
           <button class="nav-dd-item" onclick="navGo('metas',this)"          data-page="metas">🏆 Metas</button>
           <button class="nav-dd-item" onclick="navGo('recordatorios',this)"  data-page="recordatorios">🔔 Recordatorios</button>
           <button class="nav-dd-item" onclick="navGo('limite_credito',this)"  data-page="limite_credito">💳 Límite de Crédito</button>
@@ -439,6 +438,7 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('preop',this)"           data-page="preop">📋 Planilla Maestra Prov.</button>
           <button class="nav-dd-item" onclick="navGo('conciliaciones',this)" data-page="conciliaciones">🔗 Conciliaciones Bancarias</button>
           <button class="nav-dd-item" onclick="navGo('petroleras',this)"      data-page="petroleras">⛽ Pago a Petroleras</button>
+          <button class="nav-dd-item" onclick="navGo('pasivos',this)"          data-page="pasivos">📊 Pasivos Financieros</button>
           <hr style="border:none;border-top:1px solid var(--border);margin:4px 0">
           <button class="nav-dd-item" onclick="window.open('https://bancogalicia.com.ar','_blank')" style="color:#e30613">🏦 Galicia</button>
           <button class="nav-dd-item" onclick="window.open('https://interbanking.com.ar','_blank')" style="color:#4a9fd4">🔗 Interbanking</button>
@@ -2277,6 +2277,130 @@ let _supaUser=null,_supaRol=null;
     <div id="sim-tabla-cuotas" style="max-height:300px;overflow-y:auto;font-size:11px"></div>
   </div>
 </div>
+<!-- PASIVOS FINANCIEROS -->
+<div class="page" id="page-pasivos">
+
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+    <div>
+      <h2 style="font-size:20px;font-weight:800;margin:0;display:flex;align-items:center;gap:10px">
+        <span>📊</span> Pasivos Financieros
+      </h2>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px">Préstamos · Leasing · Tarjetas · Descubiertos — control total de deuda financiera</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button onclick="pasivosSetEmp('grupo',this)" class="pasivos-emp-btn pasivos-emp-active" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--accent);background:var(--accent)22;color:var(--accent);font-family:var(--font)">🏛️ Grupo</button>
+      <button onclick="pasivosSetEmp('RS',this)" class="pasivos-emp-btn" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:var(--bg3);color:var(--text2);font-family:var(--font)">🔵 RS</button>
+      <button onclick="pasivosSetEmp('SC',this)" class="pasivos-emp-btn" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:var(--bg3);color:var(--text2);font-family:var(--font)">🟢 SC</button>
+      <button onclick="pasivosSetEmp('LP',this)" class="pasivos-emp-btn" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:var(--bg3);color:var(--text2);font-family:var(--font)">🟡 LP</button>
+      <button onclick="abrirModalPasivo()" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);cursor:pointer;font-family:var(--font)">＋ Nuevo</button>
+      <button onclick="pasivosExportExcel()" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);cursor:pointer;font-family:var(--font)">📥 Excel</button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div id="pasivos-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px"></div>
+
+  <!-- TABS -->
+  <div style="display:flex;gap:4px;margin-bottom:14px;background:var(--bg2);padding:4px;border-radius:10px;width:fit-content">
+    <button onclick="pasivosSetTab('todos',this)" class="pasivos-tab" style="padding:7px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text);background:var(--bg3);border:none;font-family:var(--font)">📋 Todos</button>
+    <button onclick="pasivosSetTab('prestamo',this)" class="pasivos-tab" style="padding:7px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);background:none;border:none;font-family:var(--font)">🏦 Préstamos</button>
+    <button onclick="pasivosSetTab('leasing',this)" class="pasivos-tab" style="padding:7px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);background:none;border:none;font-family:var(--font)">🚗 Leasing</button>
+    <button onclick="pasivosSetTab('tarjeta',this)" class="pasivos-tab" style="padding:7px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);background:none;border:none;font-family:var(--font)">💳 Tarjetas</button>
+    <button onclick="pasivosSetTab('descubierto',this)" class="pasivos-tab" style="padding:7px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);background:none;border:none;font-family:var(--font)">📉 Descubiertos</button>
+  </div>
+
+  <!-- FILTROS -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;display:grid;grid-template-columns:repeat(6,1fr);gap:10px;align-items:end">
+    <div>
+      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Banco / Entidad</div>
+      <select id="pasivos-f-banco" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:11px;color:var(--text);outline:none">
+        <option value="">Todos</option>
+        <option>BNA</option><option>Galicia</option><option>BBVA</option><option>Macro</option><option>Santander</option><option>HSBC</option><option>Toyota FS</option><option>Otro</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Estado</div>
+      <select id="pasivos-f-estado" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:11px;color:var(--text);outline:none">
+        <option value="">Todos</option><option>Vigente</option><option>Cancelado</option><option>Vencido</option><option>En mora</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Empresa</div>
+      <select id="pasivos-f-emp" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:11px;color:var(--text);outline:none">
+        <option value="">Todas</option><option value="RS">Rio Salado SRL</option><option value="SC">Serv. Cipolletti SRL</option><option value="LP">La Plaza SA</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Vence desde</div>
+      <input type="date" id="pasivos-f-desde" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:11px;color:var(--text);outline:none">
+    </div>
+    <div>
+      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Vence hasta</div>
+      <input type="date" id="pasivos-f-hasta" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:11px;color:var(--text);outline:none">
+    </div>
+    <div style="display:flex;gap:6px">
+      <button onclick="pasivosRender()" style="flex:1;padding:7px;border-radius:7px;border:1px solid var(--accent);background:var(--accent)22;color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font)">🔍 Filtrar</button>
+      <button onclick="pasivosClearFiltros()" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:var(--font)">✕</button>
+    </div>
+  </div>
+
+  <!-- ALERTAS -->
+  <div id="pasivos-alertas" style="margin-bottom:14px"></div>
+
+  <!-- TABLA -->
+  <div class="card mb" id="pasivos-tabla-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px" id="pasivos-tabla-title">📋 Operaciones</div>
+      <input id="pasivos-search" oninput="pasivosRender()" placeholder="🔍 Buscar..." style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;font-size:11px;color:var(--text);outline:none;width:180px">
+    </div>
+    <div class="table-wrap">
+      <table style="font-size:11px;width:100%">
+        <thead>
+          <tr>
+            <th>Tipo</th><th>Entidad</th><th>Empresa</th><th>Descripción</th>
+            <th style="text-align:right">Capital orig.</th>
+            <th style="text-align:right">Saldo deuda</th>
+            <th style="text-align:right">Cuota / Pago</th>
+            <th>TNA</th><th>Próx. venc.</th><th>Progreso</th><th>Estado</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="pasivos-tbody">
+          <tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text3)">
+            <div style="font-size:32px;margin-bottom:8px">📊</div>
+            <div style="font-weight:700;margin-bottom:4px">Sin pasivos registrados</div>
+            <div style="font-size:12px">Hacé clic en <strong>＋ Nuevo</strong> para agregar</div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="pasivos-totales" style="display:flex;justify-content:flex-end;gap:24px;padding:10px 12px;background:var(--bg2);border-radius:0 0 8px 8px;margin-top:2px;font-size:11px;color:var(--text3)"></div>
+  </div>
+
+  <!-- BOTTOM GRID -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="card" id="pasivos-vencimientos-card">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">📅 Próximos vencimientos</div>
+      <div id="pasivos-vencimientos"></div>
+    </div>
+    <div class="card" id="pasivos-empresas-card">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">🏢 Deuda por empresa</div>
+      <div id="pasivos-por-empresa"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL PASIVO -->
+<div id="modal-pasivo" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:100%;max-width:700px;margin:auto">
+    <div style="background:var(--bg3);padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;border-radius:16px 16px 0 0;position:sticky;top:0;z-index:1">
+      <div style="font-size:16px;font-weight:800;color:var(--text)" id="modal-pasivo-title">＋ Nuevo Pasivo Financiero</div>
+      <button onclick="cerrarModalPasivo()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div id="modal-pasivo-body" style="padding:22px"></div>
+  </div>
+</div>
+
 </div><!-- /main -->
 </div><!-- /app -->
 
@@ -5188,6 +5312,7 @@ function handleFile(input) {
         showToast('✅ Minuta Diaria importada — ' + result.totalCount + ' registros de ' + result.dias + ' días');
         // Auto-guardar todo en Supabase
         _saveEmpresasSupabase();
+        cacheGuardar('minuta', { empresas: appState.empresas, lastMinutaDate: appState.lastMinutaDate });
         showToast('☁️ Minuta sincronizada — datos disponibles en todos los dispositivos');
         if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof navGo === 'function') navGo('dashboard', null);
@@ -5230,6 +5355,7 @@ function handleFile(input) {
         const logDiv = document.getElementById('import-log');
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
         showToast('✅ NLP Comisiones importado');
+        cacheGuardar('nlp', appState.nlpData);
         navGo('nlp_comisiones', null);
         return;
       }
@@ -5240,6 +5366,7 @@ function handleFile(input) {
         const logDiv = document.getElementById('import-log');
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
         showToast('✅ FCI importado');
+        cacheGuardar('fci', appState.fciData);
         navGo('fci', null);
         return;
       }
@@ -5250,6 +5377,7 @@ function handleFile(input) {
         const logDiv = document.getElementById('import-log');
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
         showToast('✅ Pre-OP importado');
+        cacheGuardar('preop', appState.preopData);
         navGo('preop', null);
         return;
       }
@@ -5260,6 +5388,7 @@ function handleFile(input) {
         const logDiv = document.getElementById('import-log');
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
         showToast('✅ Pago a Petroleras — ' + result.total.toLocaleString() + ' registros');
+        cacheGuardar('petroleras', appState.petrolerasData);
         if (typeof renderPetrolerasPage === 'function') renderPetrolerasPage();
         if (typeof navGo === 'function') navGo('petroleras', null);
         return;
@@ -7474,6 +7603,7 @@ function navGo(page, triggerEl) {
     'nlp':          ()=>renderNlpComisiones(),
     'fci':          ()=>renderFci(),
     'petroleras':   ()=>renderPetrolerasPage(),
+    'pasivos':      ()=>pasivosRender(),
     'cashflow':     ()=>renderCashFlow(),
     'obras':        ()=>renderObras(),
     'riesgo':       ()=>renderRiesgo(),
@@ -9614,6 +9744,8 @@ async function restaurarDesdeSupabase() {
 
 async function loadFromSupabase() {
   try {
+    // Cargar módulos desde app_cache
+    await cacheCargarTodo();
     // App state (empresas, transacciones, etc.)
     const { data: stateRows } = await supa.from('app_state').select('valor').eq('clave','main').limit(1);
     const stateRow = stateRows && stateRows.length ? stateRows[0] : null;
@@ -9723,6 +9855,89 @@ async function _saveEmpresasSupabase() {
     else console.warn('_saveEmpresasSupabase:', error.message);
   } catch(e) { console.error('_saveEmpresasSupabase:', e); }
 }
+
+// ── APP_CACHE — persistencia por clave para módulos importados ─────────
+async function cacheGuardar(clave, datos) {
+  if (!_supaUser) return;
+  try {
+    const str = JSON.stringify(datos);
+    const { error } = await supa.from('app_cache').upsert({
+      user_id: _supaUser.id,
+      clave,
+      datos: str,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,clave' });
+    if (error) console.warn('cacheGuardar ['+clave+']:', error.message);
+  } catch(e) { console.warn('cacheGuardar error:', e); }
+}
+
+async function cacheCargar(clave) {
+  if (!_supaUser) return null;
+  try {
+    const { data, error } = await supa.from('app_cache')
+      .select('datos')
+      .eq('user_id', _supaUser.id)
+      .eq('clave', clave)
+      .limit(1);
+    if (error || !data || !data.length) return null;
+    return JSON.parse(data[0].datos);
+  } catch(e) { console.warn('cacheCargar error:', e); return null; }
+}
+
+async function cacheCargarTodo() {
+  if (!_supaUser) return;
+  try {
+    const { data, error } = await supa.from('app_cache')
+      .select('clave,datos')
+      .eq('user_id', _supaUser.id);
+    if (error || !data) return;
+    for (const row of data) {
+      try {
+        const val = JSON.parse(row.datos);
+        switch(row.clave) {
+          case 'minuta':
+            if (val && val.empresas) {
+              appState.hoyData = null;
+              val.empresas.forEach(e => {
+                if (!e.transactions) e.transactions = [];
+                if (!e.accounts)     e.accounts     = [];
+                if (!e.investments)  e.investments  = [];
+              });
+              appState.empresas       = val.empresas;
+              appState.lastMinutaDate = val.lastMinutaDate || appState.lastMinutaDate;
+            }
+            break;
+          case 'obras':
+            if (Array.isArray(val)) appState.obras = val;
+            break;
+          case 'preop':
+            if (Array.isArray(val)) appState.preopData = val;
+            break;
+          case 'petroleras':
+            if (Array.isArray(val)) appState.petrolerasData = val;
+            break;
+          case 'nlp':
+            if (val) appState.nlpData = val;
+            break;
+          case 'fci':
+            if (val) appState.fciData = val;
+            break;
+          case 'riesgo':
+            if (val) appState.riesgoData = val;
+            break;
+          case 'cfFilas':
+            if (Array.isArray(val)) appState.cfFilas = val;
+            break;
+          case 'pasivos':
+            if (Array.isArray(val)) appState.pasivos = val;
+            break;
+        }
+      } catch(e) { console.warn('cacheCargarTodo parse ['+row.clave+']:', e); }
+    }
+    console.log('✅ Cache cargado desde Supabase:', data.map(r=>r.clave).join(', '));
+  } catch(e) { console.warn('cacheCargarTodo error:', e); }
+}
+// ── FIN APP_CACHE ────────────────────────────────────────────────────────
 
 async function syncSupabase() {
   if (_supaRol !== 'admin') { showToast('⚠️ Solo admins pueden sincronizar'); return; }
@@ -10289,6 +10504,7 @@ function obRefreshPresupuestos() {
 }
 
 function obField(label, id, type, val, extraStyle) {
+  return '<div style="'+(extraStyle||'')+'">' +
     '<div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">'+label+'</div>' +
     '<input type="'+type+'" id="'+id+'" value="'+val+'" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">' +
   '</div>';
@@ -10422,6 +10638,7 @@ function guardarObra() {
   cerrarModalObra();
   renderObras();
   showToast('✅ Obra guardada');
+  cacheGuardar('obras', appState.obras);
 }
 
 function cerrarModalObra() {
@@ -13174,6 +13391,348 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btn) btn.textContent = '🙈';
   }
 });
+
+// ==================== PASIVOS FINANCIEROS ====================
+var _pasivosTab = 'todos';
+var _pasivosEmp = 'grupo';
+var _pasivoEditId = null;
+
+const PAS_TIPOS = ['prestamo','leasing','tarjeta','descubierto'];
+const PAS_TIPO_LABEL = {prestamo:'🏦 Préstamo',leasing:'🚗 Leasing',tarjeta:'💳 Tarjeta',descubierto:'📉 Descubierto'};
+const PAS_TIPO_COLOR = {prestamo:'#4a9fd4',leasing:'#fbbf24',tarjeta:'#a78bfa',descubierto:'#f87171'};
+const PAS_BANCOS = ['BNA','Galicia','BBVA','Macro','Santander','HSBC','ICBC','Patagonia','Supervielle','Toyota FS','Otro'];
+const PAS_TARJETA_TIPOS = ['PYME BNA','Visa','Mastercard','American Express','Otra'];
+const PAS_ESTADOS = ['Vigente','Cancelado','Vencido','En mora'];
+const PAS_RAZON = {RS:'Rio Salado SRL',SC:'Serv. Cipolletti SRL',LP:'La Plaza SA'};
+
+function pasivosSetTab(tab, btn) {
+  _pasivosTab = tab;
+  document.querySelectorAll('.pasivos-tab').forEach(b => {
+    b.style.background = 'none'; b.style.color = 'var(--text3)';
+  });
+  if (btn) { btn.style.background = 'var(--bg3)'; btn.style.color = 'var(--text)'; }
+  pasivosRender();
+}
+
+function pasivosSetEmp(emp, btn) {
+  _pasivosEmp = emp;
+  document.querySelectorAll('.pasivos-emp-btn').forEach(b => {
+    b.style.borderColor = 'rgba(255,255,255,0.12)';
+    b.style.background = 'var(--bg3)';
+    b.style.color = 'var(--text2)';
+  });
+  if (btn) {
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.background = 'var(--accent)22';
+    btn.style.color = 'var(--accent)';
+  }
+  pasivosRender();
+}
+
+function pasivosClearFiltros() {
+  ['pasivos-f-banco','pasivos-f-estado','pasivos-f-emp','pasivos-f-desde','pasivos-f-hasta','pasivos-search']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  pasivosRender();
+}
+
+function pasivosGetFiltered() {
+  if (!appState.pasivos) appState.pasivos = [];
+  const banco  = (document.getElementById('pasivos-f-banco')?.value||'').toLowerCase();
+  const estado = (document.getElementById('pasivos-f-estado')?.value||'').toLowerCase();
+  const emp    = document.getElementById('pasivos-f-emp')?.value||'';
+  const desde  = document.getElementById('pasivos-f-desde')?.value||'';
+  const hasta  = document.getElementById('pasivos-f-hasta')?.value||'';
+  const search = (document.getElementById('pasivos-search')?.value||'').toLowerCase();
+  return appState.pasivos.filter(p => {
+    if (_pasivosEmp !== 'grupo' && p.empresa !== _pasivosEmp) return false;
+    if (_pasivosTab !== 'todos' && p.tipo !== _pasivosTab) return false;
+    if (banco  && !(p.banco||'').toLowerCase().includes(banco)) return false;
+    if (estado && (p.estado||'').toLowerCase() !== estado) return false;
+    if (emp    && p.empresa !== emp) return false;
+    if (desde  && p.proxVenc && p.proxVenc < desde) return false;
+    if (hasta  && p.proxVenc && p.proxVenc > hasta) return false;
+    if (search && !(
+      (p.descripcion||'').toLowerCase().includes(search) ||
+      (p.banco||'').toLowerCase().includes(search) ||
+      (p.cuit||'').toLowerCase().includes(search) ||
+      (p.bien||'').toLowerCase().includes(search)
+    )) return false;
+    return true;
+  });
+}
+
+function pasivosRender() {
+  if (!appState.pasivos) appState.pasivos = [];
+  const all = appState.pasivos.filter(p => _pasivosEmp === 'grupo' || p.empresa === _pasivosEmp);
+  const filtered = pasivosGetFiltered();
+
+  // KPIs
+  const deudaTotal   = all.filter(p=>p.estado==='Vigente'||p.estado==='En mora').reduce((s,p)=>s+(p.saldo||0),0);
+  const venceMes     = (() => {
+    const hoy = new Date(), fin = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0);
+    const finStr = fin.toISOString().slice(0,10);
+    const hoyStr = hoy.toISOString().slice(0,10);
+    return all.filter(p=>p.proxVenc&&p.proxVenc>=hoyStr&&p.proxVenc<=finStr).reduce((s,p)=>s+(p.cuota||0),0);
+  })();
+  const intereses    = all.filter(p=>p.tna>0).reduce((s,p)=>s+(p.saldo||0)*(p.tna/100),0);
+  const tnaProm      = all.filter(p=>p.tna>0).length ? (all.filter(p=>p.tna>0).reduce((s,p)=>s+p.tna,0)/all.filter(p=>p.tna>0).length) : 0;
+  const cuotasPend   = all.filter(p=>p.estado==='Vigente').reduce((s,p)=>s+(p.cuotasPend||0),0);
+  const cancelados   = all.filter(p=>p.estado==='Cancelado').length;
+
+  const kEl = document.getElementById('pasivos-kpis');
+  if (kEl) kEl.innerHTML = [
+    ['📊 Deuda total','$ '+fmtARS(deudaTotal),'var(--red)',all.filter(p=>p.estado==='Vigente'||p.estado==='En mora').length+' operaciones vigentes'],
+    ['📅 Vence este mes','$ '+fmtARS(venceMes),'var(--yellow)',new Date().toLocaleString('es-AR',{month:'long',year:'numeric'})],
+    ['💸 Intereses anuales est.','$ '+fmtARS(intereses),'#a78bfa','TNA prom. '+tnaProm.toFixed(0)+'%'],
+    ['🔢 Cuotas pendientes',cuotasPend.toString(),'var(--accent)','Próx: '+(all.filter(p=>p.proxVenc&&(p.estado==='Vigente'||p.estado==='En mora')).sort((a,b)=>a.proxVenc.localeCompare(b.proxVenc))[0]?.proxVenc||'—')],
+    ['✅ Cancelados',cancelados+' operac.','var(--green)','Este año'],
+  ].map(([l,v,c,s])=>
+    '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;border-left:3px solid '+c+'">' +
+      '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">'+l+'</div>' +
+      '<div style="font-family:var(--mono);font-size:clamp(13px,1.4vw,17px);font-weight:900;color:'+c+'">'+v+'</div>' +
+      '<div style="font-size:10px;color:var(--text3);margin-top:3px">'+s+'</div>' +
+    '</div>'
+  ).join('');
+
+  // Alertas
+  const hoyStr = new Date().toISOString().slice(0,10);
+  const en7 = new Date(); en7.setDate(en7.getDate()+7);
+  const en7Str = en7.toISOString().slice(0,10);
+  const en30 = new Date(); en30.setDate(en30.getDate()+30);
+  const en30Str = en30.toISOString().slice(0,10);
+  const urgentes = all.filter(p=>p.proxVenc&&p.proxVenc>=hoyStr&&p.proxVenc<=en7Str&&(p.estado==='Vigente'||p.estado==='En mora'));
+  const proximos = all.filter(p=>p.proxVenc&&p.proxVenc>en7Str&&p.proxVenc<=en30Str&&(p.estado==='Vigente'||p.estado==='En mora'));
+  const mora     = all.filter(p=>p.estado==='En mora');
+  const alEl = document.getElementById('pasivos-alertas');
+  if (alEl) {
+    let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">';
+    if (urgentes.length) html += '<div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px"><span style="font-size:22px">🚨</span><div><div style="font-size:12px;font-weight:700;color:var(--red)">'+urgentes.length+' vencimiento'+(urgentes.length>1?'s':'')+' en 7 días</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+urgentes.map(p=>p.descripcion||p.banco).join(' · ')+'</div></div></div>';
+    if (proximos.length) html += '<div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px"><span style="font-size:22px">⏰</span><div><div style="font-size:12px;font-weight:700;color:var(--yellow)">'+proximos.length+' vencimiento'+(proximos.length>1?'s':'')+' en 30 días</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+proximos.map(p=>p.descripcion||p.banco).join(' · ')+'</div></div></div>';
+    if (mora.length) html += '<div style="background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px"><span style="font-size:22px">⛔</span><div><div style="font-size:12px;font-weight:700;color:var(--red)">'+mora.length+' operación'+(mora.length>1?'es':'')+' en mora</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+mora.map(p=>p.descripcion||p.banco).join(' · ')+'</div></div></div>';
+    html += '</div>';
+    alEl.innerHTML = (urgentes.length||proximos.length||mora.length) ? html : '';
+  }
+
+  // Tabla
+  const tbody = document.getElementById('pasivos-tbody');
+  const titleEl = document.getElementById('pasivos-tabla-title');
+  if (titleEl) titleEl.textContent = '📋 Operaciones ('+filtered.length+')';
+  if (tbody) {
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados</td></tr>';
+    } else {
+      const sorted = filtered.slice().sort((a,b)=>(a.proxVenc||'').localeCompare(b.proxVenc||''));
+      tbody.innerHTML = sorted.map(p => {
+        const col   = PAS_TIPO_COLOR[p.tipo]||'var(--accent)';
+        const ec    = p.empresa==='RS'?'#4a9fd4':p.empresa==='SC'?'#4ade80':'#fbbf24';
+        const pct   = p.capitalOrig>0 ? Math.min(100, ((p.capitalOrig-(p.saldo||0))/p.capitalOrig*100)) : 0;
+        const diasVenc = p.proxVenc ? Math.ceil((new Date(p.proxVenc)-new Date())/86400000) : null;
+        const vencColor = diasVenc!==null ? (diasVenc<=7?'var(--red)':diasVenc<=30?'var(--yellow)':'var(--text2)') : 'var(--text3)';
+        const estadoColor = p.estado==='Vigente'?'var(--green)':p.estado==='Cancelado'?'var(--text3)':p.estado==='En mora'?'var(--red)':'var(--yellow)';
+        return '<tr>' +
+          '<td><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:'+col+'22;color:'+col+'">'+( PAS_TIPO_LABEL[p.tipo]||p.tipo)+'</span></td>' +
+          '<td style="font-weight:600">'+(p.banco||'—')+(p.tarjetaTipo?' · '+p.tarjetaTipo:'')+'</td>' +
+          '<td><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:99px;background:'+ec+'22;color:'+ec+'">'+p.empresa+'</span></td>' +
+          '<td style="color:var(--text2)">'+(p.descripcion||'—')+(p.bien?' · <em style="color:var(--text3)">'+p.bien+'</em>':'')+'</td>' +
+          '<td style="text-align:right;font-family:var(--mono);font-weight:700">$'+fmtARS(p.capitalOrig||0)+'</td>' +
+          '<td style="text-align:right;font-family:var(--mono);font-weight:700;color:var(--red)">$'+fmtARS(p.saldo||0)+'</td>' +
+          '<td style="text-align:right;font-family:var(--mono);font-weight:700">$'+fmtARS(p.cuota||0)+'</td>' +
+          '<td style="color:#a78bfa">'+(p.tna?p.tna+'%':'—')+'</td>' +
+          '<td style="color:'+vencColor+';font-size:10px;white-space:nowrap">'+(diasVenc!==null?(diasVenc<=7?'🚨 ':diasVenc<=30?'⏰ ':'')+p.proxVenc:'—')+'</td>' +
+          '<td><div style="width:70px;height:5px;background:var(--bg3);border-radius:99px;overflow:hidden"><div style="height:100%;background:'+col+';width:'+pct.toFixed(0)+'%;border-radius:99px"></div></div><div style="font-size:9px;color:var(--text3);margin-top:2px">'+pct.toFixed(0)+'%</div></td>' +
+          '<td><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:'+estadoColor+'22;color:'+estadoColor+'">'+(p.estado||'Vigente')+'</span></td>' +
+          '<td><button onclick="abrirModalPasivo(\''+p.id+'\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px">✏️</button>' +
+          '<button onclick="eliminarPasivo(\''+p.id+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">🗑</button></td>' +
+        '</tr>';
+      }).join('');
+    }
+    // Totales
+    const totEl = document.getElementById('pasivos-totales');
+    if (totEl && filtered.length) {
+      const totalSaldo = filtered.reduce((s,p)=>s+(p.saldo||0),0);
+      const totalCuota = filtered.reduce((s,p)=>s+(p.cuota||0),0);
+      totEl.innerHTML = '<span>Saldo total: <strong style="font-family:var(--mono);color:var(--red)">$'+fmtARS(totalSaldo)+'</strong></span>' +
+        '<span style="margin-left:20px">Cuotas/pagos: <strong style="font-family:var(--mono);color:var(--text)">$'+fmtARS(totalCuota)+'</strong></span>';
+    } else if (totEl) totEl.innerHTML = '';
+  }
+
+  // Próximos vencimientos
+  const vEl = document.getElementById('pasivos-vencimientos');
+  if (vEl) {
+    const prox = all.filter(p=>p.proxVenc&&(p.estado==='Vigente'||p.estado==='En mora')).sort((a,b)=>a.proxVenc.localeCompare(b.proxVenc)).slice(0,6);
+    if (!prox.length) { vEl.innerHTML = '<div style="font-size:11px;color:var(--text3)">Sin vencimientos próximos</div>'; }
+    else vEl.innerHTML = prox.map(p => {
+      const dias = Math.ceil((new Date(p.proxVenc)-new Date())/86400000);
+      const dc = dias<=7?'var(--red)':dias<=30?'var(--yellow)':'var(--green)';
+      return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:8px 10px;background:var(--bg3);border-radius:8px">' +
+        '<div style="font-family:var(--mono);font-size:11px;color:var(--text3);width:82px;flex-shrink:0">'+p.proxVenc+'</div>' +
+        '<div style="flex:1"><div style="font-size:11px;color:var(--text2)">'+(p.descripcion||p.banco)+'</div><div style="font-size:10px;color:var(--text3)">'+PAS_TIPO_LABEL[p.tipo]+' · '+p.empresa+'</div></div>' +
+        '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text)">$'+fmtARS(p.cuota||0)+'</div>' +
+        '<div style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:'+dc+'22;color:'+dc+';flex-shrink:0">'+dias+'d</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // Deuda por empresa
+  const eEl = document.getElementById('pasivos-por-empresa');
+  if (eEl) {
+    const vigentes = all.filter(p=>p.estado==='Vigente'||p.estado==='En mora');
+    const totalV = vigentes.reduce((s,p)=>s+(p.saldo||0),0);
+    const porEmp = {RS:0,SC:0,LP:0};
+    vigentes.forEach(p=>{ if(porEmp[p.empresa]!==undefined) porEmp[p.empresa]+=(p.saldo||0); });
+    eEl.innerHTML = ['RS','SC','LP'].map(e => {
+      const v = porEmp[e], pct = totalV>0?(v/totalV*100):0;
+      const ec = e==='RS'?'#4a9fd4':e==='SC'?'#4ade80':'#fbbf24';
+      const label = PAS_RAZON[e];
+      return '<div style="margin-bottom:14px">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
+          '<span style="font-size:12px;font-weight:600;color:'+ec+'">'+label+'</span>' +
+          '<span style="font-family:var(--mono);font-weight:700;color:var(--text)">$'+fmtARS(v)+'</span>' +
+        '</div>' +
+        '<div style="height:7px;background:var(--bg3);border-radius:99px;overflow:hidden;margin-bottom:3px">' +
+          '<div style="width:'+pct.toFixed(1)+'%;height:100%;background:'+ec+';border-radius:99px"></div>' +
+        '</div>' +
+        '<div style="font-size:10px;color:var(--text3)">'+pct.toFixed(1)+'% del total</div>' +
+      '</div>';
+    }).join('');
+  }
+}
+
+function abrirModalPasivo(id) {
+  _pasivoEditId = id || null;
+  const p = id ? (appState.pasivos||[]).find(x=>x.id===id) : null;
+  const o = p || {tipo:'prestamo',empresa:'RS',banco:'',descripcion:'',capitalOrig:0,saldo:0,cuota:0,tna:0,proxVenc:'',estado:'Vigente',cuotasPend:0,fechaOtorg:'',fechaFin:'',notas:'',cuit:'',bien:'',tarjetaTipo:'',limiteTC:0,cierreTC:'',vencTC:''};
+  document.getElementById('modal-pasivo-title').textContent = id ? '✏️ Editar Pasivo' : '＋ Nuevo Pasivo Financiero';
+  const body = document.getElementById('modal-pasivo-body');
+  body.innerHTML =
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">' +
+      pasivoField('Tipo','pas-tipo','select','','',[['prestamo','🏦 Préstamo'],['leasing','🚗 Leasing'],['tarjeta','💳 Tarjeta'],['descubierto','📉 Descubierto']],o.tipo,'onchange="pasivosModalTipoChange()"') +
+      pasivoField('Empresa','pas-empresa','select','','',[['RS','Rio Salado SRL'],['SC','Serv. Cipolletti SRL'],['LP','La Plaza SA']],o.empresa) +
+      pasivoField('Estado','pas-estado','select','','',[['Vigente','Vigente'],['En mora','En mora'],['Cancelado','Cancelado'],['Vencido','Vencido']],o.estado) +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">' +
+      pasivoField('Banco / Entidad','pas-banco','select','','',PAS_BANCOS.map(b=>[b,b]),o.banco) +
+      pasivoField('Descripción','pas-desc','text',o.descripcion||'','Ej: Capital de trabajo','') +
+    '</div>' +
+    '<div id="pas-extra-tarjeta" style="display:'+(o.tipo==='tarjeta'?'grid':'none')+';grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">' +
+      pasivoField('Tipo tarjeta','pas-tarjeta-tipo','select','','',[['PYME BNA','PYME BNA'],['Visa','Visa'],['Mastercard','Mastercard'],['American Express','Amex'],['Otra','Otra']],o.tarjetaTipo) +
+      pasivoField('Límite autorizado $','pas-limite-tc','number',o.limiteTC||0,'') +
+      pasivoField('CUIT titular','pas-cuit','text',o.cuit||'','20-XXXXXXXX-X') +
+    '</div>' +
+    '<div id="pas-extra-bien" style="display:'+(o.tipo==='leasing'?'grid':'none')+';grid-template-columns:1fr;gap:12px;margin-bottom:14px">' +
+      pasivoField('Bien / Vehículo','pas-bien','text',o.bien||'','Ej: Toyota Hilux 2024 — Pat. AB123') +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">' +
+      pasivoField('Capital original $','pas-capital','number',o.capitalOrig||0,'') +
+      pasivoField('Saldo deuda $','pas-saldo','number',o.saldo||0,'') +
+      pasivoField('Cuota / Pago $','pas-cuota','number',o.cuota||0,'') +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">' +
+      pasivoField('TNA %','pas-tna','number',o.tna||0,'') +
+      pasivoField('Cuotas pendientes','pas-cuotas-pend','number',o.cuotasPend||0,'') +
+      pasivoField('Próximo vencimiento','pas-prox-venc','date',o.proxVenc||'','') +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">' +
+      pasivoField('Fecha otorgamiento','pas-fecha-otorg','date',o.fechaOtorg||'','') +
+      pasivoField('Fecha fin / cancelación','pas-fecha-fin','date',o.fechaFin||'','') +
+    '</div>' +
+    '<div style="margin-bottom:16px">' +
+      '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Notas / Observaciones</div>' +
+      '<textarea id="pas-notas" style="width:100%;min-height:70px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px;font-size:12px;color:var(--text);outline:none;resize:vertical;font-family:var(--font);box-sizing:border-box">'+(o.notas||'')+'</textarea>' +
+    '</div>' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border)">' +
+      (id?'<button onclick="eliminarPasivo(\''+id+'\')" style="padding:10px 18px;border-radius:8px;border:1px solid rgba(248,113,113,0.4);background:none;color:var(--red);font-size:13px;cursor:pointer;margin-right:auto">🗑 Eliminar</button>':'') +
+      '<button onclick="cerrarModalPasivo()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font)">Cancelar</button>' +
+      '<button onclick="guardarPasivo()" style="padding:10px 22px;border-radius:8px;border:none;background:var(--accent);color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font)">💾 Guardar</button>' +
+    '</div>';
+  document.getElementById('modal-pasivo').style.display = 'flex';
+}
+
+function pasivoField(label, id, type, val, placeholder, opts, selVal, extra) {
+  if (type === 'select') {
+    return '<div>' +
+      '<div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">'+label+'</div>' +
+      '<select id="'+id+'" '+(extra||'')+' style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;font-family:var(--font)">' +
+      (Array.isArray(opts)?opts:PAS_BANCOS.map(b=>[b,b])).map(([v,l])=>'<option value="'+v+'"'+(v===selVal?' selected':'')+'>'+l+'</option>').join('') +
+      '</select></div>';
+  }
+  return '<div>' +
+    '<div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">'+label+'</div>' +
+    '<input type="'+type+'" id="'+id+'" value="'+val+'" placeholder="'+(placeholder||'')+'" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box;font-family:var(--font)">' +
+  '</div>';
+}
+
+function pasivosModalTipoChange() {
+  const tipo = document.getElementById('pas-tipo')?.value;
+  const tc = document.getElementById('pas-extra-tarjeta');
+  const bn = document.getElementById('pas-extra-bien');
+  if (tc) tc.style.display = tipo==='tarjeta' ? 'grid' : 'none';
+  if (bn) bn.style.display = tipo==='leasing' ? 'grid' : 'none';
+}
+
+function cerrarModalPasivo() {
+  document.getElementById('modal-pasivo').style.display = 'none';
+  _pasivoEditId = null;
+}
+
+function guardarPasivo() {
+  const get = id => document.getElementById(id)?.value||'';
+  const getN = id => parseFloat(document.getElementById(id)?.value)||0;
+  const data = {
+    id:          _pasivoEditId || ('pas_'+Date.now()),
+    tipo:        get('pas-tipo'),
+    empresa:     get('pas-empresa'),
+    estado:      get('pas-estado'),
+    banco:       get('pas-banco'),
+    descripcion: get('pas-desc'),
+    tarjetaTipo: get('pas-tarjeta-tipo'),
+    limiteTC:    getN('pas-limite-tc'),
+    cuit:        get('pas-cuit'),
+    bien:        get('pas-bien'),
+    capitalOrig: getN('pas-capital'),
+    saldo:       getN('pas-saldo'),
+    cuota:       getN('pas-cuota'),
+    tna:         getN('pas-tna'),
+    cuotasPend:  getN('pas-cuotas-pend'),
+    proxVenc:    get('pas-prox-venc'),
+    fechaOtorg:  get('pas-fecha-otorg'),
+    fechaFin:    get('pas-fecha-fin'),
+    notas:       document.getElementById('pas-notas')?.value||'',
+  };
+  if (!data.tipo||!data.empresa) { showToast('⚠️ Completá tipo y empresa'); return; }
+  if (!appState.pasivos) appState.pasivos = [];
+  const idx = appState.pasivos.findIndex(p=>p.id===data.id);
+  if (idx>=0) appState.pasivos[idx] = data;
+  else appState.pasivos.push(data);
+  cerrarModalPasivo();
+  cacheGuardar('pasivos', appState.pasivos);
+  pasivosRender();
+  showToast('✅ Pasivo guardado');
+}
+
+function eliminarPasivo(id) {
+  if (!confirm('¿Eliminar este pasivo?')) return;
+  appState.pasivos = (appState.pasivos||[]).filter(p=>p.id!==id);
+  cerrarModalPasivo();
+  cacheGuardar('pasivos', appState.pasivos);
+  pasivosRender();
+  showToast('🗑 Pasivo eliminado');
+}
+
+function pasivosExportExcel() {
+  if (!appState.pasivos||!appState.pasivos.length) { showToast('⚠️ Sin datos para exportar'); return; }
+  const ws_data = [['Tipo','Empresa','Banco','Descripción','Bien/Tarjeta','Capital Orig.','Saldo Deuda','Cuota','TNA%','Cuotas Pend.','Próx. Venc.','Fecha Otorg.','Fecha Fin','Estado','CUIT','Notas']];
+  pasivosGetFiltered().forEach(p => ws_data.push([
+    PAS_TIPO_LABEL[p.tipo]||p.tipo, PAS_RAZON[p.empresa]||p.empresa, p.banco,
+    p.descripcion, p.bien||p.tarjetaTipo, p.capitalOrig, p.saldo, p.cuota,
+    p.tna, p.cuotasPend, p.proxVenc, p.fechaOtorg, p.fechaFin, p.estado, p.cuit, p.notas
+  ]));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws_data), 'Pasivos');
+  XLSX.writeFile(wb, 'Pasivos_Financieros_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  showToast('📥 Excel exportado');
+}
+// ==================== FIN PASIVOS FINANCIEROS ====================
 </script>
 </body>
 </html>
