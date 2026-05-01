@@ -10397,6 +10397,13 @@ function abrirModalObra(id) {
       '<div id="ob-presupuestos-list">' + obRenderPresupuestos(o.presupuestos||[]) + '</div>' +
     '</div>' +
 
+    // Historial de pagos
+    (o.historialPagos && o.historialPagos.length ? 
+    '<div style="margin-bottom:20px">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📋 Historial de pagos ('+o.historialPagos.length+')</div>' +
+      pasivosHistorialHTML(o) +
+    '</div>' : '') +
+
     // Notas
     '<div style="margin-bottom:20px">' +
       '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">📝 Notas / Observaciones</div>' +
@@ -13467,25 +13474,32 @@ function pasivosRender() {
   const filtered = pasivosGetFiltered();
 
   // KPIs
-  const deudaTotal   = all.filter(p=>p.estado==='Vigente'||p.estado==='En mora').reduce((s,p)=>s+(p.saldo||0),0);
+  const vigentes     = all.filter(p=>p.estado==='Vigente'||p.estado==='En mora');
+  const deudaTotal   = vigentes.reduce((s,p)=>s+(p.saldo||0),0);
+  const capitalPagado = all.reduce((s,p)=>s+((p.capitalOrig||0)-(p.saldo||0)),0);
   const venceMes     = (() => {
     const hoy = new Date(), fin = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0);
     const finStr = fin.toISOString().slice(0,10);
     const hoyStr = hoy.toISOString().slice(0,10);
-    return all.filter(p=>p.proxVenc&&p.proxVenc>=hoyStr&&p.proxVenc<=finStr).reduce((s,p)=>s+(p.cuota||0),0);
+    return all.filter(p=>p.proxVenc&&p.proxVenc>=hoyStr&&p.proxVenc<=finStr&&(p.estado==='Vigente'||p.estado==='En mora')).reduce((s,p)=>s+(p.cuota||0),0);
   })();
-  const intereses    = all.filter(p=>p.tna>0).reduce((s,p)=>s+(p.saldo||0)*(p.tna/100),0);
-  const tnaProm      = all.filter(p=>p.tna>0).length ? (all.filter(p=>p.tna>0).reduce((s,p)=>s+p.tna,0)/all.filter(p=>p.tna>0).length) : 0;
-  const cuotasPend   = all.filter(p=>p.estado==='Vigente').reduce((s,p)=>s+(p.cuotasPend||0),0);
+  const intereses    = vigentes.filter(p=>p.tna>0).reduce((s,p)=>s+(p.saldo||0)*(p.tna/100),0);
+  const tnaProm      = vigentes.filter(p=>p.tna>0).length ? (vigentes.filter(p=>p.tna>0).reduce((s,p)=>s+p.tna,0)/vigentes.filter(p=>p.tna>0).length) : 0;
   const cancelados   = all.filter(p=>p.estado==='Cancelado').length;
+  // Próximo vencimiento más cercano
+  const proxOp = vigentes.filter(p=>p.proxVenc).sort((a,b)=>a.proxVenc.localeCompare(b.proxVenc))[0];
+  const proxFecha = proxOp ? proxOp.proxVenc : '—';
+  const proxMonto = proxOp ? proxOp.cuota||0 : 0;
+  const proxDesc  = proxOp ? (proxOp.descripcion||proxOp.banco||'—') : '—';
+  const diasAlProx = proxOp ? Math.ceil((new Date(proxOp.proxVenc)-new Date())/86400000) : null;
 
   const kEl = document.getElementById('pasivos-kpis');
   if (kEl) kEl.innerHTML = [
-    ['📊 Deuda total','$ '+fmtARS(deudaTotal),'var(--red)',all.filter(p=>p.estado==='Vigente'||p.estado==='En mora').length+' operaciones vigentes'],
+    ['📊 Deuda total','$ '+fmtARS(deudaTotal),'var(--red)',vigentes.length+' operac. vigentes · pagado: $'+fmtARS(capitalPagado>0?capitalPagado:0)],
     ['📅 Vence este mes','$ '+fmtARS(venceMes),'var(--yellow)',new Date().toLocaleString('es-AR',{month:'long',year:'numeric'})],
     ['💸 Intereses anuales est.','$ '+fmtARS(intereses),'#a78bfa','TNA prom. '+tnaProm.toFixed(0)+'%'],
-    ['🔢 Cuotas pendientes',cuotasPend.toString(),'var(--accent)','Próx: '+(all.filter(p=>p.proxVenc&&(p.estado==='Vigente'||p.estado==='En mora')).sort((a,b)=>a.proxVenc.localeCompare(b.proxVenc))[0]?.proxVenc||'—')],
-    ['✅ Cancelados',cancelados+' operac.','var(--green)','Este año'],
+    ['📌 Próximo pago','$ '+fmtARS(proxMonto),'var(--accent)',proxFecha+(diasAlProx!==null?' · '+diasAlProx+'d':'')+(proxDesc?' · '+proxDesc:'')],
+    ['✅ Cancelados',cancelados+' operac.','var(--green)','Capital liberado: $'+fmtARS(all.filter(p=>p.estado==='Cancelado').reduce((s,p)=>s+(p.capitalOrig||0),0))],
   ].map(([l,v,c,s])=>
     '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;border-left:3px solid '+c+'">' +
       '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">'+l+'</div>' +
@@ -13542,7 +13556,8 @@ function pasivosRender() {
           '<td><div style="width:70px;height:5px;background:var(--bg3);border-radius:99px;overflow:hidden"><div style="height:100%;background:'+col+';width:'+pct.toFixed(0)+'%;border-radius:99px"></div></div><div style="font-size:9px;color:var(--text3);margin-top:2px">'+pct.toFixed(0)+'%</div></td>' +
           '<td><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:'+estadoColor+'22;color:'+estadoColor+'">'+(p.estado||'Vigente')+'</span></td>' +
           '<td><button onclick="abrirModalPasivo(\''+p.id+'\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px">✏️</button>' +
-          '<button onclick="eliminarPasivo(\''+p.id+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">🗑</button></td>' +
+          (p.estado==='Vigente'||p.estado==='En mora' ? '<button onclick="pasivoRegistrarPago(\''+p.id+'\')" style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:6px;color:var(--green);cursor:pointer;font-size:10px;font-weight:700;padding:2px 8px;margin-left:4px" title="Registrar pago de cuota">✓ Pagar</button>' : '') +
+          '<button onclick="eliminarPasivo(\''+p.id+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;margin-left:2px">🗑</button></td>' +
         '</tr>';
       }).join('');
     }
@@ -13708,6 +13723,58 @@ function guardarPasivo() {
   cacheGuardar('pasivos', appState.pasivos);
   pasivosRender();
   showToast('✅ Pasivo guardado');
+}
+
+function pasivoRegistrarPago(id) {
+  if (!appState.pasivos) return;
+  const p = appState.pasivos.find(x=>x.id===id);
+  if (!p) return;
+  if (p.cuotasPend <= 0) { showToast('⚠️ No quedan cuotas pendientes'); return; }
+
+  const hoy = new Date().toISOString().slice(0,10);
+  // Registrar en historial
+  if (!p.historialPagos) p.historialPagos = [];
+  p.historialPagos.push({
+    fecha: hoy,
+    monto: p.cuota||0,
+    cuotaNum: (p.historialPagos.length + 1),
+    saldoAntes: p.saldo||0
+  });
+  // Actualizar saldo y cuotas
+  p.saldo = Math.max(0, (p.saldo||0) - (p.cuota||0));
+  p.cuotasPend = Math.max(0, (p.cuotasPend||1) - 1);
+  // Avanzar próximo vencimiento 1 mes
+  if (p.proxVenc) {
+    const d = new Date(p.proxVenc+'T12:00:00');
+    d.setMonth(d.getMonth()+1);
+    p.proxVenc = d.toISOString().slice(0,10);
+  }
+  // Si no quedan cuotas, marcar cancelado
+  if (p.cuotasPend === 0 && p.saldo === 0) {
+    p.estado = 'Cancelado';
+    showToast('🎉 Préstamo cancelado — todas las cuotas pagadas');
+  } else {
+    showToast('✅ Cuota registrada — quedan '+p.cuotasPend+' cuotas · Próx: '+p.proxVenc);
+  }
+  cacheGuardar('pasivos', appState.pasivos);
+  pasivosRender();
+}
+
+function pasivosHistorialHTML(p) {
+  if (!p.historialPagos || !p.historialPagos.length) {
+    return '<div style="font-size:11px;color:var(--text3);padding:8px 0">Sin pagos registrados aún.</div>';
+  }
+  return '<div style="max-height:160px;overflow-y:auto">' +
+    p.historialPagos.slice().reverse().map(h =>
+      '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--bg3);border-radius:7px;margin-bottom:5px">' +
+        '<span style="font-size:14px">✅</span>' +
+        '<div style="flex:1">' +
+          '<div style="font-size:11px;font-weight:700;color:var(--text)">Cuota #'+h.cuotaNum+' — $'+fmtARS(h.monto)+'</div>' +
+          '<div style="font-size:10px;color:var(--text3)">Pagada el '+h.fecha+' · Saldo previo: $'+fmtARS(h.saldoAntes)+'</div>' +
+        '</div>' +
+      '</div>'
+    ).join('') +
+  '</div>';
 }
 
 function eliminarPasivo(id) {
