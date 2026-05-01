@@ -5399,8 +5399,18 @@ function handleFile(input) {
         const logDiv = document.getElementById('import-log');
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
         showToast('✅ Extracto Bancario — ' + result.total.toLocaleString() + ' movimientos');
+        // Mostrar datos INMEDIATAMENTE sin esperar Supabase
         if (typeof renderExtractos === 'function') renderExtractos();
         if (typeof navGo === 'function') navGo('extractos', null);
+        // Guardar en Supabase en background (no bloquea la UI)
+        if (appState.extractoBancario && appState.extractoBancario.length) {
+          setTimeout(() => {
+            _saveExtractosSupabase(appState.extractoBancario).then(ok => {
+              if (ok) showToast('☁️ Extractos guardados en Supabase (' + appState.extractoBancario.length.toLocaleString() + ')');
+              else    showToast('⚠️ Error al guardar en Supabase');
+            });
+          }, 500);
+        }
         return;
       }
       // 4. Clientes DEBO (hoja Hoja1 / clientes)
@@ -8771,11 +8781,6 @@ function parseExtractoBancario(wb) {
   if (appState.extractoBancario.length) {
     const dates = appState.extractoBancario.map(m=>m.fecha).filter(Boolean).sort();
     appState.lastExtractoDate = dates[dates.length-1]||'';
-    // Guardar en Supabase (localStorage no soporta 126k filas)
-    _saveExtractosSupabase(appState.extractoBancario).then(ok => {
-      if (ok) { showToast('✅ Extractos guardados en Supabase ('+appState.extractoBancario.length.toLocaleString()+' movimientos)'); }
-      else    { showToast('⚠️ Error al guardar en Supabase — recargá los datos la próxima vez'); }
-    });
   }
   return {log, total};
 }
@@ -8787,7 +8792,7 @@ async function _saveExtractosSupabase(data) {
     // Borrar existentes
     await supa.from('extracto_bancario').delete().neq('id', 0);
     // Insertar en chunks de 500
-    const CHUNK = 500;
+    const CHUNK = 1000;
     let errCount = 0;
     for (let i = 0; i < data.length; i += CHUNK) {
       const chunk = data.slice(i, i+CHUNK).map(m => ({
