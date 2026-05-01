@@ -2623,31 +2623,21 @@ function saveState() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     try {
-      // Excluir extractoBancario del localStorage (126k filas supera el límite de 5MB)
-      // Los extractos se guardan en Supabase por separado
-      const toSave = {...appState};
-      delete toSave.extractoBancario;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      // Solo guardar metadata liviana — los datos grandes van a Supabase
+      const minimal = {
+        vistaConsolidada: appState.vistaConsolidada,
+        currentEmpresaId: appState.currentEmpresaId,
+        lastMinutaDate:   appState.lastMinutaDate,
+        tnaFima:          appState.tnaFima,
+        tnaFimaPremium:   appState.tnaFimaPremium,
+        tnaFimaAhorro:    appState.tnaFimaAhorro,
+        tnaFimaDate:      appState.tnaFimaDate,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(minimal));
       showSaveIndicator('saved');
     } catch(e) {
       console.warn('saveState error:', e);
-      // Intentar guardar versión mínima sin datos grandes
-      try {
-        const minimal = {
-          empresas: appState.empresas,
-          vistaConsolidada: appState.vistaConsolidada,
-          currentEmpresaId: appState.currentEmpresaId,
-          lastMinutaDate: appState.lastMinutaDate,
-          riesgoData: appState.riesgoData,
-          cartDebo: appState.cartDebo,
-          cfFilas: appState.cfFilas,
-          tnaFima: appState.tnaFima,
-          tnaFimaPremium: appState.tnaFimaPremium,
-          tnaFimaDate: appState.tnaFimaDate,
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(minimal));
-        showSaveIndicator('saved');
-      } catch(e2) { showSaveIndicator('error'); }
+      showSaveIndicator('error');
     }
   }, 500);
 }
@@ -8818,7 +8808,7 @@ async function _saveExtractosSupabase(data) {
         importe_original: parseFloat(m.importeOriginal||m.importe)||0,
         tipo:         (m.tipo||'ingreso').slice(0,20),
         saldo:        m.saldo!=null?parseFloat(m.saldo):null,
-        mes:          m.mes||parseInt((m.fecha||'').slice(5,7))||null,
+        mes:          (() => { const mv = m.mes; if (!mv) return parseInt((m.fecha||'').slice(5,7))||null; if (typeof mv === 'number') return mv; const meses = {ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12}; return meses[String(mv).toLowerCase().slice(0,3)] || parseInt(mv) || null; })(),
         anio:         parseInt((m.fecha||'').slice(0,4))||null,
       }));
       const { error } = await supa.from('extracto_bancario').insert(chunk);
