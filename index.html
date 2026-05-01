@@ -9941,6 +9941,22 @@ const OB_ESTADOS_COLORS = {
   'Planificación':'#a78bfa','Licitación':'#4a9fd4','En ejecución':'#4ade80',
   'Pausada':'#fbbf24','Finalizada':'#3aaa2a','Cancelada':'#f87171'
 };
+const OB_RAZON_SOCIAL = {'RS':'Rio Salado SRL','SC':'Servicios Cipolletti SRL','LP':'La Plaza SA'};
+
+function obCirculo(pct, color) {
+  const r = 30, circ = 2 * Math.PI * r;
+  const offset = circ - (pct / 100) * circ;
+  return `<div style="position:relative;width:76px;height:76px;flex-shrink:0;">
+    <svg width="76" height="76" style="transform:rotate(-90deg)">
+      <circle cx="38" cy="38" r="${r}" fill="none" stroke="#1a1f2e" stroke-width="7"/>
+      <circle cx="38" cy="38" r="${r}" fill="none" stroke="${color}" stroke-width="7"
+        stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="round"/>
+    </svg>
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+      <div style="font-size:14px;font-weight:900;color:#f0f2f7;font-family:var(--mono)">${pct}%</div>
+    </div>
+  </div>`;
+}
 
 function obraSetEmp(emp, btn) {
   _obEmp = emp;
@@ -9959,20 +9975,23 @@ function renderObras() {
   const obras = appState.obras.filter(o => _obEmp === 'grupo' || o.empresa === _obEmp);
 
   // KPIs
-  const total     = obras.reduce((s,o) => s + (o.presupuesto||0), 0);
-  const gastado   = obras.reduce((s,o) => s + obGastado(o), 0);
-  const enEjec    = obras.filter(o => o.estado === 'En ejecución').length;
-  const finalizadas = obras.filter(o => o.estado === 'Finalizada').length;
+  const total      = obras.reduce((s,o) => s + (o.presupuesto||0), 0);
+  const gastado    = obras.reduce((s,o) => s + obGastado(o), 0);
+  const enEjec     = obras.filter(o => o.estado === 'En ejecución').length;
+  const finalizadas= obras.filter(o => o.estado === 'Finalizada').length;
+  const conDesvio  = obras.filter(o => obGastado(o) > (o.presupuesto||0) && o.presupuesto > 0);
   const kEl = document.getElementById('ob-kpis');
   if (kEl) kEl.innerHTML = [
-    ['🏗️ Presupuesto total', total, 'var(--accent)', false],
-    ['💸 Gastado total',     gastado, gastado>total?'var(--red)':'var(--green)', false],
-    ['⚙️ En ejecución',     enEjec+' obras', 'var(--yellow)', true],
-    ['✅ Finalizadas',       finalizadas+' obras', 'var(--text2)', true],
+    ['🏗️ Presupuesto total', '$ '+fmtARS(total), 'var(--accent)', obras.length+' obra'+(obras.length!==1?'s':'')],
+    ['💸 Gastado total',     '$ '+fmtARS(gastado), gastado>total&&total>0?'var(--red)':'var(--green)', (total>0?(gastado/total*100).toFixed(1)+'% ejecutado':'—')],
+    ['⚙️ En ejecución',     enEjec+' obra'+(enEjec!==1?'s':''), 'var(--yellow)', ''],
+    ['⚠️ Con desvío',        conDesvio.length+' obra'+(conDesvio.length!==1?'s':''), conDesvio.length>0?'var(--red)':'var(--text3)', conDesvio.length>0?conDesvio.map(o=>o.nombre).join(', '):'Sin desvíos'],
+    ['✅ Finalizadas',       finalizadas+' obra'+(finalizadas!==1?'s':''), 'var(--text2)', ''],
   ].map(([l,v,c,s]) =>
     '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;border-left:3px solid '+c+'">' +
       '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:6px">'+l+'</div>' +
-      '<div style="font-family:var(--mono);font-size:clamp(13px,1.6vw,18px);font-weight:900;color:'+c+'">'+(s?v:'$ '+fmtARS(v))+'</div>' +
+      '<div style="font-family:var(--mono);font-size:clamp(13px,1.6vw,18px);font-weight:900;color:'+c+'">'+v+'</div>' +
+      (s?'<div style="font-size:10px;color:var(--text3);margin-top:3px">'+s+'</div>':'') +
     '</div>'
   ).join('');
 
@@ -9990,78 +10009,97 @@ function renderObras() {
   }
 
   el.innerHTML = obras.map(o => {
-    const gast   = obGastado(o);
-    const pct    = o.presupuesto > 0 ? Math.min(100, (gast/o.presupuesto)*100) : 0;
-    const eColor = OB_ESTADOS_COLORS[o.estado] || 'var(--text3)';
-    const ec     = o.empresa==='RS'?'#4a9fd4':o.empresa==='SC'?'#3aaa2a':o.empresa==='LP'?'#d4920a':'var(--accent)';
-    const etapasCount = (o.etapas||[]).length;
-    const etapaActiva = (o.etapas||[]).find(e=>e.activa) || (o.etapas||[])[0];
-    const facturasCount = (o.facturas||[]).length;
+    const gast    = obGastado(o);
+    const pct     = o.presupuesto > 0 ? Math.min(100, (gast/o.presupuesto)*100) : 0;
+    const desvio  = gast - (o.presupuesto||0);
+    const eColor  = OB_ESTADOS_COLORS[o.estado] || 'var(--text3)';
+    const ec      = o.empresa==='RS'?'#4a9fd4':o.empresa==='SC'?'#3aaa2a':o.empresa==='LP'?'#d4920a':'var(--accent)';
     const avanceFis = o.avanceFisico || 0;
+    const circColor = avanceFis>=100?'#4ade80':avanceFis>=50?'var(--accent)':'#fbbf24';
+    const etapasCount = (o.etapas||[]).length;
+    const etapaActiva = (o.etapas||[]).find(e=>e.activa);
+    const facturasCount = (o.facturas||[]).length;
+    const presupuestosCount = (o.presupuestos||[]).length;
+    const razonSocial = o.razonSocial || OB_RAZON_SOCIAL[o.empresa] || o.empresa;
+    const tipoIcon = o.tipo==='Construcción'?'🏗️':o.tipo==='Refacción'?'🔨':o.tipo==='Instalación'?'⚡':o.tipo==='Reparación'?'🔧':o.tipo==='Pintura'?'🎨':o.tipo==='Mantenimiento'?'🔩':'🏗️';
+
+    // Dias restantes
+    let diasStr = '';
+    if (o.fechaFin && o.estado !== 'Finalizada') {
+      const diff = Math.ceil((new Date(o.fechaFin) - new Date()) / 86400000);
+      diasStr = diff > 0 ? `<span style="color:${diff<14?'var(--red)':diff<30?'var(--yellow)':'var(--text3)'}">⏱ ${diff} días</span>` : `<span style="color:var(--red)">⚠ Vencida</span>`;
+    }
 
     return '<div class="card mb" style="padding:0;overflow:hidden">' +
-      // Header de la obra
-      '<div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;background:var(--bg2);border-bottom:1px solid var(--border)">' +
+      '<div style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;background:var(--bg2);border-bottom:1px solid var(--border)">' +
         '<div style="display:flex;align-items:center;gap:12px;flex:1">' +
-          '<div style="font-size:28px">'+(o.tipo==='Construcción'?'🏗️':o.tipo==='Refacción'?'🔨':o.tipo==='Instalación'?'⚡':o.tipo==='Reparación'?'🔧':o.tipo==='Pintura'?'🎨':'🏗️')+'</div>' +
+          '<div style="font-size:26px">'+tipoIcon+'</div>' +
           '<div>' +
             '<div style="font-size:15px;font-weight:800;color:var(--text)">'+o.nombre+'</div>' +
             '<div style="font-size:11px;color:var(--text3);margin-top:2px">' +
-              '<span style="color:'+ec+';font-weight:700">'+o.empresa+'</span>' +
-              ' · '+o.tipo+' · '+o.ubicacion+'' +
+              '<span style="color:'+ec+';font-weight:700">'+razonSocial+'</span>' +
+              ' · '+o.tipo+(o.ubicacion?' · '+o.ubicacion:'')+(o.contratista?' · '+o.contratista:'') +
             '</div>' +
           '</div>' +
         '</div>' +
-        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
-          '<span style="padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;background:'+eColor+'22;color:'+eColor+'">'+o.estado+'</span>' +
-          '<button onclick="abrirModalObra(\''+o.id+'\')" style="padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:12px;cursor:pointer">✏️ Editar</button>' +
-          '<button onclick="verDetalleObra(\''+o.id+'\')" style="padding:6px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent)22;color:var(--accent);font-size:12px;cursor:pointer">📋 Detalle</button>' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+          '<span style="padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;background:'+eColor+'22;color:'+eColor+'">'+o.estado+'</span>' +
+          (desvio>0?'<span style="padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;background:rgba(248,113,113,0.15);color:var(--red)">⚠ +$'+fmtARS(desvio)+'</span>':'') +
+          '<button onclick="abrirModalObra(\''+o.id+'\')" style="padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:11px;cursor:pointer">✏️ Editar</button>' +
+          '<button onclick="verDetalleObra(\''+o.id+'\')" style="padding:5px 12px;border-radius:7px;border:1px solid var(--accent);background:var(--accent)22;color:var(--accent);font-size:11px;cursor:pointer">📋 Detalle</button>' +
         '</div>' +
       '</div>' +
 
-      // Body — métricas
-      '<div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px">' +
+      '<div style="padding:16px 18px;display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:18px;align-items:start">' +
 
-        // Presupuesto vs Gastado
+        // Círculo avance
+        '<div style="display:flex;flex-direction:column;align-items:center;gap:4px">' +
+          '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Avance físico</div>' +
+          obCirculo(avanceFis, circColor) +
+          '<div style="font-size:10px;color:var(--text3)">'+etapasCount+' etapa'+(etapasCount!==1?'s':'')+'</div>' +
+        '</div>' +
+
+        // Presupuesto vs gastado
         '<div>' +
-          '<div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">💰 Presupuesto vs Gastado</div>' +
+          '<div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">💰 Presupuesto vs Gastado</div>' +
           '<div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
-            '<span style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent)">$ '+fmtARS(gast)+'</span>' +
+            '<span style="font-family:var(--mono);font-size:13px;font-weight:700;color:'+(desvio>0?'var(--red)':'var(--accent)')+'">$ '+fmtARS(gast)+'</span>' +
             '<span style="font-family:var(--mono);font-size:11px;color:var(--text3)">/ $ '+fmtARS(o.presupuesto||0)+'</span>' +
           '</div>' +
-          '<div style="background:var(--bg3);border-radius:99px;height:6px;overflow:hidden">' +
-            '<div style="height:100%;border-radius:99px;background:'+(pct>=100?'var(--red)':pct>=80?'var(--yellow)':'var(--accent)')+';width:'+pct+'%;transition:width 0.5s"></div>' +
+          '<div style="background:var(--bg3);border-radius:99px;height:7px;overflow:hidden">' +
+            '<div style="height:100%;border-radius:99px;background:'+(pct>=100?'var(--red)':pct>=80?'var(--yellow)':'var(--accent)')+';width:'+Math.min(100,pct)+'%;transition:width 0.5s"></div>' +
           '</div>' +
-          '<div style="font-size:10px;color:var(--text3);margin-top:4px">'+pct.toFixed(1)+'% ejecutado</div>' +
+          '<div style="font-size:10px;color:'+(desvio>0?'var(--red)':'var(--text3)')+';margin-top:4px">'+pct.toFixed(1)+'% ejecutado'+(desvio>0?' · ⚠ Desvío +$'+fmtARS(desvio):'')+'</div>' +
+          '<div style="margin-top:10px;font-size:11px;color:var(--text2)">📅 '+( o.fechaInicio||'—')+' → '+(o.fechaFin||'—')+(diasStr?' · '+diasStr:'')+'</div>' +
         '</div>' +
 
-        // Avance físico
+        // Etapas
         '<div>' +
-          '<div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">📐 Avance físico</div>' +
-          '<div style="font-family:var(--mono);font-size:22px;font-weight:900;color:'+(avanceFis>=100?'var(--green)':avanceFis>=50?'var(--accent)':'var(--text)')+'">'+avanceFis+'%</div>' +
-          '<div style="background:var(--bg3);border-radius:99px;height:6px;overflow:hidden;margin-top:6px">' +
-            '<div style="height:100%;border-radius:99px;background:var(--green);width:'+avanceFis+'%;transition:width 0.5s"></div>' +
-          '</div>' +
+          '<div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">🪜 Etapas</div>' +
+          ((o.etapas||[]).length === 0
+            ? '<div style="font-size:11px;color:var(--text3)">Sin etapas</div>'
+            : (o.etapas||[]).slice(0,4).map(e => {
+                const ec2 = e.estado==='Completada'?'var(--green)':e.activa?'var(--yellow)':'var(--text3)';
+                return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">' +
+                  '<div style="width:7px;height:7px;border-radius:50%;background:'+ec2+';flex-shrink:0"></div>' +
+                  '<div style="font-size:11px;color:'+(e.activa?'var(--yellow)':'var(--text2)')+';font-weight:'+(e.activa?'700':'400')+'">'+e.nombre+'</div>' +
+                  '<span style="margin-left:auto;font-size:9px;padding:1px 5px;border-radius:99px;background:'+ec2+'22;color:'+ec2+'">'+( e.estado==='Completada'?'✓':e.activa?'▶':'—')+'</span>' +
+                '</div>';
+              }).join('')
+          ) +
         '</div>' +
 
-        // Fechas
-        '<div>' +
-          '<div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">📅 Fechas</div>' +
-          '<div style="font-size:11px;color:var(--text2)">Inicio: <span style="color:var(--text);font-family:var(--mono)">'+(o.fechaInicio||'—')+'</span></div>' +
-          '<div style="font-size:11px;color:var(--text2);margin-top:4px">Fin proy.: <span style="color:var(--text);font-family:var(--mono)">'+(o.fechaFin||'—')+'</span></div>' +
-          (o.fechaFinReal?'<div style="font-size:11px;color:var(--green);margin-top:4px">✅ Finalizada: <span style="font-family:var(--mono)">'+o.fechaFinReal+'</span></div>':'') +
-        '</div>' +
-
-        // Contadores
+        // Resumen
         '<div>' +
           '<div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">📊 Resumen</div>' +
-          '<div style="font-size:11px;color:var(--text2)">🪜 Etapas: <span style="color:var(--text);font-weight:700">'+etapasCount+'</span>'+(etapaActiva?' · Actual: <em style="color:var(--accent)">'+etapaActiva.nombre+'</em>':'')+'</div>' +
-          '<div style="font-size:11px;color:var(--text2);margin-top:4px">🧾 Facturas: <span style="color:var(--text);font-weight:700">'+facturasCount+'</span></div>' +
-          (o.contratista?'<div style="font-size:11px;color:var(--text2);margin-top:4px">👷 '+o.contratista+'</div>':'') +
+          '<div style="font-size:11px;color:var(--text2);margin-bottom:3px">🧾 Facturas: <span style="color:var(--text);font-weight:700">'+facturasCount+'</span>'+(facturasCount>0?' · $'+fmtARS(gast):'')+'</div>' +
+          '<div style="font-size:11px;color:var(--text2);margin-bottom:3px">📊 Presupuestos: <span style="color:var(--text);font-weight:700">'+presupuestosCount+'</span>'+(presupuestosCount>0?' cotizaciones':'')+'</div>' +
+          (o.contratista?'<div style="font-size:11px;color:var(--text2);margin-bottom:3px">👷 '+o.contratista+'</div>':'') +
+          (o.responsable?'<div style="font-size:11px;color:var(--text2)">👤 '+o.responsable+'</div>':'') +
         '</div>' +
 
-      '</div>' + // end grid
-    '</div>'; // end card
+      '</div>' +
+    '</div>';
   }).join('');
 }
 
@@ -10080,13 +10118,14 @@ function abrirModalObra(id) {
   const body = document.getElementById('modal-obra-body');
   if (!body) return;
 
-  const o = obra || {nombre:'',empresa:_obEmp==='grupo'?'RS':_obEmp,tipo:'Construcción',estado:'Planificación',ubicacion:'',presupuesto:0,avanceFisico:0,fechaInicio:'',fechaFin:'',contratista:'',responsable:'',descripcion:'',etapas:[],facturas:[],notas:''};
+  const o = obra || {nombre:'',empresa:_obEmp==='grupo'?'RS':_obEmp,razonSocial:'',tipo:'Construcción',estado:'Planificación',ubicacion:'',presupuesto:0,avanceFisico:0,fechaInicio:'',fechaFin:'',contratista:'',responsable:'',descripcion:'',etapas:[],facturas:[],presupuestos:[],notas:''};
 
   body.innerHTML =
     // Datos generales
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px">' +
       obField('Nombre de la obra','ob-nombre','text',o.nombre,'grid-column:1/-1') +
       obSelect('Empresa','ob-empresa',['RS','SC','LP'],o.empresa) +
+      obSelectRazon('Razón social','ob-razon') +
       obSelect('Tipo','ob-tipo',OB_TIPOS,o.tipo) +
       obSelect('Estado','ob-estado',OB_ESTADOS,o.estado) +
       obField('Ubicación / Dirección','ob-ubicacion','text',o.ubicacion,'grid-column:1/-1') +
@@ -10121,6 +10160,16 @@ function abrirModalObra(id) {
       '</div>' +
     '</div>' +
 
+    // Comparador de presupuestos
+    '<div style="margin-bottom:20px">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">📊 Comparador de Presupuestos</div>' +
+        '<button onclick="obAgregarPresupuesto()" style="padding:4px 12px;border-radius:6px;border:1px solid rgba(74,159,212,0.4);background:rgba(74,159,212,0.1);color:var(--accent);font-size:11px;cursor:pointer">＋ Agregar presupuesto</button>' +
+      '</div>' +
+      '<div style="font-size:10px;color:var(--text3);margin-bottom:10px">Compará hasta 3 ofertas. Marcá la adjudicada y el sistema calcula las diferencias.</div>' +
+      '<div id="ob-presupuestos-list">' + obRenderPresupuestos(o.presupuestos||[]) + '</div>' +
+    '</div>' +
+
     // Notas
     '<div style="margin-bottom:20px">' +
       '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">📝 Notas / Observaciones</div>' +
@@ -10135,15 +10184,99 @@ function abrirModalObra(id) {
     '</div>';
 
   // Guardar etapas y facturas temporales
-  window._obEtapasTemp    = JSON.parse(JSON.stringify(o.etapas||[]));
-  window._obFacturasTemp  = JSON.parse(JSON.stringify(o.facturas||[]));
+  window._obEtapasTemp      = JSON.parse(JSON.stringify(o.etapas||[]));
+  window._obFacturasTemp    = JSON.parse(JSON.stringify(o.facturas||[]));
+  window._obPresupuestosTemp = JSON.parse(JSON.stringify(o.presupuestos||[]));
+
+  // Set razón social selector
+  setTimeout(() => {
+    const rsEl = document.getElementById('ob-razon');
+    if (rsEl) rsEl.value = o.razonSocial || OB_RAZON_SOCIAL[o.empresa] || 'Rio Salado SRL';
+    const empEl = document.getElementById('ob-empresa');
+    if (empEl) empEl.addEventListener('change', function() {
+      const rsEl2 = document.getElementById('ob-razon');
+      if (rsEl2) rsEl2.value = OB_RAZON_SOCIAL[this.value] || this.value;
+    });
+  }, 50);
 
   const modal = document.getElementById('modal-obra');
   if (modal) { modal.style.display='flex'; modal.style.alignItems='flex-start'; modal.style.paddingTop='20px'; }
 }
 
+function obSelectRazon(label, id) {
+  const opts = Object.values(OB_RAZON_SOCIAL);
+  return '<div>' +
+    '<div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">'+label+'</div>' +
+    '<select id="'+id+'" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none">' +
+    opts.map(o=>'<option value="'+o+'">'+o+'</option>').join('') +
+    '</select>' +
+  '</div>';
+}
+
+function obRenderPresupuestos(presupuestos) {
+  if (!presupuestos || !presupuestos.length) {
+    return '<div style="font-size:11px;color:var(--text3);padding:8px 0">Sin presupuestos cargados. Agregá hasta 3 para comparar.</div>';
+  }
+  const minTotal = Math.min(...presupuestos.map(p=>p.total||0).filter(v=>v>0));
+  return '<div style="display:grid;grid-template-columns:repeat('+Math.min(3,presupuestos.length+1)+',1fr);gap:10px">' +
+    presupuestos.slice(0,3).map((p,i) => {
+      const diff = (p.total||0) - minTotal;
+      const isWinner = p.adjudicado;
+      const borderStyle = isWinner ? '1px solid rgba(74,222,128,0.4)' : '1px solid rgba(255,255,255,0.07)';
+      const bgStyle = isWinner ? 'rgba(74,222,128,0.05)' : 'var(--bg3)';
+      return '<div style="background:'+bgStyle+';border:'+borderStyle+';border-radius:10px;padding:12px;position:relative">' +
+        (isWinner?'<div style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--green);color:#0e0f14;font-size:9px;font-weight:800;padding:2px 10px;border-radius:99px;white-space:nowrap">✓ ADJUDICADO</div>':'') +
+        '<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;margin-top:'+(isWinner?'8px':'0')+'">Proveedor</div>' +
+        '<input value="'+(p.proveedor||'')+'" onchange="window._obPresupuestosTemp['+i+'].proveedor=this.value" placeholder="Nombre del proveedor" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 7px;font-size:11px;color:var(--text);outline:none;margin-bottom:6px;box-sizing:border-box">' +
+        '<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Razón social</div>' +
+        '<select onchange="window._obPresupuestosTemp['+i+'].razonSocial=this.value" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 7px;font-size:11px;color:var(--text);outline:none;margin-bottom:8px">' +
+          Object.values(OB_RAZON_SOCIAL).map(r=>'<option value="'+r+'"'+(r===p.razonSocial?' selected':'')+'>'+r+'</option>').join('') +
+        '</select>' +
+        '<div style="font-size:18px;font-weight:900;font-family:var(--mono);color:'+(isWinner?'var(--green)':'var(--text)')+';margin-bottom:3px">$'+fmtARS(p.total||0)+'</div>' +
+        (diff>0?'<div style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,0.12);color:var(--red);display:inline-block;margin-bottom:6px">+$'+fmtARS(diff)+' más caro</div>':
+                '<div style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(74,222,128,0.12);color:var(--green);display:inline-block;margin-bottom:6px">Más económico</div>') +
+        ['Mano de obra','Materiales','Equipos','Otros'].map((rubro,ri) =>
+          '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-bottom:2px;padding-bottom:2px;border-bottom:1px solid rgba(255,255,255,0.04)">' +
+            rubro +
+            '<input type="number" value="'+(p.rubros&&p.rubros[ri]||0)+'" onchange="if(!window._obPresupuestosTemp['+i+'].rubros)window._obPresupuestosTemp['+i+'].rubros=[0,0,0,0];window._obPresupuestosTemp['+i+'].rubros['+ri+']=parseFloat(this.value)||0;obRecalcPresupuesto('+i+')" style="background:none;border:none;color:var(--text);font-family:var(--mono);font-size:10px;width:90px;text-align:right;outline:none">' +
+          '</div>'
+        ).join('') +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">' +
+          '<label style="font-size:10px;color:var(--text2);display:flex;align-items:center;gap:4px;cursor:pointer">' +
+            '<input type="checkbox" '+(p.adjudicado?'checked':'')+' onchange="window._obPresupuestosTemp.forEach((pp,j)=>pp.adjudicado=j==='+i+'&&this.checked);obRefreshPresupuestos()"> Adjudicado' +
+          '</label>' +
+          '<button onclick="window._obPresupuestosTemp.splice('+i+',1);obRefreshPresupuestos()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px">✕</button>' +
+        '</div>' +
+      '</div>';
+    }).join('') +
+    (presupuestos.length < 3 ?
+      '<div onclick="obAgregarPresupuesto()" style="background:var(--bg3);border:1px dashed rgba(255,255,255,0.1);border-radius:10px;display:flex;align-items:center;justify-content:center;min-height:140px;cursor:pointer;opacity:0.6">' +
+        '<div style="text-align:center;color:var(--text3)"><div style="font-size:22px;margin-bottom:6px">＋</div><div style="font-size:11px">Agregar presupuesto</div></div>' +
+      '</div>' : '') +
+  '</div>';
+}
+
+function obAgregarPresupuesto() {
+  if (!window._obPresupuestosTemp) window._obPresupuestosTemp = [];
+  if (window._obPresupuestosTemp.length >= 3) { showToast('Máximo 3 presupuestos'); return; }
+  window._obPresupuestosTemp.push({proveedor:'',razonSocial:'Rio Salado SRL',total:0,rubros:[0,0,0,0],adjudicado:false});
+  obRefreshPresupuestos();
+}
+
+function obRecalcPresupuesto(i) {
+  const p = window._obPresupuestosTemp[i];
+  if (p && p.rubros) {
+    p.total = p.rubros.reduce((s,v)=>s+(v||0),0);
+    obRefreshPresupuestos();
+  }
+}
+
+function obRefreshPresupuestos() {
+  const el = document.getElementById('ob-presupuestos-list');
+  if (el) el.innerHTML = obRenderPresupuestos(window._obPresupuestosTemp||[]);
+}
+
 function obField(label, id, type, val, extraStyle) {
-  return '<div style="'+(extraStyle||'')+'">' +
     '<div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">'+label+'</div>' +
     '<input type="'+type+'" id="'+id+'" value="'+val+'" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">' +
   '</div>';
@@ -10248,6 +10381,7 @@ function guardarObra() {
     id:         _obObraId || ('obra_'+Date.now()),
     nombre,
     empresa:    get('ob-empresa'),
+    razonSocial: get('ob-razon') || OB_RAZON_SOCIAL[get('ob-empresa')] || '',
     tipo:       get('ob-tipo'),
     estado:     get('ob-estado'),
     ubicacion:  get('ob-ubicacion'),
@@ -10261,6 +10395,7 @@ function guardarObra() {
     notas:      get('ob-notas'),
     etapas:     window._obEtapasTemp||[],
     facturas:   window._obFacturasTemp||[],
+    presupuestos: window._obPresupuestosTemp||[],
     fechaFinReal: get('ob-estado')==='Finalizada' ? (new Date().toISOString().slice(0,10)) : '',
   };
 
@@ -12086,14 +12221,16 @@ function renderPreOp() {
   const tab = (typeof _preOpTab !== 'undefined') ? _preOpTab : 'TRF';
   let filtered = data
     .filter(r => r.hoja === tab)
-    .filter(r => !estado || (r.estado||'').toUpperCase().includes(estado))
-    .filter(r => !uunn   || r.uunn === uunn)
-    .filter(r => !forma  || (r.formaPago||'').toUpperCase().includes(forma))
+    .filter(r => !estado || (r.estado||'').toUpperCase().includes(estado.toUpperCase()))
+    .filter(r => !uunn   || String(r.uunn||'').trim() === String(uunn).trim())
+    .filter(r => !forma  || (r.formaPago||'').toUpperCase().includes(forma.toUpperCase().trim()))
     .filter(r => !desde  || r.fecha >= desde)
     .filter(r => !hasta  || r.fecha <= hasta)
     .filter(r => !search || String(r.nro||'').toLowerCase().includes(search) ||
                             (r.proveedor||'').toLowerCase().includes(search) ||
-                            (r.uunn||'').toLowerCase().includes(search));
+                            (r.uunn||'').toLowerCase().includes(search) ||
+                            (r.cliente||'').toLowerCase().includes(search) ||
+                            (r.comprobante||'').toLowerCase().includes(search));
 
   filtered.sort((a,b) => b.fecha.localeCompare(a.fecha));
 
@@ -12170,7 +12307,7 @@ function renderPreOp() {
   const uunnSel = document.getElementById('preop-uunn');
   if (uunnSel) {
     const tabData = data.filter(r => r.hoja === tab);
-    const uunns = [...new Set(tabData.map(r=>r.uunn).filter(Boolean))].sort();
+    const uunns = [...new Set(tabData.map(r=>String(r.uunn||'').trim()).filter(Boolean))].sort();
     const curUunn = uunnSel.value;
     uunnSel.innerHTML = '<option value="">Todas</option>' +
       uunns.map(u=>`<option value="${u}">${u}</option>`).join('');
@@ -12248,20 +12385,28 @@ function parsePreOp(wb) {
         const proveedor = String(r[3]||'').trim();
         if (!proveedor || proveedor.toLowerCase() === 'proveedor' || proveedor.toLowerCase() === 'ctrl') continue;
         const imp = parseFloat(String(r[10]||'0').replace(/[^0-9.-]/g,''))||0;
+        if (imp === 0 && !String(r[6]||'').trim()) continue;
+        // Col: 0=SOLICITA,1=FECHA,2=AFECTA APIES,3=PROVEEDOR,4=COMPROBANTE,
+        //      5=NRO FACTURA,6=NRO CHEQ,7=CLIENTE,8=EMISION,9=VTO,
+        //      10=IMPORTE,11=BANCO,12=TC,13=FORMA DE PAGO,14=OBS,15=ESTADO ACTUAL
+        const estadoRaw = String(r[15]||'').trim();
+        const estado = estadoRaw && isNaN(estadoRaw) ? estadoRaw.toUpperCase() : (imp < 0 ? 'EMITIDO' : 'PENDIENTE');
+        const formaPagoRaw = String(r[13]||r[4]||'').trim().toUpperCase();
         appState.preopData.push({
-          hoja:       'CHQ',
-          nro:        String(r[6]||'—').trim(),  // Nro Cheque
-          fecha:      parseFecha(r[1]),
+          hoja:        'CHQ',
+          nro:         String(r[6]||'—').trim(),
+          fecha:       parseFecha(r[1]),
           proveedor,
-          importe:    imp,
-          uunn:       String(r[2]||'').trim(),   // Afecta APIES
-          fechaPago:  parseFecha(r[9]),           // Vto
-          formaPago:  String(r[4]||'CHQ').trim(), // Comprobante (E-CHEQ/CHQ/etc)
-          estado:     imp < 0 ? 'EMITIDO' : 'RECIBIDO',
-          cliente:    String(r[7]||'').trim(),
-          nroFactura: String(r[5]||'').trim(),
-          emision:    parseFecha(r[8]),
-          bcoPagador: '',
+          importe:     imp,
+          uunn:        String(r[2]||'').trim(),
+          fechaPago:   parseFecha(r[9]),
+          formaPago:   formaPagoRaw,
+          estado,
+          cliente:     String(r[7]||'').trim(),
+          nroFactura:  String(r[5]||'').trim(),
+          emision:     parseFecha(r[8]),
+          bcoPagador:  String(r[11]||'').trim(),
+          comprobante: String(r[4]||'').trim(),
         });
         cnt2++; total++;
       }
