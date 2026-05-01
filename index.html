@@ -3072,7 +3072,7 @@ function renderDashboard() {
       </div>
       <div id="dash-total-grupo" style="font-family:var(--mono);font-size:clamp(22px,3vw,36px);font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">$ —</div>
       <div style="font-size:10px;color:var(--text3);margin-top:5px;margin-bottom:18px">ARS (C71 Minuta, o B50+D50+F50) · USD al costado</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px" id="dash-emp-chips"></div>
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch" id="dash-emp-chips"></div>
     </div>
     <div style="display:flex;flex-direction:column">
       <div style="flex:1;padding:14px 18px;border-bottom:1px solid var(--border);position:relative">
@@ -3273,10 +3273,10 @@ function dashSetView(view) {
     if(g('dash-total-grupo')) g('dash-total-grupo').textContent='$ '+fmtARS(totalGrupo);
     if(g('dash-total-grupo-usd')) g('dash-total-grupo-usd').textContent='U$S '+fmtARS(totalGrupoUSD);
     if(g('dash-emp-chips')) g('dash-emp-chips').innerHTML=
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">'+
+      '<div style="display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:8px;margin-bottom:8px">'+
       [{n:'Rio Salado $',v:rsIngARS,c:'#4a9fd4'},{n:'Serv. Cip. $',v:scIngARS,c:'#3aaa2a'},{n:'La Plaza $',v:lpIngARS,c:'#d4920a'}]
         .map(x=>'<div style="background:'+x.c+'22;border-radius:10px;padding:11px 13px;border:1px solid '+x.c+'55"><div style="font-size:9px;font-weight:700;color:'+x.c+';text-transform:uppercase;margin-bottom:4px">'+x.n+'</div><div style="font-family:var(--mono);font-size:clamp(12px,1.6vw,16px);font-weight:800;color:#fff">$ '+fmtARS(x.v)+'</div></div>').join('')+
-      '</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'+
+      '</div><div style="display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:8px">'+
       [{n:'Rio Salado U$S',v:rsIngUSD,c:'#4a9fd4'},{n:'Serv. Cip. U$S',v:scIngUSD,c:'#3aaa2a'},{n:'La Plaza U$S',v:0,c:'#d4920a'}]
         .map(x=>'<div style="background:rgba(251,191,36,0.08);border-radius:10px;padding:11px 13px;border:1px solid rgba(251,191,36,0.3);opacity:'+(x.v>0?'1':'0.4')+'"><div style="font-size:9px;font-weight:700;color:var(--yellow);text-transform:uppercase;margin-bottom:4px">'+x.n+'</div><div style="font-family:var(--mono);font-size:clamp(12px,1.6vw,16px);font-weight:800;color:var(--yellow)">U$S '+fmtARS(x.v)+'</div></div>').join('')+
       '</div>';
@@ -10229,7 +10229,12 @@ function renderObras() {
     const desvio  = gast - (o.presupuesto||0);
     const eColor  = OB_ESTADOS_COLORS[o.estado] || 'var(--text3)';
     const ec      = o.empresa==='RS'?'#4a9fd4':o.empresa==='SC'?'#3aaa2a':o.empresa==='LP'?'#d4920a':'var(--accent)';
-    const avanceFis = o.avanceFisico || 0;
+    const avanceFis = (() => {
+      const etapas = o.etapas || [];
+      if (!etapas.length) return o.avanceFisico || 0;
+      const completadas = etapas.filter(e => e.estado === 'Completada').length;
+      return Math.round((completadas / etapas.length) * 100);
+    })();
     const circColor = avanceFis>=100?'#4ade80':avanceFis>=50?'var(--accent)':'#fbbf24';
     const etapasCount = (o.etapas||[]).length;
     const etapaActiva = (o.etapas||[]).find(e=>e.activa);
@@ -10351,7 +10356,7 @@ function abrirModalObra(id) {
     '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
       obField('Presupuesto total $','ob-presupuesto','number',o.presupuesto||0,'') +
-      obField('Avance físico %','ob-avance','number',o.avanceFisico||0,'') +
+      '<div><div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Avance físico</div><div style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text3)">Se calcula automáticamente desde las etapas ↓</div></div>' +
     '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
       obField('Fecha inicio','ob-fecha-ini','date',o.fechaInicio||'','') +
@@ -10621,7 +10626,12 @@ function guardarObra() {
     estado:     get('ob-estado'),
     ubicacion:  get('ob-ubicacion'),
     presupuesto:parseFloat(get('ob-presupuesto'))||0,
-    avanceFisico:Math.min(100,Math.max(0,parseFloat(get('ob-avance'))||0)),
+    avanceFisico: (() => {
+      const etapas = window._obEtapasTemp || [];
+      if (!etapas.length) return 0;
+      const completadas = etapas.filter(e => e.estado === 'Completada').length;
+      return Math.round((completadas / etapas.length) * 100);
+    })(),
     fechaInicio:get('ob-fecha-ini'),
     fechaFin:   get('ob-fecha-fin'),
     contratista:get('ob-contratista'),
