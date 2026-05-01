@@ -10122,20 +10122,32 @@ function abrirModalObra(id) {
 
   body.innerHTML =
     // Datos generales
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px">' +
-      obField('Nombre de la obra','ob-nombre','text',o.nombre,'grid-column:1/-1') +
+    '<div style="margin-bottom:12px">' +
+      obField('Nombre de la obra','ob-nombre','text',o.nombre,'') +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">' +
       obSelect('Empresa','ob-empresa',['RS','SC','LP'],o.empresa) +
       obSelectRazon('Razón social','ob-razon') +
       obSelect('Tipo','ob-tipo',OB_TIPOS,o.tipo) +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
       obSelect('Estado','ob-estado',OB_ESTADOS,o.estado) +
-      obField('Ubicación / Dirección','ob-ubicacion','text',o.ubicacion,'grid-column:1/-1') +
-      obField('Presupuesto total $','ob-presupuesto','number',o.presupuesto||0) +
-      obField('Avance físico %','ob-avance','number',o.avanceFisico||0) +
-      obField('Fecha inicio','ob-fecha-ini','date',o.fechaInicio||'') +
-      obField('Fecha fin proyectada','ob-fecha-fin','date',o.fechaFin||'') +
-      obField('Contratista principal','ob-contratista','text',o.contratista||'') +
-      obField('Responsable interno','ob-responsable','text',o.responsable||'') +
-      obField('Descripción','ob-descripcion','text',o.descripcion||'','grid-column:1/-1') +
+      obField('Ubicación / Dirección','ob-ubicacion','text',o.ubicacion,'') +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
+      obField('Presupuesto total $','ob-presupuesto','number',o.presupuesto||0,'') +
+      obField('Avance físico %','ob-avance','number',o.avanceFisico||0,'') +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
+      obField('Fecha inicio','ob-fecha-ini','date',o.fechaInicio||'','') +
+      obField('Fecha fin proyectada','ob-fecha-fin','date',o.fechaFin||'','') +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
+      obField('Contratista principal','ob-contratista','text',o.contratista||'','') +
+      obField('Responsable interno','ob-responsable','text',o.responsable||'','') +
+    '</div>' +
+    '<div style="margin-bottom:16px">' +
+      obField('Descripción','ob-descripcion','text',o.descripcion||'','') +
     '</div>' +
 
     // Etapas
