@@ -9783,6 +9783,18 @@ async function loadFromSupabase() {
       if (saved.tnaFimaAhorro)    appState.tnaFimaAhorro    = saved.tnaFimaAhorro;
       if (saved.tnaFimaDate)      appState.tnaFimaDate      = saved.tnaFimaDate;
       if (saved.vistaConsolidada !== undefined) appState.vistaConsolidada = saved.vistaConsolidada;
+      // Restaurar último rango de fechas
+      if (saved.lastDateFrom) {
+        const elFrom = document.getElementById('date-filter-from');
+        if (elFrom) elFrom.value = saved.lastDateFrom;
+      }
+      if (saved.lastDateTo) {
+        const elTo = document.getElementById('date-filter-to');
+        if (elTo) elTo.value = saved.lastDateTo;
+      }
+      if (saved.lastDateFrom || saved.lastDateTo) {
+        if (typeof applyDateRange === 'function') applyDateRange();
+      }
       showSaveIndicator('saved');
     }
 
@@ -9809,7 +9821,7 @@ async function loadFromSupabase() {
     }
 
     // Extracto bancario
-    const { data: extracto } = await supa.from('extracto_bancario').select('*').order('fecha', {ascending:false}).limit(10000);
+    const { data: extracto } = await supa.from('extracto_bancario').select('*').order('fecha', {ascending:false}).limit(50000);
     if (extracto && extracto.length) {
       appState.extractoBancario = extracto.map(r => ({
         fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
@@ -9839,7 +9851,7 @@ async function loadFromSupabase() {
 // ── SYNC: guardar en Supabase (solo admins) ───────────────────
 
 async function _saveEmpresasSupabase() {
-  if (!_supaUser || _supaRol !== 'admin') return;
+  if (!_supaUser) return;
   try {
     const stateToSave = {
       empresas: appState.empresas,
@@ -9851,6 +9863,8 @@ async function _saveEmpresasSupabase() {
       tnaFimaAhorro: appState.tnaFimaAhorro,
       tnaFimaDate: appState.tnaFimaDate,
       vistaConsolidada: appState.vistaConsolidada,
+      lastDateFrom: document.getElementById('date-filter-from')?.value || '',
+      lastDateTo:   document.getElementById('date-filter-to')?.value   || '',
     };
     const { error } = await supa.from('app_state').upsert({
       clave: 'main', valor: JSON.stringify(stateToSave),
