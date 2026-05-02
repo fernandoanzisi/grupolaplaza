@@ -4636,24 +4636,31 @@ function importCarteraDeValores(wb) {
     return s;
   };
   const pn = v => {
+    if (!v && v !== 0) return 0;
     if (typeof v === 'number') return v;
-    return parseFloat(String(v||'').replace(/[^0-9.,-]/g,'').replace(',','.')) || 0;
+    // Manejar strings: '1200000', '1.200.000', '1,200,000.50'
+    const s = String(v).trim().replace(/[^0-9.,-]/g,'');
+    // Si tiene punto como separador de miles (ej: '1.200.000')
+    if (s.match(/^\d{1,3}(\.\d{3})+(,\d+)?$/)) {
+      return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
+    }
+    return parseFloat(s.replace(',','.')) || 0;
   };
 
   // ── Procesar cada hoja ─────────────────────────────────────
   const sheetConfig = [
     { name:'RS E-Cheqs RS', empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ' },
     { name:'SC E-Cheqs',    empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ' },
-    { name:'Cartera RS',    empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:8 },
-    { name:'Cartera SC',    empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:8 },
-    { name:'Cartera AGRO',  empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO',   importeCol:7 },
+    { name:'Cartera RS',    empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:9 },
+    { name:'Cartera SC',    empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:9 },
+    { name:'Cartera AGRO',  empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO',   importeCol:8 },
   ];
 
   sheetConfig.forEach(cfg => {
     const ws = wb.Sheets[cfg.name];
     if (!ws) return;
     const rows = XLSX.utils.sheet_to_json(ws, {
-      header:1, defval:null, raw:true,
+      header:1, defval:null, raw:false, cellDates:true,
       range: cfg.headerRow - 1
     });
     if (rows.length < 2) return;
@@ -5648,28 +5655,14 @@ function handleFile(input) {
         if (typeof navGo === 'function') navGo('riesgo', null);
         return;
       }
-      // 3. Cartera de Valores (RS E-Cheqs, SC E-Cheqs, Cartera RS, SC, AGRO)
+      // 3. Cartera DEBO (hoja CLIENTES / Valores en Cartera)
       if (typeof isCarteraDebo === 'function' && isCarteraDebo(wb)) {
-        // Importar en e.cheques (para Dinero → Cheques)
-        const result = typeof importCarteraDeValores === 'function'
-          ? importCarteraDeValores(wb)
-          : {log:[], total:0};
-        // También importar en cartDebo (para Cartera de Valores)
-        const result2 = parseCarteraDebo(wb);
+        const result = parseCarteraDebo(wb);
         const logDiv = document.getElementById('import-log');
-        if (logDiv) {
-          const allLog = [...(result.log||[]), ...(result2.log||[])];
-          logDiv.innerHTML = allLog.join('<br>');
-          logDiv.style.display = 'block';
-        }
-        const tot = (result.total||0) + (result2.total||0);
-        showToast('✅ Cartera — ' + tot.toLocaleString() + ' cheques importados');
-        if (typeof renderCheques === 'function') renderCheques();
+        if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
+        showToast('✅ Cartera DEBO — ' + result.total.toLocaleString() + ' cheques');
         if (typeof renderCarteraDebo === 'function') renderCarteraDebo();
-        if (typeof navGo === 'function') navGo('cheques', null);
-        // Guardar en Supabase
-        _saveCartDeboSupabase(appState.cartDebo);
-        saveState();
+        if (typeof navGo === 'function') navGo('cartera', null);
         return;
       }
       // 4a. Límite de Crédito
