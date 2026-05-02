@@ -9608,33 +9608,51 @@ function parseCarteraDebo(wb) {
     const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
     if (rows.length < 3) return;
 
-    // Detectar fila de encabezado (buscar col con "importe" o "nro" o "número")
+    // Detectar fila de encabezado — busca 'importe' en primeras 12 filas
     let hdrRow = -1, cols = {};
-    for (let ri=0; ri<Math.min(10, rows.length); ri++) {
+    for (let ri=0; ri<Math.min(12, rows.length); ri++) {
       const r = rows[ri]; if (!r) continue;
-      const rStr = r.map(c=>String(c||'').toLowerCase().trim());
-      const hasImp = rStr.findIndex(h=>h.includes('importe')||h==='importe ');
+      const rStr = r.map(c=>String(c||'').toLowerCase().replace(/\s+/g,' ').trim());
+      const hasImp = rStr.findIndex(h=>h.includes('importe'));
       if (hasImp >= 0) {
         hdrRow = ri;
         cols.imp     = hasImp;
         cols.banco   = rStr.findIndex(h=>h.includes('banco'));
-        cols.nro     = rStr.findIndex(h=>h.includes('número')||h.includes('numero')||h==='nº de cheque'||h.includes('cheque nº'));
-        cols.emi     = rStr.findIndex(h=>h.includes('emisi'));
-        cols.pres    = rStr.findIndex(h=>h.includes('presentaci')||h.includes('fecha de pago'));
-        cols.cliente = rStr.findIndex(h=>h.includes('cliente')||h.includes('recibido de'));
-        cols.librador= rStr.findIndex(h=>h.includes('librador')||h.includes('razón social')||h==='razón social');
-        cols.lugar   = rStr.findIndex(h=>h.includes('lugar'));
+        cols.nro     = rStr.findIndex(h=>
+          h.includes('número') || h.includes('numero') ||
+          h === 'nº de cheque' || h.includes('cheque nº') ||
+          h.includes('cheque n') || h.includes('nro.cheq')
+        );
+        cols.emi     = rStr.findIndex(h=>h.includes('emisi') || h === 'ingreso');
+        cols.pres    = rStr.findIndex(h=>
+          h.includes('presentaci') || h.includes('fecha de pago') ||
+          h.includes('fecha vto') || h.includes('fec. vto')
+        );
+        cols.cliente = rStr.findIndex(h=>h.includes('cliente') || h.includes('recibido de'));
+        cols.librador= rStr.findIndex(h=>h.includes('librador') || h.includes('razon social') || h.includes('razón social'));
+        cols.lugar   = rStr.findIndex(h=>h.includes('lugar') || h.includes('unid. negocio') || h.includes('unid.negocio'));
         break;
       }
     }
 
-    // E-CHEQ format: Nº cheque[0], Cláusula[1], Recibido de[2], CUIT[3], Fecha de pago[4], Fecha emisión[5], Importe[6], Razón social[7]
-    if (info.tipo === 'E-CHEQ' && hdrRow >= 0 && cols.imp < 0) {
-      const r = rows[hdrRow];
-      const rs = r.map(c=>String(c||'').toLowerCase());
-      cols.imp = rs.findIndex(h=>h.includes('importe')); 
-      cols.nro = 0; cols.emi = 5; cols.pres = 4;
-      cols.cliente = 2; cols.librador = 7; cols.banco = -1;
+    // E-CHEQ: posiciones de respaldo si no se detectaron bien
+    if (info.tipo === 'E-CHEQ' && hdrRow >= 0) {
+      if (cols.imp  < 0) cols.imp  = 6;
+      if (cols.nro  < 0) cols.nro  = 0;
+      if (cols.emi  < 0) cols.emi  = 5;
+      if (cols.pres < 0) cols.pres = 4;
+      if (cols.cliente  < 0) cols.cliente  = 2;
+      if (cols.librador < 0) cols.librador = 7;
+    }
+    // AGRO: posiciones de respaldo para Cartera AGRO
+    if (info.tipo === 'AGRO' && hdrRow >= 0) {
+      if (cols.pres < 0) cols.pres = 0; // FECHA VTO
+      if (cols.nro  < 0) cols.nro  = 1; // Cheque Nº
+      if (cols.emi  < 0) cols.emi  = 2; // INGRESO
+      if (cols.banco< 0) cols.banco= 3; // BANCO
+      if (cols.cliente  < 0) cols.cliente  = 5; // CLIENTE
+      if (cols.librador < 0) cols.librador = 6; // LIBRADOR
+      if (cols.lugar    < 0) cols.lugar    = 8; // UNID. NEGOCIO
     }
 
     if (hdrRow < 0) {
