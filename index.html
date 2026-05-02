@@ -3179,32 +3179,9 @@ function renderDashboard() {
     <div class="card"><div class="card-title" style="margin-bottom:14px">📊 Distribución por empresa</div><div id="dash-bars"></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)" id="dash-bar-footer"></div></div>
     <div class="card"><div class="card-title" style="margin-bottom:14px">🥧 Cartera de valores</div><div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap"><canvas id="chart-dash-cartera" width="110" height="110"></canvas><div id="dash-cartera-legend"></div></div></div>
   </div>
-</div>
-<div id="dash-view-empresa" style="display:none">
-  <div id="dash-emp-header" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:14px;position:relative;overflow:hidden">
-    <div style="position:absolute;top:0;left:0;right:0;height:3px" id="dash-emp-bar"></div>
-    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Ingresos del día</div>
-    <div id="dash-emp-name-big" style="font-size:14px;font-weight:700;margin-bottom:5px"></div>
-    <div id="dash-emp-total" style="font-family:var(--mono);font-size:30px;font-weight:900;line-height:1;margin-bottom:12px"></div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="dash-emp-kpis"></div>
-  </div>
-  <!-- Torta por empresa RS/SC -->
-  <div id="dash-emp-torta-row" style="display:grid;grid-template-columns:200px 1fr;gap:14px;margin-bottom:16px;align-items:start">
-    <div class="card" style="padding:16px;text-align:center">
-      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px">🥧 Distribución</div>
-      <canvas id="chart-dash-emp-torta" width="140" height="140"></canvas>
-      <div id="dash-emp-torta-legend" style="margin-top:10px"></div>
-    </div>
-    <div class="card" style="padding:16px">
-      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px">📋 Resumen del día</div>
-      <div id="dash-emp-resumen" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
-    </div>
-  </div>
-  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text3);text-transform:uppercase;margin-bottom:10px" id="dash-eess-title"></div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px" id="dash-eess-grid"></div>
 
   <!-- MAPA + TIMELINE -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
 
     <!-- MAPA ESTACIONES -->
     <div class="card" style="padding:14px">
@@ -3290,6 +3267,31 @@ function renderDashboard() {
       </div>
     </div>
   </div>
+
+</div>
+<div id="dash-view-empresa" style="display:none">
+  <div id="dash-emp-header" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:14px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:0;left:0;right:0;height:3px" id="dash-emp-bar"></div>
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Ingresos del día</div>
+    <div id="dash-emp-name-big" style="font-size:14px;font-weight:700;margin-bottom:5px"></div>
+    <div id="dash-emp-total" style="font-family:var(--mono);font-size:30px;font-weight:900;line-height:1;margin-bottom:12px"></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="dash-emp-kpis"></div>
+  </div>
+  <!-- Torta por empresa RS/SC -->
+  <div id="dash-emp-torta-row" style="display:grid;grid-template-columns:200px 1fr;gap:14px;margin-bottom:16px;align-items:start">
+    <div class="card" style="padding:16px;text-align:center">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px">🥧 Distribución</div>
+      <canvas id="chart-dash-emp-torta" width="140" height="140"></canvas>
+      <div id="dash-emp-torta-legend" style="margin-top:10px"></div>
+    </div>
+    <div class="card" style="padding:16px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px">📋 Resumen del día</div>
+      <div id="dash-emp-resumen" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+    </div>
+  </div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text3);text-transform:uppercase;margin-bottom:10px" id="dash-eess-title"></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px" id="dash-eess-grid"></div>
+
 
 </div>
 <div style="display:none"><canvas id="chart-annual"></canvas><canvas id="chart-gastos"></canvas></div>`;
