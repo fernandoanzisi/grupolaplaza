@@ -5597,7 +5597,6 @@ function handleFile(input) {
       }
       // 3. Extracto Bancario (antes de Clientes — ambos pueden tener Hoja1)
       if (typeof isExtractoBancario === 'function' && isExtractoBancario(wb)) {
-        // Detectar mes/año del nombre del archivo: "Extractos Enero 2026"
         const _MESES_MAP = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12};
         let _mesNum = null, _anioNum = null;
         const _fnLow = (fileName||'').toLowerCase();
@@ -5609,13 +5608,14 @@ function handleFile(input) {
         const result = parseExtractoBancario(wb, _mesNum, _anioNum);
         const logDiv = document.getElementById('import-log');
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
-        showToast('✅ Extracto Bancario — ' + result.total.toLocaleString() + ' movimientos');
+        const mesLabel = _mesNum && _anioNum ? ' — ' + _fnMatch[1].charAt(0).toUpperCase()+_fnMatch[1].slice(1) + ' ' + _anioNum : '';
+        showToast('✅ Extracto Bancario' + mesLabel + ' — ' + result.total.toLocaleString() + ' movimientos');
         if (typeof renderExtractos === 'function') renderExtractos();
         if (typeof navGo === 'function') navGo('extractos', null);
         if (appState.extractoBancario && appState.extractoBancario.length) {
           setTimeout(() => {
             _saveExtractosSupabase(appState.extractoBancario, _mesNum, _anioNum).then(ok => {
-              if (ok) showToast('☁️ Extractos guardados en Supabase (' + appState.extractoBancario.length.toLocaleString() + ')');
+              if (ok) showToast('☁️ Guardado en Supabase (' + appState.extractoBancario.length.toLocaleString() + ' mov. totales)');
               else    showToast('⚠️ Error al guardar en Supabase');
             });
           }, 500);
@@ -8337,7 +8337,6 @@ function _renderMesesCargados() {
   if (!panel || !chips) return;
   const data = appState.extractoBancario || [];
   if (!data.length) { panel.style.display = 'none'; return; }
-  // Agrupar por año-mes
   const mesMap = {};
   data.forEach(m => {
     const ym = (m.fecha||'').slice(0,7);
@@ -8353,8 +8352,7 @@ function _renderMesesCargados() {
     const cnt = mesMap[ym].toLocaleString('es-AR');
     return '<span style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.35);color:#4ade80;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;white-space:nowrap">✅ ' + label + ' · ' + cnt + '</span>';
   }).join('');
-  const totalMov = data.length.toLocaleString('es-AR');
-  if (totalEl) totalEl.textContent = keys.length + ' mes' + (keys.length!==1?'es':'') + ' · ' + totalMov + ' mov.';
+  if (totalEl) totalEl.textContent = keys.length + ' mes' + (keys.length!==1?'es':'') + ' · ' + data.length.toLocaleString('es-AR') + ' mov.';
   panel.style.display = '';
 }
 
@@ -8869,7 +8867,7 @@ function isExtractoBancario(wb) {
   } catch(e) { return false; }
 }
 
-function parseExtractoBancario(wb) {
+function parseExtractoBancario(wb, mesNum, anioNum) {
   const log = []; let total = 0;
 
   // Hoja principal de datos (la que tiene más filas)
@@ -8951,15 +8949,12 @@ function parseExtractoBancario(wb) {
     return s.slice(0,10);
   }
 
-  // Acumular: si viene mes/año, quitar solo ese mes antes de agregar
+  // Acumular por mes: si viene mesNum/anioNum, quitar solo ese mes
   if (!appState.extractoBancario) appState.extractoBancario = [];
-  if (arguments[1] && arguments[2]) {
-    // Tiene mes y año — filtrar fuera ese mes/año y agregar los nuevos
-    const _m = arguments[1], _a = arguments[2];
-    const _pfx = _a + '-' + String(_m).padStart(2,'0');
+  if (mesNum && anioNum) {
+    const _pfx = anioNum + '-' + String(mesNum).padStart(2,'0');
     appState.extractoBancario = appState.extractoBancario.filter(r => !(r.fecha||'').startsWith(_pfx));
   } else {
-    // Sin mes/año — comportamiento anterior: reemplaza todo
     appState.extractoBancario = [];
   }
   const stats = {RS:{c:0,i:0,e:0}, SC:{c:0,i:0,e:0}, LP:{c:0,i:0,e:0}};
@@ -9040,21 +9035,17 @@ async function _saveExtractosSupabase(data, mesNum, anioNum) {
   try {
     let filtrados;
     if (mesNum && anioNum) {
-      // Solo guardar el mes/año indicado
       const pfx = anioNum + '-' + String(mesNum).padStart(2,'0');
       filtrados = data.filter(m => (m.fecha||'').startsWith(pfx));
     } else {
-      // Comportamiento anterior: año actual y anterior
       const anioActual = new Date().getFullYear();
       filtrados = data.filter(m => {
         if (!m.fecha) return false;
-        const anio = parseInt((m.fecha||'').slice(0,4));
-        return anio >= anioActual - 1;
+        return parseInt((m.fecha||'').slice(0,4)) >= anioActual - 1;
       });
     }
     if (!filtrados.length) { showToast('⚠️ Sin datos para guardar'); return false; }
     showToast('⏳ Guardando '+filtrados.length.toLocaleString()+' movimientos...');
-    // Borrar solo ese mes/año (o rango completo si no hay mes)
     let delQuery = supa.from('extracto_bancario').delete();
     if (mesNum && anioNum) {
       const pfx = anioNum + '-' + String(mesNum).padStart(2,'0');
