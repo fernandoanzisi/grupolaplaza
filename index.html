@@ -3105,7 +3105,8 @@ function renderDashboard() {
   const tcBlue  = (dolar && dolar.blue && dolar.blue.venta) ? dolar.blue.venta : 1410;
   const pg = document.getElementById('page-dashboard');
   if (!pg) return;
-  if (!pg.querySelector('#dash-selector-row')) {
+  // Check if new sections exist — if not, force regenerate
+  if (!pg.querySelector('#dash-selector-row') || !pg.querySelector('#dash-timeline-mini')) {
     pg.innerHTML = `
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px">
   <div>
