@@ -3186,7 +3186,7 @@ function renderDashboard() {
     <!-- MAPA ESTACIONES -->
     <div class="card" style="padding:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase">📍 Estaciones — Alto Valle RN</div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase">📍 Estaciones/Agro — Alto Valle RN</div>
         <button onclick="navGo('guardia',null)" style="font-size:10px;font-weight:700;color:var(--accent);background:var(--accent)15;border:1px solid var(--accent)44;border-radius:99px;padding:3px 10px;cursor:pointer;font-family:var(--font)">📺 Panel guardia</button>
       </div>
       <div style="background:#0d1117;border-radius:8px;position:relative;height:130px;overflow:hidden">
@@ -10054,30 +10054,17 @@ async function loadFromSupabase() {
       }));
     }
 
-    // Extracto bancario — paginado para superar el límite de 1000 filas de Supabase
-    {
-      const anioActual = new Date().getFullYear();
-      let allExtractos = []; let page = 0; const PAGE = 1000;
-      while (true) {
-        const { data: extPage, error: extErr } = await supa.from('extracto_bancario')
-          .select('*')
-          .gte('fecha', (anioActual-1)+'-01-01')
-          .order('fecha', {ascending:false})
-          .range(page*PAGE, (page+1)*PAGE-1);
-        if (extErr || !extPage || !extPage.length) break;
-        allExtractos = allExtractos.concat(extPage.map(r => ({
-          fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
-          nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
-          denominacion:r.denominacion||'', cat:r.categoria||'',
-          importe:parseFloat(r.importe)||0, importeOriginal:parseFloat(r.importe_original)||0,
-          saldo:r.saldo?parseFloat(r.saldo):null, tipo:r.tipo||'ingreso',
-          _fromExtracto:true
-        })));
-        if (extPage.length < PAGE) break;
-        page++;
-        if (page > 200) break;
-      }
-      if (allExtractos.length) appState.extractoBancario = allExtractos;
+    // Extracto bancario
+    const { data: extracto } = await supa.from('extracto_bancario').select('*').order('fecha', {ascending:false}).limit(50000);
+    if (extracto && extracto.length) {
+      appState.extractoBancario = extracto.map(r => ({
+        fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
+        nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
+        denominacion:r.denominacion||'', cat:r.categoria||'',
+        importe:parseFloat(r.importe)||0, importeOriginal:parseFloat(r.importe_original)||0,
+        saldo:r.saldo?parseFloat(r.saldo):null, tipo:r.tipo||'ingreso',
+        _fromExtracto:true
+      }));
     }
 
     // Cash flow filas
@@ -14480,7 +14467,14 @@ function renderGuardia() {
   const pg = document.getElementById('page-guardia');
   if (!pg) return;
   const hoy = appState.hoyData;
-  const lastDate = appState.lastMinutaDate || '—';
+  // Usar lastMinutaDate o la última fecha disponible en transacciones
+  const lastDate = appState.lastMinutaDate || (() => {
+    let max = '';
+    (appState.empresas||[]).forEach(e => {
+      (e.transactions||[]).forEach(t => { if (t.date && t.date > max) max = t.date; });
+    });
+    return max || '—';
+  })();
   const totalGrupo = (() => {
     const emp = appState.empresas||[];
     const bal = lastDate && lastDate !== '—';
