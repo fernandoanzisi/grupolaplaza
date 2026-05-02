@@ -1209,7 +1209,67 @@ let _supaUser=null,_supaRol=null;
         <button onclick="chqLimpiarFiltros()" style="width:100%;padding:7px 8px;border-radius:7px;border:1px solid var(--border);background:none;color:var(--text3);font-size:11px;cursor:pointer">✕ Limpiar</button>
       </div>
     </div>
+    <!-- FILA 3: filtros nuevos -->
+    <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
+      <div style="font-size:8px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Filtros adicionales</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;align-items:end">
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Desde (cobro/vto)</div>
+          <input type="date" id="chq-f-cobro-desde" oninput="renderCheques()"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Hasta (cobro/vto)</div>
+          <input type="date" id="chq-f-cobro-hasta" oninput="renderCheques()"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Importe máx.</div>
+          <input type="number" id="chq-f-impmax" placeholder="Sin límite" oninput="renderCheques()"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Vence en</div>
+          <select id="chq-f-vence" onchange="renderCheques()"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none">
+            <option value="">Todos</option>
+            <option value="hoy">Hoy</option>
+            <option value="1-7">1 a 7 días</option>
+            <option value="8-15">8 a 15 días</option>
+            <option value="16-30">16 a 30 días</option>
+            <option value="+30">Más de 30 días</option>
+            <option value="vencidos">Vencidos</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Electrónico</div>
+          <select id="chq-f-elect" onchange="renderCheques()"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none">
+            <option value="">Todos</option>
+            <option value="si">⚡ Sí</option>
+            <option value="no">📄 No</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">UUNN</div>
+          <select id="chq-f-uunn" onchange="renderCheques()"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">APIES</div>
+          <select id="chq-f-apies" onchange="renderCheques()"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none">
+            <option value="">Todas</option>
+          </select>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- GRÁFICOS -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px" id="chq-graficos"></div>
 
   <!-- TABLA -->
   <div class="card" style="padding:0;overflow:hidden">
@@ -6597,9 +6657,11 @@ function renderSubempresas() {
 // CHEQUES PAGE
 // ════════════════════════════════════════════════════════════════
 function chqLimpiarFiltros() {
-  ['chq-search','chq-f-desde','chq-f-hasta','chq-f-impmin'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['chq-f-empresa','chq-f-banco','chq-sort'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='chq-sort'?'fcobro_asc':'';});
+  ['chq-search','chq-f-desde','chq-f-hasta','chq-f-impmin','chq-f-cobro-desde','chq-f-cobro-hasta','chq-f-impmax'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['chq-f-empresa','chq-f-banco','chq-sort','chq-f-tipo','chq-f-hoja','chq-f-vence','chq-f-elect','chq-f-uunn','chq-f-apies'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='chq-sort'?'fcobro_asc':'';});
   activeChequeFilter='todos';
+  document.querySelectorAll('#page-cheques .rate-btn').forEach(b=>b.classList.remove('active'));
+  const todosBtn=document.getElementById('chqf-todos');if(todosBtn)todosBtn.classList.add('active');
   renderCheques();
 }
 
@@ -6618,16 +6680,25 @@ function renderCheques() {
   const lastDay = dateFilterTo || activeDateFilter || appState.lastMinutaDate || '';
 
   // Leer filtros
-  const search   = (document.getElementById('chq-search')?.value||'').toLowerCase();
-  const fEmp     = document.getElementById('chq-f-empresa')?.value||'';
-  const fBanco   = document.getElementById('chq-f-banco')?.value||'';
-  const fDesde   = document.getElementById('chq-f-desde')?.value||'';
-  const fHasta   = document.getElementById('chq-f-hasta')?.value||'';
-  const fImpMin  = parseFloat(document.getElementById('chq-f-impmin')?.value)||0;
-  const sortVal  = document.getElementById('chq-sort')?.value||'fcobro_asc';
-  const fTipo   = document.getElementById('chq-f-tipo')?.value||'';
-  const fHoja   = document.getElementById('chq-f-hoja')?.value||'';
-  const filterUp = (activeChequeFilter||'todos').toUpperCase();
+  const search       = (document.getElementById('chq-search')?.value||'').toLowerCase();
+  const fEmp         = document.getElementById('chq-f-empresa')?.value||'';
+  const fBanco       = document.getElementById('chq-f-banco')?.value||'';
+  const fDesde       = document.getElementById('chq-f-desde')?.value||'';
+  const fHasta       = document.getElementById('chq-f-hasta')?.value||'';
+  const fImpMin      = parseFloat(document.getElementById('chq-f-impmin')?.value)||0;
+  const sortVal      = document.getElementById('chq-sort')?.value||'fcobro_asc';
+  const fTipo        = document.getElementById('chq-f-tipo')?.value||'';
+  const fHoja        = document.getElementById('chq-f-hoja')?.value||'';
+  const filterUp     = (activeChequeFilter||'todos').toUpperCase();
+  // Filtros nuevos
+  const fCobroDesde  = document.getElementById('chq-f-cobro-desde')?.value||'';
+  const fCobroHasta  = document.getElementById('chq-f-cobro-hasta')?.value||'';
+  const fImpMax      = parseFloat(document.getElementById('chq-f-impmax')?.value)||0;
+  const fVence       = document.getElementById('chq-f-vence')?.value||'';
+  const fElect       = document.getElementById('chq-f-elect')?.value||'';
+  const fUunn        = document.getElementById('chq-f-uunn')?.value||'';
+  const fApies       = document.getElementById('chq-f-apies')?.value||'';
+  const todayDate    = new Date().toISOString().slice(0,10);
 
   // Filtrar
   let filtered = all.filter(c => {
@@ -6654,8 +6725,33 @@ function renderCheques() {
     const fechaRef = c.fEmision||c.fecha||'';
     if (fDesde && fechaRef && fechaRef < fDesde) return false;
     if (fHasta && fechaRef && fechaRef > fHasta) return false;
-    // Importe mínimo
+    // Importe mínimo / máximo
     if (fImpMin && (c.importe||0) < fImpMin) return false;
+    if (fImpMax && (c.importe||0) > fImpMax) return false;
+    // Fecha cobro/vto
+    const fCobRef = c.fCobro||c.fVto||'';
+    if (fCobroDesde && fCobRef && fCobRef < fCobroDesde) return false;
+    if (fCobroHasta && fCobRef && fCobRef > fCobroHasta) return false;
+    // Vence en N días
+    if (fVence && fCobRef) {
+      const dias = Math.round((new Date(fCobRef)-new Date(todayDate))/86400000);
+      if (fVence==='hoy'    && dias!==0) return false;
+      if (fVence==='1-7'    && (dias<1||dias>7)) return false;
+      if (fVence==='8-15'   && (dias<8||dias>15)) return false;
+      if (fVence==='16-30'  && (dias<16||dias>30)) return false;
+      if (fVence==='+30'    && dias<=30) return false;
+      if (fVence==='vencidos'&& dias>=0) return false;
+    }
+    // Electrónico
+    if (fElect) {
+      const isElect = (c.elect||'').toLowerCase().startsWith('s') || (c.tipo||'').toUpperCase()==='E-CHEQ';
+      if (fElect==='si' && !isElect) return false;
+      if (fElect==='no' && isElect) return false;
+    }
+    // UUNN
+    if (fUunn && (c.uunn||'') !== fUunn) return false;
+    // APIES
+    if (fApies && (c.apies||c.estacion||'') !== fApies) return false;
     // Búsqueda libre
     if (search) {
       const haystack = [c.cliente,c.librador,c.banco,c.nro,c.empName,c.estacion,c.subempresa,c.motivo].map(s=>String(s||'').toLowerCase()).join(' ');
@@ -6664,13 +6760,85 @@ function renderCheques() {
     return true;
   });
 
-  // Actualizar filtro banco dinámicamente
+  // Actualizar filtros dinámicos
   const bancos = [...new Set(all.map(c=>c.banco).filter(Boolean))].sort();
   const bEl = document.getElementById('chq-f-banco');
   if (bEl && bEl.dataset.loaded !== bancos.join(',')) {
     const cur = bEl.value;
     bEl.innerHTML = '<option value="">Todos</option>' + bancos.map(b=>'<option value="'+b+'"'+(b===cur?' selected':'')+'>'+b+'</option>').join('');
     bEl.dataset.loaded = bancos.join(',');
+  }
+  // UUNN dinámico
+  const uunnList = [...new Set(all.map(c=>c.uunn).filter(Boolean))].sort();
+  const uEl = document.getElementById('chq-f-uunn');
+  if (uEl && uEl.dataset.loaded !== uunnList.join(',')) {
+    const cur = uEl.value;
+    uEl.innerHTML = '<option value="">Todas</option>' + uunnList.map(u=>'<option value="'+u+'"'+(u===cur?' selected':'')+'>'+u+'</option>').join('');
+    uEl.dataset.loaded = uunnList.join(',');
+  }
+  // APIES dinámico
+  const apiesList = [...new Set(all.map(c=>c.apies||c.estacion).filter(Boolean))].sort();
+  const aEl = document.getElementById('chq-f-apies');
+  if (aEl && aEl.dataset.loaded !== apiesList.join(',')) {
+    const cur = aEl.value;
+    aEl.innerHTML = '<option value="">Todas</option>' + apiesList.map(a=>'<option value="'+a+'"'+(a===cur?' selected':'')+'>'+a+'</option>').join('');
+    aEl.dataset.loaded = apiesList.join(',');
+  }
+  // ── GRÁFICOS ────────────────────────────────────────────────
+  const grafDiv = document.getElementById('chq-graficos');
+  if (grafDiv && filtered.length) {
+    const td = new Date().toISOString().slice(0,10);
+    // Cascada vencimientos (sobre filtered en cartera)
+    const enCartera = filtered.filter(c=>(c.estadoActual||c.estado||'').toUpperCase()==='EN CARTERA');
+    const buckets = [
+      {lbl:'Vencidos', col:'var(--red)',    fn:c=>{ const d=c.fCobro||c.fVto||''; return d && d<td; }},
+      {lbl:'Hoy',      col:'var(--yellow)', fn:c=>{ const d=c.fCobro||c.fVto||''; return d===td; }},
+      {lbl:'1-7d',     col:'var(--accent)', fn:c=>{ const d=c.fCobro||c.fVto||''; if(!d||d<=td) return false; const days=Math.round((new Date(d)-new Date(td))/86400000); return days>=1&&days<=7; }},
+      {lbl:'8-15d',    col:'#4ade80',       fn:c=>{ const d=c.fCobro||c.fVto||''; if(!d||d<=td) return false; const days=Math.round((new Date(d)-new Date(td))/86400000); return days>=8&&days<=15; }},
+      {lbl:'16-30d',   col:'#4ade80',       fn:c=>{ const d=c.fCobro||c.fVto||''; if(!d||d<=td) return false; const days=Math.round((new Date(d)-new Date(td))/86400000); return days>=16&&days<=30; }},
+      {lbl:'+30d',     col:'var(--text3)',  fn:c=>{ const d=c.fCobro||c.fVto||''; if(!d||d<=td) return false; const days=Math.round((new Date(d)-new Date(td))/86400000); return days>30; }},
+    ];
+    const bData = buckets.map(b=>({...b, tot:enCartera.filter(b.fn).reduce((s,c)=>s+(c.importe||0),0), cnt:enCartera.filter(b.fn).length}));
+    const bMax = Math.max(...bData.map(b=>b.tot),1);
+    const cascadaHtml = '<div class="card" style="padding:12px"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📅 Cascada vencimientos (en cartera)</div>'+
+      bData.map(b=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'+
+        '<div style="width:55px;font-size:10px;color:'+b.col+'">'+b.lbl+'</div>'+
+        '<div style="flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden"><div style="height:100%;border-radius:4px;background:'+b.col+';width:'+Math.round((b.tot/bMax)*100)+'%"></div></div>'+
+        '<div style="font-size:9px;color:'+b.col+';width:70px;text-align:right;font-family:var(--mono)">'+fmtMoney(b.tot)+'</div>'+
+      '</div>').join('')+'</div>';
+    // Por empresa
+    const empMap = {};
+    filtered.forEach(c=>{ const k=c.empName.split(' ')[0]; empMap[k]=(empMap[k]||0)+(c.importe||0); });
+    const empMax = Math.max(...Object.values(empMap),1);
+    const empCols = {Rio:'var(--accent)',Servicios:'var(--green)',La:'var(--yellow)'};
+    const tipoMap = {ECheq:0,Fisico:0,Agro:0};
+    filtered.forEach(c=>{ const t=(c.tipo||'').toUpperCase(); if(t.includes('E-CHEQ')||c.elect==='Si')tipoMap.ECheq++; else if(t==='AGRO')tipoMap.Agro++; else tipoMap.Fisico++; });
+    const empHtml = '<div class="card" style="padding:12px"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🏢 Por empresa</div>'+
+      Object.entries(empMap).map(([k,v])=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'+
+        '<div style="width:60px;font-size:10px;color:'+(empCols[k]||'var(--text3)')+'">'+k+'</div>'+
+        '<div style="flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden"><div style="height:100%;border-radius:4px;background:'+(empCols[k]||'var(--text3)')+';width:'+Math.round((v/empMax)*100)+'%"></div></div>'+
+        '<div style="font-size:9px;color:var(--text2);width:65px;text-align:right;font-family:var(--mono)">'+fmtMoney(v)+'</div>'+
+      '</div>').join('')+
+      '<div style="border-top:1px solid var(--border);margin:8px 0 6px"></div>'+
+      '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Por tipo</div>'+
+      [['E-Cheq',tipoMap.ECheq,'var(--accent)'],['Físico',tipoMap.Fisico,'var(--text3)'],['Agro',tipoMap.Agro,'var(--yellow)']].map(([l,n,c])=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div style="width:45px;font-size:10px;color:'+c+'">'+l+'</div><div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="height:100%;background:'+c+';width:'+Math.round((n/Math.max(filtered.length,1))*100)+'%"></div></div><div style="font-size:9px;color:var(--text3);width:30px;text-align:right">'+n+'</div></div>').join('')+
+      '</div>';
+    // Top 5 clientes
+    const cliMap = {};
+    filtered.forEach(c=>{ const k=c.cliente||c.librador||''; if(k) cliMap[k]=(cliMap[k]||0)+(c.importe||0); });
+    const top5 = Object.entries(cliMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const promedio = filtered.length ? filtered.reduce((s,c)=>s+(c.importe||0),0)/filtered.length : 0;
+    const topHtml = '<div class="card" style="padding:12px"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🏆 Top 5 clientes</div>'+
+      top5.map(([k,v])=>'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'+
+        '<div style="font-size:10px;color:var(--text);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+k+'">'+k+'</div>'+
+        '<div style="font-size:10px;color:var(--accent);font-family:var(--mono)">'+fmtMoney(v)+'</div></div>').join('')+
+      '<div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between">'+
+        '<span style="font-size:9px;color:var(--text3)">Promedio cheque</span>'+
+        '<span style="font-size:10px;color:var(--yellow);font-family:var(--mono)">'+fmtMoney(promedio)+'</span>'+
+      '</div></div>';
+    grafDiv.innerHTML = cascadaHtml + empHtml + topHtml;
+  } else if (grafDiv) {
+    grafDiv.innerHTML = '';
   }
 
   // Ordenar
