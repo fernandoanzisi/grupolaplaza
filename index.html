@@ -9725,10 +9725,10 @@ function exportClientesExcel(){
 // ═══════════════════════════════════════════════════════════════
 
 // ── Inicialización ────────────────────────────────────────────
+let _loginHandled = false;
+
 async function initSupabase() {
   // Escuchar cambios de sesión
-  let _loginHandled = false;
-
   supa.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session && !_loginHandled) {
       _loginHandled = true;
