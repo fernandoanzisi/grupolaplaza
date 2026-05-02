@@ -5582,10 +5582,23 @@ function handleFile(input) {
         /^(rs e-cheq|sc e-cheq|cartera rs|cartera sc|cartera agro|resumen cartera)/i.test(s.trim()));
       if (isCartera) {
         const result = importCarteraDeValores(wb);
+        // Mostrar detalle por empresa en el log
+        const byEmpLog = {};
+        appState.empresas.forEach(e => {
+          const chqs = (e.cheques||[]).filter(c=>c._fromCarteraXls);
+          if (chqs.length) byEmpLog[e.name] = chqs.length;
+        });
+        const detalle = Object.entries(byEmpLog).map(([n,v])=>n.split(' ')[0]+': '+v).join(' · ');
+        statusEl.innerHTML = result.html + (detalle ? '<div style="color:var(--text3);font-size:11px;margin-top:4px">'+detalle+'</div>' : '');
+        showToast('📋 Cartera importada — ' + result.total + ' cheques' + (detalle?' ('+detalle+')':''));
         saveState();
-        statusEl.innerHTML = result.html;
-        showToast('📋 Cartera de valores importada — ' + result.total + ' cheques');
         if (typeof renderCheques === 'function') renderCheques();
+        // También actualizar Cartera de Valores si está disponible
+        if (typeof isCarteraDebo === 'function' && isCarteraDebo(wb)) {
+          parseCarteraDebo(wb);
+          if (typeof renderCarteraDebo === 'function') renderCarteraDebo();
+        }
+        _saveCartDeboSupabase && _saveCartDeboSupabase(appState.cartDebo);
         return;
       }
 
