@@ -1301,6 +1301,66 @@ let _supaUser=null,_supaRol=null;
       <span id="chq-footer-total" style="font-family:var(--mono);font-weight:700;color:var(--accent)"></span>
     </div>
   </div>
+
+  <!-- HISTORIAL DEPÓSITOS GALICIA -->
+  <div style="background:var(--bg2);border:1px solid rgba(251,191,36,0.25);border-radius:10px;overflow:hidden;margin-top:14px" id="galicia-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer" onclick="toggleGaliciaPanel()">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:700;color:#fbbf24">🏦 Historial Depósitos Galicia</span>
+        <span style="font-size:9px;color:var(--text3);background:var(--bg3);padding:2px 8px;border-radius:99px">Solo informativo — no suma a cartera</span>
+        <span id="galicia-badge" style="font-size:9px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);padding:2px 8px;border-radius:99px"></span>
+      </div>
+      <span id="galicia-toggle-icon" style="color:#fbbf24;font-size:12px">▶ mostrar</span>
+    </div>
+    <div id="galicia-content" style="display:none;border-top:1px solid rgba(251,191,36,0.15);padding:10px 14px">
+      <!-- Mini filtros -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Empresa</div>
+          <select id="gal-f-emp" onchange="renderGalicia()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--text);outline:none">
+            <option value="">Todas</option>
+            <option value="RS">🔵 Rio Salado</option>
+            <option value="SC">🟢 Serv. Cipolletti</option>
+            <option value="AGRO">🌾 AGRO</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Desde</div>
+          <input type="date" id="gal-f-desde" oninput="renderGalicia()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--text);outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Hasta</div>
+          <input type="date" id="gal-f-hasta" oninput="renderGalicia()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--text);outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Buscar</div>
+          <input type="text" id="gal-f-search" oninput="renderGalicia()" placeholder="Cliente, N° cheque, banco..." style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--text);outline:none;box-sizing:border-box">
+        </div>
+      </div>
+      <!-- Tabla Galicia -->
+      <div style="background:var(--bg3);border-radius:8px;overflow:hidden">
+        <div style="overflow-x:auto;max-height:400px;overflow-y:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead style="position:sticky;top:0;background:var(--bg2);z-index:1">
+              <tr>
+                <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">Emp.</th>
+                <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">N° Cheque</th>
+                <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">F.Emisión</th>
+                <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">F.Presentación</th>
+                <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">Cliente</th>
+                <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">Lugar/UUNN</th>
+                <th style="padding:7px 8px;text-align:right;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">Importe</th>
+                <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">Banco</th>
+              </tr>
+            </thead>
+            <tbody id="galicia-table"></tbody>
+          </table>
+        </div>
+        <div id="galicia-footer" style="padding:8px 12px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);display:flex;justify-content:space-between"></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ═══════════════ BANCOS ═══════════════ -->
@@ -6952,6 +7012,73 @@ function exportChequesExcel() {
 }
 
 // ════════════════════════════════════════════════════════════════
+// GALICIA DEPÓSITOS
+// ════════════════════════════════════════════════════════════════
+function toggleGaliciaPanel() {
+  const content = document.getElementById('galicia-content');
+  const icon    = document.getElementById('galicia-toggle-icon');
+  if (!content) return;
+  const isOpen = content.style.display !== 'none';
+  content.style.display = isOpen ? 'none' : '';
+  if (icon) icon.textContent = isOpen ? '▶ mostrar' : '▼ ocultar';
+  if (!isOpen) renderGalicia();
+}
+
+function renderGalicia() {
+  const data   = appState.galiciaDepositos || [];
+  const badge  = document.getElementById('galicia-badge');
+  if (badge) badge.textContent = data.length.toLocaleString('es-AR') + ' dep. desde 2025';
+
+  const fEmp    = document.getElementById('gal-f-emp')?.value||'';
+  const fDesde  = document.getElementById('gal-f-desde')?.value||'';
+  const fHasta  = document.getElementById('gal-f-hasta')?.value||'';
+  const search  = (document.getElementById('gal-f-search')?.value||'').toLowerCase();
+
+  let filtered = data.filter(g => {
+    if (fEmp   && g.emp !== fEmp) return false;
+    const fechaRef = g.fPres || g.fEmi || '';
+    if (fDesde && fechaRef && fechaRef < fDesde) return false;
+    if (fHasta && fechaRef && fechaRef > fHasta) return false;
+    if (search) {
+      const hay = [g.cliente,g.librador,g.nro,g.banco,g.lugar].map(s=>String(s||'').toLowerCase()).join(' ');
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById('galicia-table');
+  const footer = document.getElementById('galicia-footer');
+  if (!tbody) return;
+
+  const MAX = 500;
+  const empCols = {RS:'#4a9fd4',SC:'#3aaa2a',AGRO:'#fbbf24'};
+  const vis = filtered.slice(0, MAX);
+
+  if (!vis.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin registros para los filtros seleccionados</td></tr>';
+  } else {
+    tbody.innerHTML = vis.map(g => {
+      const ec = empCols[g.emp]||'#7a8399';
+      return '<tr style="border-bottom:1px solid var(--border)">' +
+        '<td style="padding:5px 8px"><span style="font-size:9px;font-weight:700;color:'+ec+';padding:1px 5px;border-radius:3px;background:'+ec+'22">'+g.emp+'</span></td>' +
+        '<td style="padding:5px 8px;font-family:var(--mono);font-size:10px">'+(g.nro||'—')+'</td>' +
+        '<td style="padding:5px 8px;font-size:10px;color:var(--text3)">'+(g.fEmi||'—')+'</td>' +
+        '<td style="padding:5px 8px;font-size:10px;color:var(--accent)">'+(g.fPres||'—')+'</td>' +
+        '<td style="padding:5px 8px;font-size:10px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(g.cliente||g.librador||'')+'">'+( g.cliente||g.librador||'—')+'</td>' +
+        '<td style="padding:5px 8px;font-size:10px;color:var(--text3)">'+(g.lugar||'—')+'</td>' +
+        '<td style="padding:5px 8px;font-family:var(--mono);font-size:10px;text-align:right;color:var(--green)">$'+fmtARS(g.importe)+'</td>' +
+        '<td style="padding:5px 8px;font-size:10px;color:var(--text3)">'+(g.banco||'GALICIA')+'</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  const totalImp = filtered.reduce((s,g)=>s+g.importe,0);
+  if (footer) footer.innerHTML =
+    '<span>'+(filtered.length>MAX?'Mostrando '+MAX+' de '+filtered.length.toLocaleString():filtered.length.toLocaleString()+' registros')+'</span>' +
+    '<span style="font-family:var(--mono);font-weight:700;color:var(--green)">Total: $'+fmtARS(totalImp)+'</span>';
+}
+
+// ════════════════════════════════════════════════════════════════
 // BANCOS PAGE
 // ════════════════════════════════════════════════════════════════
 
@@ -9282,6 +9409,15 @@ async function _saveExtractosSupabase(data, mesNum, anioNum) {
   }
 }
 
+async function _saveGaliciaSupabase(data) {
+  if (!_supaUser || !data || !data.length) return;
+  try {
+    // Usar cacheGuardar para simplicidad — misma tabla app_state
+    await cacheGuardar('galicia', data);
+    showToast('🏦 Dep. Galicia guardados (' + data.length.toLocaleString() + ')');
+  } catch(e) { console.warn('_saveGaliciaSupabase:', e); }
+}
+
 async function _loadExtractosSupabase() {
   if (!_supaUser) return false;
   try {
@@ -9424,13 +9560,24 @@ function parseCarteraDebo(wb) {
 
   // Mapa de hojas → empresa + tipo
   const SHEET_MAP = {
-    'rs e-cheqs rs':  {emp:'RS', tipo:'E-CHEQ'},
-    'sc e-cheqs':     {emp:'SC', tipo:'E-CHEQ'},
-    'cartera rs':     {emp:'RS', tipo:'FISICO'},
-    'cartera sc':     {emp:'SC', tipo:'FISICO'},
-    'cartera agro':   {emp:'SC', tipo:'AGRO'},
-    'clientes':       {emp:'RS', tipo:'FISICO'},
+    'rs e-cheqs rs':  {emp:'RS',   tipo:'E-CHEQ'},
+    'sc e-cheqs':     {emp:'SC',   tipo:'E-CHEQ'},
+    'cartera rs':     {emp:'RS',   tipo:'FISICO'},
+    'cartera sc':     {emp:'SC',   tipo:'FISICO'},
+    'cartera agro':   {emp:'AGRO', tipo:'AGRO'},
+    'clientes':       {emp:'RS',   tipo:'FISICO'},
   };
+  // Hojas Galicia — solo informativo, desde 2025
+  const GALICIA_MAP = {
+    'dep.galicia rs':    'RS',
+    'dep. galicia rs':   'RS',
+    'dep. galicia sc':   'SC',
+    'dep.galicia sc':    'SC',
+    'dep. galicia agro ':'AGRO',
+    'dep.galicia agro':  'AGRO',
+    'dep. galicia agro': 'AGRO',
+  };
+  if (!appState.galiciaDepositos) appState.galiciaDepositos = [];
 
   const today = new Date().toISOString().slice(0,10);
 
@@ -9527,15 +9674,72 @@ function parseCarteraDebo(wb) {
     log.push(`<span style="color:${col}">✅ "${sn}" → ${info.emp}/${info.tipo}: ${sheetCount.toLocaleString('es-AR')} cheques</span>`);
   });
 
+  // Parsear hojas Galicia — historial informativo desde 2025
+  let galCount = 0;
+  // Quitar los del día actual (reemplaza la foto de hoy)
+  appState.galiciaDepositos = appState.galiciaDepositos.filter(g => false); // limpiar y recargar todo
+  wb.SheetNames.forEach(sn => {
+    const snl = sn.toLowerCase().trim();
+    const galEmp = GALICIA_MAP[snl];
+    if (!galEmp) return;
+    const ws = wb.Sheets[sn]; if (!ws) return;
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
+    // Detectar fila de encabezado
+    let hdrRow = -1, gc = {};
+    for (let ri=0; ri<Math.min(12, rows.length); ri++) {
+      const r = rows[ri]; if (!r) continue;
+      const rs = r.map(c=>String(c||'').toLowerCase().trim());
+      if (rs.some(h=>h.includes('importe')||h.includes('importe '))) {
+        hdrRow = ri;
+        gc.imp     = rs.findIndex(h=>h.includes('importe'));
+        gc.banco   = rs.findIndex(h=>h.includes('banco'));
+        gc.nro     = rs.findIndex(h=>h.includes('número')||h.includes('numero')||h.includes('cheque')||h==='nro.cheq.');
+        gc.emi     = rs.findIndex(h=>h.includes('emisi')||h==='ingreso');
+        gc.pres    = rs.findIndex(h=>h.includes('presentaci')||h.includes('fec. vto')||h.includes('fecha de pago')||h.includes('f.present'));
+        gc.cliente = rs.findIndex(h=>h.includes('cliente')||h.includes('recibido de')||h.includes('n.cli'));
+        gc.librador= rs.findIndex(h=>h.includes('librador'));
+        gc.lugar   = rs.findIndex(h=>h.includes('lugar')||h.includes('unid'));
+        break;
+      }
+    }
+    if (hdrRow < 0) return;
+    for (let ri=hdrRow+1; ri<rows.length; ri++) {
+      const r = rows[ri]; if (!r) continue;
+      const imp = parseFloat(gc.imp >= 0 ? r[gc.imp] : 0) || 0;
+      if (!imp || imp <= 0) continue;
+      // Solo desde 2025
+      const fEmi  = pd(gc.emi  >= 0 ? r[gc.emi]  : null);
+      const fPres = pd(gc.pres >= 0 ? r[gc.pres] : null);
+      const fechaRef = fPres || fEmi || '';
+      if (fechaRef && parseInt(fechaRef.slice(0,4)) < 2025) continue;
+      appState.galiciaDepositos.push({
+        emp:     galEmp,
+        banco:   gc.banco   >= 0 ? String(r[gc.banco]  ||'').trim() : 'GALICIA',
+        nro:     gc.nro     >= 0 ? String(r[gc.nro]    ||'').trim() : '',
+        fEmi, fPres,
+        cliente: gc.cliente  >= 0 ? String(r[gc.cliente]||'').trim() : '',
+        librador:gc.librador >= 0 ? String(r[gc.librador]||'').trim() : '',
+        lugar:   gc.lugar   >= 0 ? String(r[gc.lugar]  ||'').trim() : '',
+        importe: imp,
+        _galicia: true,
+      });
+      galCount++;
+    }
+  });
+  if (galCount > 0) log.push(`<span style="color:#fbbf24">🏦 Dep. Galicia (desde 2025): ${galCount.toLocaleString('es-AR')} registros (RS+SC+AGRO)</span>`);
+
   // Totales por empresa
-  const totRS = appState.cartDebo.filter(c=>c.emp==='RS').reduce((s,c)=>s+c.importe,0);
-  const totSC = appState.cartDebo.filter(c=>c.emp==='SC').reduce((s,c)=>s+c.importe,0);
+  const totRS   = appState.cartDebo.filter(c=>c.emp==='RS').reduce((s,c)=>s+c.importe,0);
+  const totSC   = appState.cartDebo.filter(c=>c.emp==='SC').reduce((s,c)=>s+c.importe,0);
+  const totAGRO = appState.cartDebo.filter(c=>c.emp==='AGRO').reduce((s,c)=>s+c.importe,0);
   log.push(`<span style="color:#4a9fd4">RS Total: $ ${fmtARS(totRS)}</span>`);
   log.push(`<span style="color:#3aaa2a">SC Total: $ ${fmtARS(totSC)}</span>`);
+  log.push(`<span style="color:#fbbf24">AGRO Total: $ ${fmtARS(totAGRO)}</span>`);
   log.push(`<span style="color:var(--accent)">📋 Total importado: ${total.toLocaleString('es-AR')} cheques</span>`);
   saveState();
-  // Auto-guardar en Supabase para persistir entre sesiones
+  // Auto-guardar en Supabase
   _saveCartDeboSupabase(appState.cartDebo);
+  if (appState.galiciaDepositos.length) _saveGaliciaSupabase(appState.galiciaDepositos);
   return {log, total};
 }
 
@@ -10438,6 +10642,9 @@ async function cacheCargarTodo() {
             break;
           case 'lcData':
             if (Array.isArray(val)) appState.lcData = val;
+            break;
+          case 'galicia':
+            if (Array.isArray(val)) appState.galiciaDepositos = val;
             break;
           case 'petroData':
             if (val && typeof val === 'object') appState.petroData = val;
