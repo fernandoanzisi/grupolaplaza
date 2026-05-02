@@ -2638,9 +2638,10 @@ function loadState() {
     if (saved) {
       const _prevExtracto = (appState && appState.extractoBancario && appState.extractoBancario.length > 0)
         ? appState.extractoBancario : null;
-      appState = JSON.parse(saved);
+      appState = Object.assign({}, appState, JSON.parse(saved));
       // Restaurar extractoBancario — no se guarda en localStorage por su tamaño (126k filas)
       if (_prevExtracto) appState.extractoBancario = _prevExtracto;
+      if (!appState.empresas || !Array.isArray(appState.empresas)) appState.empresas = [];
       appState.empresas.forEach(e => {
         if (!e.icon) e.icon = EMOJI_EMP[Math.abs(e.id) % EMOJI_EMP.length];
         if (!e.transactions) e.transactions = [];
