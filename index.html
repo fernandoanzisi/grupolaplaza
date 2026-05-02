@@ -1384,6 +1384,15 @@ let _supaUser=null,_supaRol=null;
   </div>
   <div class="grid-4 mb" id="extractos-stats"></div>
 
+  <!-- PANEL MESES CARGADOS -->
+  <div id="extractos-meses-panel" style="background:var(--card);border:1px solid rgba(74,159,212,0.2);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px">📅 Meses cargados</div>
+      <div id="extractos-meses-total" style="font-size:9px;color:var(--accent);font-weight:700"></div>
+    </div>
+    <div id="extractos-meses-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+  </div>
+
   <!-- FILTROS FILA 1 -->
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px">
     <div>
@@ -5436,6 +5445,7 @@ function handleFile(input) {
   if (!statusEl) return;
   statusEl.innerHTML = '<div class="alert blue">⏳ Leyendo ' + file.name + '...</div>';
 
+  const fileName = file.name || '';
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
@@ -5587,17 +5597,24 @@ function handleFile(input) {
       }
       // 3. Extracto Bancario (antes de Clientes — ambos pueden tener Hoja1)
       if (typeof isExtractoBancario === 'function' && isExtractoBancario(wb)) {
-        const result = parseExtractoBancario(wb);
+        // Detectar mes/año del nombre del archivo: "Extractos Enero 2026"
+        const _MESES_MAP = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12};
+        let _mesNum = null, _anioNum = null;
+        const _fnLow = (fileName||'').toLowerCase();
+        const _fnMatch = _fnLow.match(/extractos?\s+(\w+)\s+(\d{4})/i);
+        if (_fnMatch) {
+          _mesNum  = _MESES_MAP[_fnMatch[1].toLowerCase()] || null;
+          _anioNum = parseInt(_fnMatch[2]) || null;
+        }
+        const result = parseExtractoBancario(wb, _mesNum, _anioNum);
         const logDiv = document.getElementById('import-log');
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
         showToast('✅ Extracto Bancario — ' + result.total.toLocaleString() + ' movimientos');
-        // Mostrar datos INMEDIATAMENTE sin esperar Supabase
         if (typeof renderExtractos === 'function') renderExtractos();
         if (typeof navGo === 'function') navGo('extractos', null);
-        // Guardar en Supabase en background (no bloquea la UI)
         if (appState.extractoBancario && appState.extractoBancario.length) {
           setTimeout(() => {
-            _saveExtractosSupabase(appState.extractoBancario).then(ok => {
+            _saveExtractosSupabase(appState.extractoBancario, _mesNum, _anioNum).then(ok => {
               if (ok) showToast('☁️ Extractos guardados en Supabase (' + appState.extractoBancario.length.toLocaleString() + ')');
               else    showToast('⚠️ Error al guardar en Supabase');
             });
@@ -8313,7 +8330,36 @@ function syncExtractosSearch(val) {
   renderExtractos();
 }
 
+function _renderMesesCargados() {
+  const panel = document.getElementById('extractos-meses-panel');
+  const chips = document.getElementById('extractos-meses-chips');
+  const totalEl = document.getElementById('extractos-meses-total');
+  if (!panel || !chips) return;
+  const data = appState.extractoBancario || [];
+  if (!data.length) { panel.style.display = 'none'; return; }
+  // Agrupar por año-mes
+  const mesMap = {};
+  data.forEach(m => {
+    const ym = (m.fecha||'').slice(0,7);
+    if (!ym) return;
+    if (!mesMap[ym]) mesMap[ym] = 0;
+    mesMap[ym]++;
+  });
+  const MESES_N = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const keys = Object.keys(mesMap).sort();
+  chips.innerHTML = keys.map(ym => {
+    const [y, m] = ym.split('-');
+    const label = (MESES_N[parseInt(m)]||m) + ' ' + y;
+    const cnt = mesMap[ym].toLocaleString('es-AR');
+    return '<span style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.35);color:#4ade80;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;white-space:nowrap">✅ ' + label + ' · ' + cnt + '</span>';
+  }).join('');
+  const totalMov = data.length.toLocaleString('es-AR');
+  if (totalEl) totalEl.textContent = keys.length + ' mes' + (keys.length!==1?'es':'') + ' · ' + totalMov + ' mov.';
+  panel.style.display = '';
+}
+
 function renderExtractos() {
+  _renderMesesCargados();
   // Si no hay datos locales, intentar cargar desde Supabase primero
   if ((!appState.extractoBancario || appState.extractoBancario.length === 0) && _supaUser) {
     const tbody = document.getElementById('extractos-table-ars');
@@ -8905,7 +8951,17 @@ function parseExtractoBancario(wb) {
     return s.slice(0,10);
   }
 
-  appState.extractoBancario = [];
+  // Acumular: si viene mes/año, quitar solo ese mes antes de agregar
+  if (!appState.extractoBancario) appState.extractoBancario = [];
+  if (arguments[1] && arguments[2]) {
+    // Tiene mes y año — filtrar fuera ese mes/año y agregar los nuevos
+    const _m = arguments[1], _a = arguments[2];
+    const _pfx = _a + '-' + String(_m).padStart(2,'0');
+    appState.extractoBancario = appState.extractoBancario.filter(r => !(r.fecha||'').startsWith(_pfx));
+  } else {
+    // Sin mes/año — comportamiento anterior: reemplaza todo
+    appState.extractoBancario = [];
+  }
   const stats = {RS:{c:0,i:0,e:0}, SC:{c:0,i:0,e:0}, LP:{c:0,i:0,e:0}};
 
   rows.slice(1).forEach(row => {
@@ -8979,20 +9035,35 @@ function parseExtractoBancario(wb) {
   return {log, total};
 }
 
-async function _saveExtractosSupabase(data) {
+async function _saveExtractosSupabase(data, mesNum, anioNum) {
   if (!_supaUser || !data || !data.length) return false;
   try {
-    const anioActual = new Date().getFullYear();
-    const filtrados = data.filter(m => {
-      if (!m.fecha) return false;
-      const anio = parseInt((m.fecha||'').slice(0,4));
-      return anio >= anioActual - 1;
-    });
+    let filtrados;
+    if (mesNum && anioNum) {
+      // Solo guardar el mes/año indicado
+      const pfx = anioNum + '-' + String(mesNum).padStart(2,'0');
+      filtrados = data.filter(m => (m.fecha||'').startsWith(pfx));
+    } else {
+      // Comportamiento anterior: año actual y anterior
+      const anioActual = new Date().getFullYear();
+      filtrados = data.filter(m => {
+        if (!m.fecha) return false;
+        const anio = parseInt((m.fecha||'').slice(0,4));
+        return anio >= anioActual - 1;
+      });
+    }
+    if (!filtrados.length) { showToast('⚠️ Sin datos para guardar'); return false; }
     showToast('⏳ Guardando '+filtrados.length.toLocaleString()+' movimientos...');
-    // Borrar solo los del año actual y anterior
-    const { error: delError } = await supa.from('extracto_bancario')
-      .delete()
-      .gte('fecha', (anioActual-1)+'-01-01');
+    // Borrar solo ese mes/año (o rango completo si no hay mes)
+    let delQuery = supa.from('extracto_bancario').delete();
+    if (mesNum && anioNum) {
+      const pfx = anioNum + '-' + String(mesNum).padStart(2,'0');
+      delQuery = delQuery.gte('fecha', pfx+'-01').lte('fecha', pfx+'-31');
+    } else {
+      const anioActual = new Date().getFullYear();
+      delQuery = delQuery.gte('fecha', (anioActual-1)+'-01-01');
+    }
+    const { error: delError } = await delQuery;
     if (delError) {
       console.warn('extractos delete error:', delError.message);
       showToast('⚠️ Error al limpiar extractos: ' + delError.message.slice(0,80));
