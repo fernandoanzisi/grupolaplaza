@@ -8966,7 +8966,6 @@ function parseExtractoBancario(wb) {
 async function _saveExtractosSupabase(data) {
   if (!_supaUser || !data || !data.length) return false;
   try {
-    // Solo guardar año en curso y anterior para no explotar la tabla
     const anioActual = new Date().getFullYear();
     const filtrados = data.filter(m => {
       if (!m.fecha) return false;
@@ -8975,13 +8974,21 @@ async function _saveExtractosSupabase(data) {
     });
     showToast('⏳ Guardando '+filtrados.length.toLocaleString()+' movimientos...');
     // Borrar solo los del año actual y anterior
-    await supa.from('extracto_bancario')
+    const { error: delError } = await supa.from('extracto_bancario')
       .delete()
       .gte('fecha', (anioActual-1)+'-01-01');
+    if (delError) {
+      console.warn('extractos delete error:', delError.message);
+      showToast('⚠️ Error al limpiar extractos: ' + delError.message.slice(0,80));
+      return false;
+    }
     const CHUNK = 1000;
+    const PARALLEL = 5; // enviar 5 chunks a la vez
     let errCount = 0;
+    // Armar todos los chunks
+    const chunks = [];
     for (let i = 0; i < filtrados.length; i += CHUNK) {
-      const chunk = filtrados.slice(i, i+CHUNK).map(m => ({
+      chunks.push(filtrados.slice(i, i+CHUNK).map(m => ({
         fecha:        m.fecha||null,
         emp_tag:      (m.empTag||'').slice(0,10),
         banco:        (m.banco||'').slice(0,50),
@@ -8998,14 +9005,22 @@ async function _saveExtractosSupabase(data) {
         saldo:        m.saldo!=null?parseFloat(m.saldo):null,
         mes:          (() => { const mv = m.mes; if (!mv) return parseInt((m.fecha||'').slice(5,7))||null; if (typeof mv === 'number') return mv; const meses = {ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12}; return meses[String(mv).toLowerCase().slice(0,3)] || parseInt(mv) || null; })(),
         anio:         parseInt((m.fecha||'').slice(0,4))||null,
-      }));
-      const { error } = await supa.from('extracto_bancario').insert(chunk);
-      if (error) {
-        errCount++;
-        if (errCount === 1) {
-          console.error('Supabase extracto error:', error.message, '| First row:', JSON.stringify(chunk[0]));
-          showToast('⚠️ Error: ' + error.message.slice(0,80));
+      })));
+    }
+    // Enviar en grupos de PARALLEL chunks simultáneos
+    for (let i = 0; i < chunks.length; i += PARALLEL) {
+      const grupo = chunks.slice(i, i+PARALLEL);
+      const resultados = await Promise.all(grupo.map(chunk => supa.from('extracto_bancario').insert(chunk)));
+      resultados.forEach(({ error }) => {
+        if (error) {
+          errCount++;
+          if (errCount === 1) console.error('Supabase extracto error:', error.message);
         }
+      });
+      // Pequeña pausa cada 10 grupos para no saturar Supabase
+      if (i > 0 && i % (PARALLEL * 10) === 0) {
+        showToast('⏳ Guardando... ' + Math.min(100, Math.round((i/chunks.length)*100)) + '%');
+        await new Promise(r => setTimeout(r, 200));
       }
     }
     if (errCount === 0) {
@@ -9282,7 +9297,12 @@ async function _saveCartDeboSupabase(data) {
   if (!_supaUser || !data || !data.length) return;
   try {
     showToast('⏳ Guardando cartera en Supabase...');
-    await supa.from('cartera_debo').delete().gte('id', 0);
+    const { error: delError } = await supa.from('cartera_debo').delete().gte('id', 0);
+    if (delError) {
+      console.warn('cartDebo delete error:', delError.message);
+      showToast('⚠️ Error al limpiar cartera: ' + delError.message.slice(0,80));
+      return;
+    }
     const rows = data.map(c => ({
       empresa: c.emp||'RS', banco: c.banco||'', numero: c.numero||'',
       f_emi: c.fEmi||null, f_pres: c.fPres||null,
@@ -9292,11 +9312,16 @@ async function _saveCartDeboSupabase(data) {
       tipo: c.tipo||'FISICO', hoja: c.hoja||'',
       importado_by: _supaUser.id
     }));
+    let errCount = 0;
     for (let i = 0; i < rows.length; i += 500) {
       const { error } = await supa.from('cartera_debo').insert(rows.slice(i, i+500));
-      if (error) { console.warn('cartDebo chunk error:', error.message); }
+      if (error) { errCount++; console.warn('cartDebo chunk error:', error.message); }
     }
-    showToast('✅ Cartera guardada en Supabase (' + data.length.toLocaleString() + ' cheques)');
+    if (errCount === 0) {
+      showToast('✅ Cartera guardada en Supabase (' + data.length.toLocaleString() + ' cheques)');
+    } else {
+      showToast('⚠️ Cartera: ' + errCount + ' bloques fallaron — F12 para detalles');
+    }
   } catch(e) {
     console.error('_saveCartDeboSupabase:', e);
     showToast('⚠️ Error al guardar cartera: ' + e.message);
