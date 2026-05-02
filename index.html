@@ -472,6 +472,7 @@ let _supaUser=null,_supaRol=null;
         title="Ver todas las empresas juntas">🏛️ Consolidado</button>
     </div>
     <div class="save-indicator" id="save-indicator">💾 guardado</div>
+    <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:99px;padding:4px 12px;font-size:12px;font-weight:700;font-family:var(--mono);color:var(--text2);letter-spacing:0.5px" id="nav-clock">--:--:--</div>
     <div class="dolar-pill" onclick="openDolarModal()">🇦🇷 Blue: <span class="dolar-val" id="nav-blue">cargando...</span></div>
     <span id="readonly-badge" class="readonly-badge" style="display:none">Solo lectura</span>
     <!-- USER BADGE -->
@@ -14214,7 +14215,21 @@ function flotaExportExcel(){
   XLSX.writeFile(wb,'Flota_'+new Date().toISOString().slice(0,10)+'.xlsx');
   showToast('📥 Excel exportado');
 }
-// ==================== FIN FLOTA AUTOMOTOR ====================
+// ── RELOJ EN VIVO ─────────────────────────────────────────────
+(function() {
+  function updateClock() {
+    const el = document.getElementById('nav-clock');
+    if (!el) return;
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2,'0');
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const s = String(now.getSeconds()).padStart(2,'0');
+    el.textContent = h+':'+m+':'+s;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+})();
+// ── FIN RELOJ ─────────────────────────────────────────────────
 </script>
 </body>
 </html>
