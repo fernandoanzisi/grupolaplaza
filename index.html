@@ -5648,14 +5648,28 @@ function handleFile(input) {
         if (typeof navGo === 'function') navGo('riesgo', null);
         return;
       }
-      // 3. Cartera DEBO (hoja CLIENTES / Valores en Cartera)
+      // 3. Cartera de Valores (RS E-Cheqs, SC E-Cheqs, Cartera RS, SC, AGRO)
       if (typeof isCarteraDebo === 'function' && isCarteraDebo(wb)) {
-        const result = parseCarteraDebo(wb);
+        // Importar en e.cheques (para Dinero → Cheques)
+        const result = typeof importCarteraDeValores === 'function'
+          ? importCarteraDeValores(wb)
+          : {log:[], total:0};
+        // También importar en cartDebo (para Cartera de Valores)
+        const result2 = parseCarteraDebo(wb);
         const logDiv = document.getElementById('import-log');
-        if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
-        showToast('✅ Cartera DEBO — ' + result.total.toLocaleString() + ' cheques');
+        if (logDiv) {
+          const allLog = [...(result.log||[]), ...(result2.log||[])];
+          logDiv.innerHTML = allLog.join('<br>');
+          logDiv.style.display = 'block';
+        }
+        const tot = (result.total||0) + (result2.total||0);
+        showToast('✅ Cartera — ' + tot.toLocaleString() + ' cheques importados');
+        if (typeof renderCheques === 'function') renderCheques();
         if (typeof renderCarteraDebo === 'function') renderCarteraDebo();
-        if (typeof navGo === 'function') navGo('cartera', null);
+        if (typeof navGo === 'function') navGo('cheques', null);
+        // Guardar en Supabase
+        _saveCartDeboSupabase(appState.cartDebo);
+        saveState();
         return;
       }
       // 4a. Límite de Crédito
@@ -9608,44 +9622,33 @@ function parseCarteraDebo(wb) {
     const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
     if (rows.length < 3) return;
 
-    // Detectar fila de encabezado — primeras 12 filas
+    // Detectar fila de encabezado (buscar col con "importe" o "nro" o "número")
     let hdrRow = -1, cols = {};
-    for (let ri=0; ri<Math.min(12, rows.length); ri++) {
+    for (let ri=0; ri<Math.min(10, rows.length); ri++) {
       const r = rows[ri]; if (!r) continue;
-      const rStr = r.map(c=>String(c||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/ +/g,' ').trim());
-      const hasImp = rStr.findIndex(h=>h.includes('importe'));
+      const rStr = r.map(c=>String(c||'').toLowerCase().trim());
+      const hasImp = rStr.findIndex(h=>h.includes('importe')||h==='importe ');
       if (hasImp >= 0) {
         hdrRow = ri;
         cols.imp     = hasImp;
         cols.banco   = rStr.findIndex(h=>h.includes('banco'));
-        cols.nro     = rStr.findIndex(h=>h.includes('numero')||h.includes('nro')||h.includes('cheque n')||h.includes('n de cheque'));
-        cols.emi     = rStr.findIndex(h=>h.includes('emisi')||h==='ingreso');
-        cols.pres    = rStr.findIndex(h=>h.includes('presentaci')||h.includes('fecha de pago')||h.includes('fecha vto')||h.includes('fec vto'));
+        cols.nro     = rStr.findIndex(h=>h.includes('número')||h.includes('numero')||h==='nº de cheque'||h.includes('cheque nº'));
+        cols.emi     = rStr.findIndex(h=>h.includes('emisi'));
+        cols.pres    = rStr.findIndex(h=>h.includes('presentaci')||h.includes('fecha de pago'));
         cols.cliente = rStr.findIndex(h=>h.includes('cliente')||h.includes('recibido de'));
-        cols.librador= rStr.findIndex(h=>h.includes('librador')||h.includes('razon social'));
-        cols.lugar   = rStr.findIndex(h=>h.includes('lugar')||h.includes('unid negocio')||h.includes('unid  negocio'));
+        cols.librador= rStr.findIndex(h=>h.includes('librador')||h.includes('razón social')||h==='razón social');
+        cols.lugar   = rStr.findIndex(h=>h.includes('lugar'));
         break;
       }
     }
 
-    // E-CHEQ: posiciones de respaldo
-    if (info.tipo === 'E-CHEQ' && hdrRow >= 0) {
-      if (cols.imp  < 0) cols.imp  = 6;
-      if (cols.nro  < 0) cols.nro  = 0;
-      if (cols.emi  < 0) cols.emi  = 5;
-      if (cols.pres < 0) cols.pres = 4;
-      if (cols.cliente  < 0) cols.cliente  = 2;
-      if (cols.librador < 0) cols.librador = 7;
-    }
-    // AGRO: posiciones de respaldo para Cartera AGRO
-    if (info.tipo === 'AGRO' && hdrRow >= 0) {
-      if (cols.pres < 0) cols.pres = 0;
-      if (cols.nro  < 0) cols.nro  = 1;
-      if (cols.emi  < 0) cols.emi  = 2;
-      if (cols.banco< 0) cols.banco= 3;
-      if (cols.cliente  < 0) cols.cliente  = 5;
-      if (cols.librador < 0) cols.librador = 6;
-      if (cols.lugar    < 0) cols.lugar    = 8;
+    // E-CHEQ format: Nº cheque[0], Cláusula[1], Recibido de[2], CUIT[3], Fecha de pago[4], Fecha emisión[5], Importe[6], Razón social[7]
+    if (info.tipo === 'E-CHEQ' && hdrRow >= 0 && cols.imp < 0) {
+      const r = rows[hdrRow];
+      const rs = r.map(c=>String(c||'').toLowerCase());
+      cols.imp = rs.findIndex(h=>h.includes('importe')); 
+      cols.nro = 0; cols.emi = 5; cols.pres = 4;
+      cols.cliente = 2; cols.librador = 7; cols.banco = -1;
     }
 
     if (hdrRow < 0) {
@@ -10499,17 +10502,12 @@ async function loadFromSupabase() {
     // Cartera DEBO
     const { data: cartera } = await supa.from('cartera_debo').select('*').order('f_pres');
     if (cartera && cartera.length) {
-      const today2 = new Date().toISOString().slice(0,10);
-      appState.cartDebo = cartera.map(r => {
-        const fPres = r.f_pres||null;
-        const dias  = fPres ? Math.round((new Date(fPres)-new Date(today2))/86400000) : null;
-        return {
-          banco:r.banco||'', numero:r.numero||'', fEmi:r.f_emi, fPres,
-          cliente:r.cliente||'', librador:r.librador||'', importe:parseFloat(r.importe)||0,
-          elect:r.elect||'', uunn:r.uunn||'', apies:r.apies||'', emp:r.empresa||'RS',
-          tipo:r.tipo||'FISICO', hoja:r.hoja||'', lugar:r.uunn||'', dias
-        };
-      });
+      appState.cartDebo = cartera.map(r => ({
+        banco:r.banco||'', numero:r.numero||'', fEmi:r.f_emi, fPres:r.f_pres,
+        cliente:r.cliente||'', librador:r.librador||'', importe:parseFloat(r.importe)||0,
+        elect:r.elect||'', uunn:r.uunn||'', apies:r.apies||'', emp:r.empresa||'RS',
+        dias:r.dias
+      }));
     }
 
     // Clientes DEBO
@@ -10523,30 +10521,17 @@ async function loadFromSupabase() {
       }));
     }
 
-    // Extracto bancario — paginado para superar el límite de 1000 filas de Supabase
-    {
-      const anioActual = new Date().getFullYear();
-      let allExtractos = []; let page = 0; const PAGE = 1000;
-      while (true) {
-        const { data: extPage, error: extErr } = await supa.from('extracto_bancario')
-          .select('*')
-          .gte('fecha', (anioActual-1)+'-01-01')
-          .order('fecha', {ascending:false})
-          .range(page*PAGE, (page+1)*PAGE-1);
-        if (extErr || !extPage || !extPage.length) break;
-        allExtractos = allExtractos.concat(extPage.map(r => ({
-          fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
-          nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
-          denominacion:r.denominacion||'', cat:r.categoria||'',
-          importe:parseFloat(r.importe)||0, importeOriginal:parseFloat(r.importe_original)||0,
-          saldo:r.saldo?parseFloat(r.saldo):null, tipo:r.tipo||'ingreso',
-          _fromExtracto:true
-        })));
-        if (extPage.length < PAGE) break;
-        page++;
-        if (page > 200) break;
-      }
-      if (allExtractos.length) appState.extractoBancario = allExtractos;
+    // Extracto bancario
+    const { data: extracto } = await supa.from('extracto_bancario').select('*').order('fecha', {ascending:false}).limit(50000);
+    if (extracto && extracto.length) {
+      appState.extractoBancario = extracto.map(r => ({
+        fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
+        nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
+        denominacion:r.denominacion||'', cat:r.categoria||'',
+        importe:parseFloat(r.importe)||0, importeOriginal:parseFloat(r.importe_original)||0,
+        saldo:r.saldo?parseFloat(r.saldo):null, tipo:r.tipo||'ingreso',
+        _fromExtracto:true
+      }));
     }
 
     // Cash flow filas
