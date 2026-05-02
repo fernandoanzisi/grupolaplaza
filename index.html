@@ -9608,34 +9608,27 @@ function parseCarteraDebo(wb) {
     const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
     if (rows.length < 3) return;
 
-    // Detectar fila de encabezado — busca 'importe' en primeras 12 filas
+    // Detectar fila de encabezado — primeras 12 filas
     let hdrRow = -1, cols = {};
     for (let ri=0; ri<Math.min(12, rows.length); ri++) {
       const r = rows[ri]; if (!r) continue;
-      const rStr = r.map(c=>String(c||'').toLowerCase().replace(/\s+/g,' ').trim());
+      const rStr = r.map(c=>String(c||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/ +/g,' ').trim());
       const hasImp = rStr.findIndex(h=>h.includes('importe'));
       if (hasImp >= 0) {
         hdrRow = ri;
         cols.imp     = hasImp;
         cols.banco   = rStr.findIndex(h=>h.includes('banco'));
-        cols.nro     = rStr.findIndex(h=>
-          h.includes('número') || h.includes('numero') ||
-          h === 'nº de cheque' || h.includes('cheque nº') ||
-          h.includes('cheque n') || h.includes('nro.cheq')
-        );
-        cols.emi     = rStr.findIndex(h=>h.includes('emisi') || h === 'ingreso');
-        cols.pres    = rStr.findIndex(h=>
-          h.includes('presentaci') || h.includes('fecha de pago') ||
-          h.includes('fecha vto') || h.includes('fec. vto')
-        );
-        cols.cliente = rStr.findIndex(h=>h.includes('cliente') || h.includes('recibido de'));
-        cols.librador= rStr.findIndex(h=>h.includes('librador') || h.includes('razon social') || h.includes('razón social'));
-        cols.lugar   = rStr.findIndex(h=>h.includes('lugar') || h.includes('unid. negocio') || h.includes('unid.negocio'));
+        cols.nro     = rStr.findIndex(h=>h.includes('numero')||h.includes('nro')||h.includes('cheque n')||h.includes('n de cheque'));
+        cols.emi     = rStr.findIndex(h=>h.includes('emisi')||h==='ingreso');
+        cols.pres    = rStr.findIndex(h=>h.includes('presentaci')||h.includes('fecha de pago')||h.includes('fecha vto')||h.includes('fec vto'));
+        cols.cliente = rStr.findIndex(h=>h.includes('cliente')||h.includes('recibido de'));
+        cols.librador= rStr.findIndex(h=>h.includes('librador')||h.includes('razon social'));
+        cols.lugar   = rStr.findIndex(h=>h.includes('lugar')||h.includes('unid negocio')||h.includes('unid  negocio'));
         break;
       }
     }
 
-    // E-CHEQ: posiciones de respaldo si no se detectaron bien
+    // E-CHEQ: posiciones de respaldo
     if (info.tipo === 'E-CHEQ' && hdrRow >= 0) {
       if (cols.imp  < 0) cols.imp  = 6;
       if (cols.nro  < 0) cols.nro  = 0;
@@ -9646,13 +9639,13 @@ function parseCarteraDebo(wb) {
     }
     // AGRO: posiciones de respaldo para Cartera AGRO
     if (info.tipo === 'AGRO' && hdrRow >= 0) {
-      if (cols.pres < 0) cols.pres = 0; // FECHA VTO
-      if (cols.nro  < 0) cols.nro  = 1; // Cheque Nº
-      if (cols.emi  < 0) cols.emi  = 2; // INGRESO
-      if (cols.banco< 0) cols.banco= 3; // BANCO
-      if (cols.cliente  < 0) cols.cliente  = 5; // CLIENTE
-      if (cols.librador < 0) cols.librador = 6; // LIBRADOR
-      if (cols.lugar    < 0) cols.lugar    = 8; // UNID. NEGOCIO
+      if (cols.pres < 0) cols.pres = 0;
+      if (cols.nro  < 0) cols.nro  = 1;
+      if (cols.emi  < 0) cols.emi  = 2;
+      if (cols.banco< 0) cols.banco= 3;
+      if (cols.cliente  < 0) cols.cliente  = 5;
+      if (cols.librador < 0) cols.librador = 6;
+      if (cols.lugar    < 0) cols.lugar    = 8;
     }
 
     if (hdrRow < 0) {
@@ -10506,12 +10499,17 @@ async function loadFromSupabase() {
     // Cartera DEBO
     const { data: cartera } = await supa.from('cartera_debo').select('*').order('f_pres');
     if (cartera && cartera.length) {
-      appState.cartDebo = cartera.map(r => ({
-        banco:r.banco||'', numero:r.numero||'', fEmi:r.f_emi, fPres:r.f_pres,
-        cliente:r.cliente||'', librador:r.librador||'', importe:parseFloat(r.importe)||0,
-        elect:r.elect||'', uunn:r.uunn||'', apies:r.apies||'', emp:r.empresa||'RS',
-        dias:r.dias
-      }));
+      const today2 = new Date().toISOString().slice(0,10);
+      appState.cartDebo = cartera.map(r => {
+        const fPres = r.f_pres||null;
+        const dias  = fPres ? Math.round((new Date(fPres)-new Date(today2))/86400000) : null;
+        return {
+          banco:r.banco||'', numero:r.numero||'', fEmi:r.f_emi, fPres,
+          cliente:r.cliente||'', librador:r.librador||'', importe:parseFloat(r.importe)||0,
+          elect:r.elect||'', uunn:r.uunn||'', apies:r.apies||'', emp:r.empresa||'RS',
+          tipo:r.tipo||'FISICO', hoja:r.hoja||'', lugar:r.uunn||'', dias
+        };
+      });
     }
 
     // Clientes DEBO
@@ -10525,17 +10523,30 @@ async function loadFromSupabase() {
       }));
     }
 
-    // Extracto bancario
-    const { data: extracto } = await supa.from('extracto_bancario').select('*').order('fecha', {ascending:false}).limit(50000);
-    if (extracto && extracto.length) {
-      appState.extractoBancario = extracto.map(r => ({
-        fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
-        nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
-        denominacion:r.denominacion||'', cat:r.categoria||'',
-        importe:parseFloat(r.importe)||0, importeOriginal:parseFloat(r.importe_original)||0,
-        saldo:r.saldo?parseFloat(r.saldo):null, tipo:r.tipo||'ingreso',
-        _fromExtracto:true
-      }));
+    // Extracto bancario — paginado para superar el límite de 1000 filas de Supabase
+    {
+      const anioActual = new Date().getFullYear();
+      let allExtractos = []; let page = 0; const PAGE = 1000;
+      while (true) {
+        const { data: extPage, error: extErr } = await supa.from('extracto_bancario')
+          .select('*')
+          .gte('fecha', (anioActual-1)+'-01-01')
+          .order('fecha', {ascending:false})
+          .range(page*PAGE, (page+1)*PAGE-1);
+        if (extErr || !extPage || !extPage.length) break;
+        allExtractos = allExtractos.concat(extPage.map(r => ({
+          fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
+          nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
+          denominacion:r.denominacion||'', cat:r.categoria||'',
+          importe:parseFloat(r.importe)||0, importeOriginal:parseFloat(r.importe_original)||0,
+          saldo:r.saldo?parseFloat(r.saldo):null, tipo:r.tipo||'ingreso',
+          _fromExtracto:true
+        })));
+        if (extPage.length < PAGE) break;
+        page++;
+        if (page > 200) break;
+      }
+      if (allExtractos.length) appState.extractoBancario = allExtractos;
     }
 
     // Cash flow filas
