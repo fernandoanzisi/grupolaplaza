@@ -2480,6 +2480,9 @@ let _supaUser=null,_supaRol=null;
   </div>
 </div>
 
+<!-- PANEL GUARDIA -->
+<div class="page" id="page-guardia"></div>
+
 </div><!-- /main -->
 </div><!-- /app -->
 
@@ -3194,6 +3197,95 @@ function renderDashboard() {
   </div>
   <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text3);text-transform:uppercase;margin-bottom:10px" id="dash-eess-title"></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px" id="dash-eess-grid"></div>
+
+  <!-- MAPA + TIMELINE -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px">
+
+    <!-- MAPA ESTACIONES -->
+    <div class="card" style="padding:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase">📍 Estaciones — Alto Valle RN</div>
+        <button onclick="navGo('guardia',null)" style="font-size:10px;font-weight:700;color:var(--accent);background:var(--accent)15;border:1px solid var(--accent)44;border-radius:99px;padding:3px 10px;cursor:pointer;font-family:var(--font)">📺 Panel guardia</button>
+      </div>
+      <div style="background:#0d1117;border-radius:8px;position:relative;height:130px;overflow:hidden">
+        <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 300 130" preserveAspectRatio="none">
+          <rect width="300" height="130" fill="#0d1117"/>
+          <polygon points="0,55 40,28 80,42 120,22 160,36 200,18 240,30 280,22 300,32 300,130 0,130" fill="#1a2535"/>
+          <path d="M0,92 Q50,86 100,94 Q150,102 200,96 Q250,90 300,94" stroke="#3b82f6" stroke-width="3" fill="none" opacity="0.5"/>
+          <text x="150" y="120" fill="#3b82f6" font-size="8" opacity="0.4" text-anchor="middle">Río Negro</text>
+          <path d="M0,75 Q75,70 150,73 Q225,76 300,72" stroke="#fbbf24" stroke-width="1" fill="none" opacity="0.25" stroke-dasharray="5,4"/>
+        </svg>
+        <!-- Estaciones -->
+        <div style="position:absolute;left:6%;top:46%;cursor:pointer" title="Chichinales 1526">
+          <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4ade80"></div>
+          <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Chichinales 1526</div>
+        </div>
+        <div style="position:absolute;left:21%;top:42%;cursor:pointer" title="V.Regina 15814">
+          <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4ade80"></div>
+          <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">V.Regina 15814</div>
+        </div>
+        <div style="position:absolute;left:29%;top:52%;cursor:pointer" title="V.Regina 2016">
+          <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4ade80"></div>
+          <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">V.Regina 2016</div>
+        </div>
+        <div style="position:absolute;left:45%;top:36%;cursor:pointer" title="Gral.Roca 11902">
+          <div style="width:12px;height:12px;border-radius:50%;background:#4ade80;border:2px solid rgba(255,255,255,0.6);box-shadow:0 0 12px #4ade80"></div>
+          <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:rgba(74,222,128,0.2);color:#4ade80;border:1px solid #4ade80;font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;white-space:nowrap">Roca 11902 ⭐</div>
+        </div>
+        <div style="position:absolute;left:63%;top:34%;cursor:pointer" title="Cipolletti 15431">
+          <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4a9fd4"></div>
+          <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Cip 15431</div>
+        </div>
+        <div style="position:absolute;left:71%;top:44%;cursor:pointer" title="Cipolletti 1539">
+          <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4a9fd4"></div>
+          <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Cip 1539</div>
+        </div>
+        <div style="position:absolute;left:84%;top:28%;cursor:pointer" title="C.Saltos 1535">
+          <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4a9fd4"></div>
+          <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">C.Saltos 1535</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:8px">
+        <div style="font-size:9px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;box-shadow:0 0 4px #4ade80"></span>Rio Salado</div>
+        <div style="font-size:9px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;background:#4a9fd4;display:inline-block;box-shadow:0 0 4px #4a9fd4"></span>Serv. Cipolletti</div>
+      </div>
+    </div>
+
+    <!-- TIMELINE VENCIMIENTOS -->
+    <div class="card" style="padding:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase">📅 Próximos vencimientos</div>
+        <button onclick="navGo('timeline',null)" style="font-size:10px;font-weight:700;color:var(--accent);background:var(--accent)15;border:1px solid var(--accent)44;border-radius:99px;padding:3px 10px;cursor:pointer;font-family:var(--font)">Ver calendario →</button>
+      </div>
+      <div id="dash-timeline-mini"></div>
+    </div>
+
+  </div>
+
+  <!-- COMPARATIVA INTERANUAL -->
+  <div class="card" style="padding:14px;margin-top:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase">📈 Comparativa interanual — 2026 vs 2025</div>
+      <div style="display:flex;gap:10px">
+        <div style="font-size:9px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--accent);display:inline-block"></span>2026</div>
+        <div style="font-size:9px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:#7a8399;opacity:0.5;display:inline-block"></span>2025</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center">
+      <div style="position:relative;height:80px;display:flex;align-items:flex-end;gap:6px;padding-bottom:16px" id="dash-comparativa-bars"></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="background:var(--bg3);border-radius:7px;padding:8px 12px;text-align:center">
+          <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Crecimiento YTD</div>
+          <div style="font-size:16px;font-weight:800;font-family:var(--mono);color:var(--green)" id="dash-ytd-pct">—</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:7px;padding:8px 12px;text-align:center">
+          <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Mejor mes</div>
+          <div style="font-size:14px;font-weight:800;font-family:var(--mono);color:var(--accent)" id="dash-best-month">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 <div style="display:none"><canvas id="chart-annual"></canvas><canvas id="chart-gastos"></canvas></div>`;
   }
@@ -7684,6 +7776,7 @@ function navGo(page, triggerEl) {
     'petroleras':   ()=>renderPetrolerasPage(),
     'pasivos':      ()=>pasivosRender(),
     'flota':        ()=>flotaRender(),
+    'guardia':      ()=>renderGuardia(),
     'cashflow':     ()=>renderCashFlow(),
     'obras':        ()=>renderObras(),
     'riesgo':       ()=>renderRiesgo(),
@@ -14229,7 +14322,178 @@ function flotaExportExcel(){
   updateClock();
   setInterval(updateClock, 1000);
 })();
-// ── FIN RELOJ ─────────────────────────────────────────────────
+
+// ── TIMELINE MINI ─────────────────────────────────────────────
+function renderTimelineMini() {
+  const el = document.getElementById('dash-timeline-mini');
+  if (!el) return;
+  const hoy = new Date().toISOString().slice(0,10);
+  const eventos = [];
+  // Pasivos — cuotas próximas
+  (appState.pasivos||[]).filter(p=>(p.estado==='Vigente'||p.estado==='En mora')&&p.proxVenc&&p.proxVenc>=hoy).sort((a,b)=>a.proxVenc.localeCompare(b.proxVenc)).slice(0,2).forEach(p=>{
+    const dias = Math.ceil((new Date(p.proxVenc+' 12:00:00')-new Date())/86400000);
+    eventos.push({fecha:p.proxVenc,icon:'🏦',texto:(p.descripcion||p.banco||'Préstamo')+' · '+p.empresa,monto:-( p.cuota||0),dias,color:'var(--yellow)'});
+  });
+  // Flota — VTV/seguro próximos
+  (appState.flota||[]).forEach(v=>{
+    const dVTV = v.vtv ? Math.ceil((new Date(v.vtv+' 12:00:00')-new Date())/86400000) : null;
+    if (dVTV!==null&&dVTV>=0&&dVTV<=30) eventos.push({fecha:v.vtv,icon:'🚗',texto:'VTV '+v.patente+' · '+v.empresa,monto:0,dias:dVTV,color:'var(--red)'});
+    const dSeg = v.seguroVto ? Math.ceil((new Date(v.seguroVto+' 12:00:00')-new Date())/86400000) : null;
+    if (dSeg!==null&&dSeg>=0&&dSeg<=30) eventos.push({fecha:v.seguroVto,icon:'🛡️',texto:'Seguro '+v.patente,monto:0,dias:dSeg,color:'var(--yellow)'});
+  });
+  eventos.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  if (!eventos.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:8px 0;text-align:center">Sin vencimientos próximos</div>';
+    return;
+  }
+  el.innerHTML = eventos.slice(0,5).map(e=>{
+    const dColor = e.dias<=7?'var(--red)':e.dias<=15?'var(--yellow)':'var(--green)';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg3);border-radius:7px;margin-bottom:5px">'+
+      '<div style="font-size:9px;font-family:var(--mono);color:var(--text3);width:52px;flex-shrink:0">'+e.fecha.slice(5).replace('-','/')+'</div>'+
+      '<span style="font-size:12px">'+e.icon+'</span>'+
+      '<div style="font-size:10px;color:var(--text2);flex:1">'+e.texto+'</div>'+
+      (e.monto?'<div style="font-size:10px;font-weight:700;font-family:var(--mono);color:'+(e.monto<0?'var(--red)':'var(--green)')+'">'+( e.monto<0?'-':'+')+'$'+fmtARS(Math.abs(e.monto))+'</div>':'')+
+      '<div style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;background:'+dColor+'22;color:'+dColor+';flex-shrink:0">'+e.dias+'d</div>'+
+    '</div>';
+  }).join('');
+}
+
+// ── COMPARATIVA INTERANUAL ────────────────────────────────────
+function renderComparativa() {
+  const barsEl = document.getElementById('dash-comparativa-bars');
+  const ytdEl  = document.getElementById('dash-ytd-pct');
+  const bestEl = document.getElementById('dash-best-month');
+  if (!barsEl) return;
+  // Agrupar transacciones por mes y año
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const data = {};
+  (appState.empresas||[]).forEach(emp => {
+    (emp.transactions||[]).forEach(tx => {
+      if (!tx.date||tx.importe<=0) return;
+      const y = tx.date.slice(0,4), m = parseInt(tx.date.slice(5,7))-1;
+      if (!data[y]) data[y] = new Array(12).fill(0);
+      data[y][m] += tx.importe;
+    });
+  });
+  const anioActual = new Date().getFullYear().toString();
+  const anioAnt    = (parseInt(anioActual)-1).toString();
+  const d2026 = data[anioActual]||new Array(12).fill(0);
+  const d2025 = data[anioAnt]  ||new Array(12).fill(0);
+  const mesActual = new Date().getMonth();
+  // Solo mostrar meses con datos
+  const mesesConDatos = d2026.map((v,i)=>v>0||d2025[i]>0?i:-1).filter(i=>i>=0);
+  if (!mesesConDatos.length) {
+    barsEl.innerHTML = '<div style="font-size:11px;color:var(--text3)">Importá la Minuta para ver la comparativa</div>';
+    return;
+  }
+  const maxVal = Math.max(...d2026, ...d2025, 1);
+  // YTD
+  const ytd2026 = d2026.slice(0,mesActual+1).reduce((s,v)=>s+v,0);
+  const ytd2025 = d2025.slice(0,mesActual+1).reduce((s,v)=>s+v,0);
+  const ytdPct  = ytd2025>0 ? ((ytd2026-ytd2025)/ytd2025*100) : 0;
+  if (ytdEl) ytdEl.textContent = (ytdPct>=0?'+':'')+ytdPct.toFixed(1)+'%';
+  if (ytdEl) ytdEl.style.color = ytdPct>=0?'var(--green)':'var(--red)';
+  // Mejor mes
+  const bestIdx = d2026.indexOf(Math.max(...d2026));
+  if (bestEl) bestEl.textContent = meses[bestIdx]||'—';
+  // Barras
+  barsEl.innerHTML = mesesConDatos.slice(-6).map(i=>{
+    const h26 = d2026[i]>0 ? Math.max(6,(d2026[i]/maxVal*100)) : 0;
+    const h25 = d2025[i]>0 ? Math.max(6,(d2025[i]/maxVal*100)) : 0;
+    const isActual = i===mesActual;
+    return '<div style="flex:1;display:flex;gap:2px;align-items:flex-end;position:relative">'+
+      (h25>0?'<div style="border-radius:3px 3px 0 0;flex:1;height:'+h25+'%;background:#7a8399;opacity:0.35'+(isActual?';border:1px dashed rgba(122,131,153,0.4)':'')+'"></div>':'')+
+      (h26>0?'<div style="border-radius:3px 3px 0 0;flex:1;height:'+h26+'%;background:'+(isActual?'rgba(74,159,212,0.4)':'var(--accent)')+(isActual?';border:1px dashed rgba(74,159,212,0.5)':'')+'"></div>':'')+
+      '<div style="position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:7px;color:'+(isActual?'var(--accent)':'var(--text3)')+';white-space:nowrap">'+meses[i]+(isActual?'▶':'')+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+// Enganchar al renderDashboard
+const _origRenderDash = renderDashboard;
+renderDashboard = function() {
+  _origRenderDash.apply(this, arguments);
+  setTimeout(()=>{ renderTimelineMini(); renderComparativa(); }, 100);
+};
+
+// ── PANEL GUARDIA ─────────────────────────────────────────────
+function renderGuardia() {
+  const pg = document.getElementById('page-guardia');
+  if (!pg) return;
+  const hoy = appState.hoyData;
+  const lastDate = appState.lastMinutaDate || '—';
+  const totalGrupo = (() => {
+    const emp = appState.empresas||[];
+    const bal = lastDate && lastDate !== '—';
+    if (!bal) return 0;
+    return emp.reduce((s,e)=>{
+      const txs = (e.transactions||[]).filter(t=>t.date===lastDate&&t.importe>0);
+      return s + txs.reduce((a,t)=>a+(t.importe||0),0);
+    },0);
+  })();
+  const hoyTotal = (() => {
+    if (!hoy||!hoy.byEmp) return 0;
+    return Object.values(hoy.byEmp).reduce((s,e)=>s+(e.ing||0),0);
+  })();
+  const usd = (() => {
+    return (appState.empresas||[]).reduce((s,e)=>{
+      const inv = e.investments||[];
+      const usdI = inv.filter(i=>(i.type||'').toLowerCase().includes('usd')||i.moneda==='USD');
+      return s + usdI.reduce((a,i)=>a+(i.importe||i.amount||0),0);
+    },0);
+  })();
+  const cartera = appState.cartDebo ? appState.cartDebo.reduce((s,c)=>s+(c.importe||0),0) : 0;
+  // Alertas
+  const alertas = [];
+  const hoyStr = new Date().toISOString().slice(0,10);
+  (appState.flota||[]).filter(v=>v.vtv&&v.vtv<hoyStr).slice(0,3).forEach(v=>alertas.push({icon:'🚨',color:'#f87171',bg:'rgba(248,113,113,0.1)',b:'rgba(248,113,113,0.25)',t:'VTV vencida: '+v.patente,s:v.empresa}));
+  (appState.pasivos||[]).filter(p=>p.proxVenc===hoyStr&&(p.estado==='Vigente'||p.estado==='En mora')).forEach(p=>alertas.push({icon:'📅',color:'#fbbf24',bg:'rgba(251,191,36,0.08)',b:'rgba(251,191,36,0.25)',t:'Cuota vence hoy: '+(p.descripcion||p.banco),s:'$'+fmtARS(p.cuota||0)+' · '+p.empresa}));
+  if (!alertas.length) alertas.push({icon:'✅',color:'#4ade80',bg:'rgba(74,222,128,0.08)',b:'rgba(74,222,128,0.2)',t:'Sin alertas urgentes',s:'Todo en orden'});
+  pg.innerHTML =
+    '<div style="min-height:100vh;background:#0d1117;padding:32px;display:flex;flex-direction:column;gap:24px">'+
+    // Header
+    '<div style="display:flex;align-items:center;justify-content:space-between">'+
+      '<div>'+
+        '<div style="font-size:13px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:3px">🏦 Grupo La Plaza · En vivo</div>'+
+        '<div style="font-size:11px;color:#7a8399;margin-top:4px">'+new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:16px">'+
+        '<div id="guardia-clock" style="font-size:48px;font-weight:900;color:#4a9fd4;font-family:monospace;letter-spacing:2px">--:--:--</div>'+
+        '<button onclick="navGo(\'dashboard\',null)" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:none;color:#7a8399;font-size:13px;cursor:pointer;font-family:inherit">✕ Cerrar</button>'+
+      '</div>'+
+    '</div>'+
+    // KPIs grandes
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">'+
+      '<div style="background:#1a1f2e;border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:24px;text-align:center">'+
+        '<div style="font-size:11px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Total ingresos hoy</div>'+
+        '<div style="font-size:clamp(24px,4vw,42px);font-weight:900;font-family:monospace;color:#4ade80;line-height:1">$'+fmtARS(totalGrupo)+'</div>'+
+        '<div style="font-size:11px;color:#7a8399;margin-top:6px">ARS · C71 Minuta · '+lastDate+'</div>'+
+      '</div>'+
+      '<div style="background:#1a1f2e;border:1px solid rgba(251,191,36,0.2);border-radius:14px;padding:24px;text-align:center">'+
+        '<div style="font-size:11px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">HOY en curso</div>'+
+        '<div style="font-size:clamp(20px,3.5vw,36px);font-weight:900;font-family:monospace;color:#fbbf24;line-height:1">$'+fmtARS(hoyTotal)+'</div>'+
+        '<div style="font-size:11px;color:#7a8399;margin-top:6px">'+(hoy?'Datos parciales · '+new Date().toLocaleDateString('es-AR',{day:'numeric',month:'long'}):'Sin datos de hoy')+'</div>'+
+      '</div>'+
+      '<div style="background:#1a1f2e;border:1px solid rgba(74,159,212,0.2);border-radius:14px;padding:24px;text-align:center">'+
+        '<div style="font-size:11px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Cartera de valores</div>'+
+        '<div style="font-size:clamp(20px,3.5vw,36px);font-weight:900;font-family:monospace;color:#4a9fd4;line-height:1">$'+fmtARS(cartera)+'</div>'+
+        '<div style="font-size:11px;color:#7a8399;margin-top:6px">Total grupo</div>'+
+      '</div>'+
+    '</div>'+
+    // Alertas
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">'+
+      alertas.map(a=>'<div style="background:'+a.bg+';border:1px solid '+a.b+';border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px"><span style="font-size:28px">'+a.icon+'</span><div><div style="font-size:14px;font-weight:700;color:'+a.color+'">'+a.t+'</div><div style="font-size:11px;color:#7a8399;margin-top:3px">'+a.s+'</div></div></div>').join('')+
+    '</div>'+
+    '</div>';
+  // Reloj grande en panel guardia
+  const gc = setInterval(()=>{
+    const el=document.getElementById('guardia-clock');
+    if(!el){clearInterval(gc);return;}
+    const n=new Date();
+    el.textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+  },1000);
+}
+// ── FIN PANEL GUARDIA ─────────────────────────────────────────
 </script>
 </body>
 </html>
