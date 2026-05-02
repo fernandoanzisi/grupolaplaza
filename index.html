@@ -2641,6 +2641,7 @@ function loadState() {
       if (!parsed.empresas || !Array.isArray(parsed.empresas) || parsed.empresas.length === 0) {
         localStorage.removeItem(STORAGE_KEY);
         console.log('ℹ️ Sin datos guardados — cargando estado inicial');
+        appState = defaultState();
         return;
       }
       appState = Object.assign({}, appState, parsed);
