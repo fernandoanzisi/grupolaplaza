@@ -4641,17 +4641,21 @@ function importCarteraDeValores(wb) {
   };
 
   // ── Procesar cada hoja ─────────────────────────────────────
+  // Nombres posibles de hojas — soporte para nombres viejos y nuevos
   const sheetConfig = [
-    { name:'RS E-Cheqs RS', empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ' },
-    { name:'SC E-Cheqs',    empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ' },
-    { name:'Cartera RS',    empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:8 },
-    { name:'Cartera SC',    empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:8 },
-    { name:'Cartera AGRO',  empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO',   importeCol:7 },
+    { names:['RS E-Cheqs RS','RS E-Cheqs'],                empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ' },
+    { names:['SC E-Cheqs'],                                empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ' },
+    { names:['Cartera Fisico RS','Cartera RS'],             empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:9 },
+    { names:['Cartera Fisico SC','Cartera SC'],             empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:9 },
+    { names:['Cartera Fisico AGRO','Cartera AGRO'],         empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO',   importeCol:8 },
   ];
 
   sheetConfig.forEach(cfg => {
-    const ws = wb.Sheets[cfg.name];
+    // Buscar la hoja por cualquiera de los nombres posibles
+    const sheetName = (cfg.names || [cfg.name]).find(n => wb.Sheets[n]);
+    const ws = sheetName ? wb.Sheets[sheetName] : null;
     if (!ws) return;
+    cfg = {...cfg, name: sheetName}; // usar el nombre real encontrado
     const rows = XLSX.utils.sheet_to_json(ws, {
       header:1, defval:null, raw:true,
       range: cfg.headerRow - 1
@@ -5579,7 +5583,7 @@ function handleFile(input) {
       // ¿Es Cartera de Valores?
       // Detectar por hojas clave: RS E-Cheqs RS, SC E-Cheqs, Cartera RS, etc.
       const isCartera = wb.SheetNames.some(s =>
-        /^(rs e-cheq|sc e-cheq|cartera rs|cartera sc|cartera agro|resumen cartera)/i.test(s.trim()));
+        /^(rs e-cheq|sc e-cheq|cartera rs|cartera sc|cartera agro|cartera fisico|resumen cartera)/i.test(s.trim()));
       if (isCartera) {
         const result = importCarteraDeValores(wb);
         saveState();
@@ -6774,8 +6778,8 @@ function renderCheques() {
     if (fEmp && !c.empName.includes(fEmp)) return false;
     // Tipo (E-CHEQ / FISICO / AGRO)
     if (fTipo) {
-      const ct = c.tipo ? c.tipo.toUpperCase() : (c.elect==='Si' ? 'E-CHEQ' : 'FISICO');
-      if (!ct.includes(fTipo.toUpperCase())) return false;
+      const ct = (c.tipo||c.elect==='Si'?'E-CHEQ':'FISICO');
+      if (!ct.includes(fTipo)) return false;
     }
     // Hoja origen
     if (fHoja && (c.hoja||'') !== fHoja) return false;
@@ -6916,7 +6920,7 @@ function renderCheques() {
 
   // KPIs sobre ALL (no filtrado)
   const totRech = all.filter(c=>(c.estadoActual||c.estado||'').toUpperCase()==='RECHAZADO').reduce((s,c)=>s+(c.importe||0),0);
-  const totCart = all.filter(c=>(c.estadoActual||c.estado||'').toUpperCase()==='EN CARTERA').reduce((s,c)=>s+(c.importe||0),0);
+  const totCart = filtered.filter(c=>(c.estadoActual||c.estado||'').toUpperCase()==='EN CARTERA').reduce((s,c)=>s+(c.importe||0),0);
   const totCartAll = all.filter(c=>(c.estadoActual||c.estado||'').toUpperCase()==='EN CARTERA').reduce((s,c)=>s+(c.importe||0),0);
   const totCob  = all.filter(c=>(c.estadoActual||c.estado||'').toUpperCase()==='COBRADO').reduce((s,c)=>s+(c.importe||0),0);
   const totPend = all.filter(c=>(c.estadoActual||c.estado||'').toUpperCase()==='PENDIENTE').reduce((s,c)=>s+(c.importe||0),0);
@@ -7145,7 +7149,7 @@ function renderCartera() {
           cliente:   c.cliente || c.librador || '—',
           librador:  c.librador || '—',
           estacion:  c.subempresa || c.notas || '—',
-          tipo:      c.tipo || 'FISICO',
+          tipo:      c.tipo || (c._fromCarteraXls ? 'E-CHEQ' : 'FISICO'),
           fVto,
           diasVto,
           importe:   c.importe || 0,
@@ -9560,22 +9564,30 @@ function parseCarteraDebo(wb) {
 
   // Mapa de hojas → empresa + tipo
   const SHEET_MAP = {
-    'rs e-cheqs rs':  {emp:'RS',   tipo:'E-CHEQ'},
-    'sc e-cheqs':     {emp:'SC',   tipo:'E-CHEQ'},
-    'cartera rs':     {emp:'RS',   tipo:'FISICO'},
-    'cartera sc':     {emp:'SC',   tipo:'FISICO'},
-    'cartera agro':   {emp:'AGRO', tipo:'AGRO'},
-    'clientes':       {emp:'RS',   tipo:'FISICO'},
+    'rs e-cheqs rs':       {emp:'RS',   tipo:'E-CHEQ'},
+    'rs e-cheqs':          {emp:'RS',   tipo:'E-CHEQ'},
+    'sc e-cheqs':          {emp:'SC',   tipo:'E-CHEQ'},
+    'cartera rs':          {emp:'RS',   tipo:'FISICO'},
+    'cartera fisico rs':   {emp:'RS',   tipo:'FISICO'},
+    'cartera sc':          {emp:'SC',   tipo:'FISICO'},
+    'cartera fisico sc':   {emp:'SC',   tipo:'FISICO'},
+    'cartera agro':        {emp:'AGRO', tipo:'AGRO'},
+    'cartera fisico agro': {emp:'AGRO', tipo:'AGRO'},
+    'clientes':            {emp:'RS',   tipo:'FISICO'},
   };
   // Hojas Galicia — solo informativo, desde 2025
   const GALICIA_MAP = {
     'dep.galicia rs':    'RS',
     'dep. galicia rs':   'RS',
+    'dep.galic rs':      'RS',
+    'dep.galic. rs':     'RS',
     'dep. galicia sc':   'SC',
     'dep.galicia sc':    'SC',
+    'dep.galic sc':      'SC',
     'dep. galicia agro ':'AGRO',
     'dep.galicia agro':  'AGRO',
     'dep. galicia agro': 'AGRO',
+    'dep.galic agro':    'AGRO',
   };
   if (!appState.galiciaDepositos) appState.galiciaDepositos = [];
 
