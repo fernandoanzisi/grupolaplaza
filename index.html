@@ -4641,21 +4641,21 @@ function importCarteraDeValores(wb) {
   };
 
   // ── Procesar cada hoja ─────────────────────────────────────
-  // Nombres posibles de hojas — soporte para nombres viejos y nuevos
+  // Soporta nombres viejos y nuevos de hojas
   const sheetConfig = [
-    { names:['RS E-Cheqs RS','RS E-Cheqs'],                empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ' },
-    { names:['SC E-Cheqs'],                                empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ' },
-    { names:['Cartera Fisico RS','Cartera RS'],             empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:9 },
-    { names:['Cartera Fisico SC','Cartera SC'],             empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:9 },
-    { names:['Cartera Fisico AGRO','Cartera AGRO'],         empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO',   importeCol:8 },
+    { names:['RS E-Cheqs RS','RS E-Cheqs'], empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ' },
+    { names:['SC E-Cheqs'],                 empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ' },
+    { names:['Cartera Fisico RS','Cartera RS'],   empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:9 },
+    { names:['Cartera Fisico SC','Cartera SC'],   empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:9 },
+    { names:['Cartera Fisico AGRO','Cartera AGRO'], empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO', importeCol:8 },
   ];
 
   sheetConfig.forEach(cfg => {
-    // Buscar la hoja por cualquiera de los nombres posibles
-    const sheetName = (cfg.names || [cfg.name]).find(n => wb.Sheets[n]);
-    const ws = sheetName ? wb.Sheets[sheetName] : null;
+    // Buscar la primera hoja que exista con cualquiera de los nombres
+    const realName = cfg.names.find(n => wb.Sheets[n]);
+    const ws = realName ? wb.Sheets[realName] : null;
     if (!ws) return;
-    cfg = {...cfg, name: sheetName}; // usar el nombre real encontrado
+    cfg = {...cfg, name: realName};
     const rows = XLSX.utils.sheet_to_json(ws, {
       header:1, defval:null, raw:true,
       range: cfg.headerRow - 1
@@ -9579,15 +9579,11 @@ function parseCarteraDebo(wb) {
   const GALICIA_MAP = {
     'dep.galicia rs':    'RS',
     'dep. galicia rs':   'RS',
-    'dep.galic rs':      'RS',
-    'dep.galic. rs':     'RS',
     'dep. galicia sc':   'SC',
     'dep.galicia sc':    'SC',
-    'dep.galic sc':      'SC',
     'dep. galicia agro ':'AGRO',
     'dep.galicia agro':  'AGRO',
     'dep. galicia agro': 'AGRO',
-    'dep.galic agro':    'AGRO',
   };
   if (!appState.galiciaDepositos) appState.galiciaDepositos = [];
 
