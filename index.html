@@ -439,6 +439,7 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('conciliaciones',this)" data-page="conciliaciones">🔗 Conciliaciones Bancarias</button>
           <button class="nav-dd-item" onclick="navGo('petroleras',this)"      data-page="petroleras">⛽ Pago a Petroleras</button>
           <button class="nav-dd-item" onclick="navGo('pasivos',this)"          data-page="pasivos">📊 Pasivos Financieros</button>
+          <button class="nav-dd-item" onclick="navGo('flota',this)"            data-page="flota">🚗 Flota Automotor</button>
           <hr style="border:none;border-top:1px solid var(--border);margin:4px 0">
           <button class="nav-dd-item" onclick="window.open('https://bancogalicia.com.ar','_blank')" style="color:#e30613">🏦 Galicia</button>
           <button class="nav-dd-item" onclick="window.open('https://interbanking.com.ar','_blank')" style="color:#4a9fd4">🔗 Interbanking</button>
@@ -2398,6 +2399,83 @@ let _supaUser=null,_supaRol=null;
       <button onclick="cerrarModalPasivo()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
     </div>
     <div id="modal-pasivo-body" style="padding:22px"></div>
+  </div>
+</div>
+
+<!-- FLOTA AUTOMOTOR -->
+<div class="page" id="page-flota">
+
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+    <div>
+      <h2 style="font-size:20px;font-weight:800;margin:0;display:flex;align-items:center;gap:10px">🚗 Flota Automotor</h2>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px">Vehículos · VTV · Seguros · Mantenimiento · Combustible · Infracciones</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button onclick="flotaSetEmp('grupo',this)" class="flota-emp-btn" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--accent);background:var(--accent)22;color:var(--accent);font-family:var(--font)">🏛️ Grupo</button>
+      <button onclick="flotaSetEmp('RS',this)" class="flota-emp-btn" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:var(--bg3);color:var(--text2);font-family:var(--font)">🔵 RS</button>
+      <button onclick="flotaSetEmp('SC',this)" class="flota-emp-btn" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:var(--bg3);color:var(--text2);font-family:var(--font)">🟢 SC</button>
+      <button onclick="flotaSetEmp('LP',this)" class="flota-emp-btn" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:var(--bg3);color:var(--text2);font-family:var(--font)">🟡 LP</button>
+      <button onclick="abrirModalFlota()" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);cursor:pointer;font-family:var(--font)">＋ Vehículo</button>
+      <button onclick="flotaExportExcel()" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);cursor:pointer;font-family:var(--font)">📥 Excel</button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div id="flota-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px"></div>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:4px;margin-bottom:14px;background:var(--bg2);padding:4px;border-radius:10px;width:fit-content;overflow-x:auto;scrollbar-width:none">
+    <button onclick="flotaSetTab('todos',this)"        class="flota-tab" style="padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text);background:var(--bg3);border:none;font-family:var(--font);white-space:nowrap">📋 Todos</button>
+    <button onclick="flotaSetTab('auto',this)"         class="flota-tab" style="padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);background:none;border:none;font-family:var(--font);white-space:nowrap">🚗 Autos/Pick-ups</button>
+    <button onclick="flotaSetTab('camion',this)"       class="flota-tab" style="padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);background:none;border:none;font-family:var(--font);white-space:nowrap">🚛 Camiones</button>
+    <button onclick="flotaSetTab('moto',this)"         class="flota-tab" style="padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);background:none;border:none;font-family:var(--font);white-space:nowrap">🏍️ Motos</button>
+    <button onclick="flotaSetTab('maquinaria',this)"   class="flota-tab" style="padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);background:none;border:none;font-family:var(--font);white-space:nowrap">🚜 Maquinaria</button>
+    <button onclick="flotaSetTab('mantenimiento',this)" class="flota-tab" style="padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);background:none;border:none;font-family:var(--font);white-space:nowrap">🔧 Mantenimiento</button>
+    <button onclick="flotaSetTab('combustible',this)"  class="flota-tab" style="padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);background:none;border:none;font-family:var(--font);white-space:nowrap">⛽ Combustible</button>
+    <button onclick="flotaSetTab('infraccion',this)"   class="flota-tab" style="padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);background:none;border:none;font-family:var(--font);white-space:nowrap">🚫 Infracciones</button>
+  </div>
+
+  <!-- Alertas -->
+  <div id="flota-alertas" style="margin-bottom:14px"></div>
+
+  <!-- Cards vehículos -->
+  <div id="flota-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:16px"></div>
+
+  <!-- Tabla mantenimiento/combustible/infracciones -->
+  <div class="card" id="flota-tabla-card" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px" id="flota-tabla-title">📋 Registros</div>
+      <button onclick="abrirModalFlotaRegistro()" style="padding:5px 12px;border-radius:6px;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);font-size:11px;cursor:pointer;font-family:var(--font)">＋ Agregar</button>
+    </div>
+    <div class="table-wrap">
+      <table style="font-size:11px;width:100%">
+        <thead id="flota-tabla-thead"></thead>
+        <tbody id="flota-tabla-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL VEHICULO -->
+<div id="modal-flota" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:100%;max-width:740px;margin:auto">
+    <div style="background:var(--bg3);padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;border-radius:16px 16px 0 0;position:sticky;top:0;z-index:1">
+      <div style="font-size:16px;font-weight:800;color:var(--text)" id="modal-flota-title">🚗 Nuevo Vehículo</div>
+      <button onclick="cerrarModalFlota()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div id="modal-flota-body" style="padding:22px"></div>
+  </div>
+</div>
+
+<!-- MODAL REGISTRO (service/carga/infraccion) -->
+<div id="modal-flota-reg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:100%;max-width:560px;margin:auto">
+    <div style="background:var(--bg3);padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;border-radius:16px 16px 0 0">
+      <div style="font-size:16px;font-weight:800;color:var(--text)" id="modal-flota-reg-title">＋ Nuevo Registro</div>
+      <button onclick="document.getElementById('modal-flota-reg').style.display='none'" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div id="modal-flota-reg-body" style="padding:22px"></div>
   </div>
 </div>
 
@@ -7604,6 +7682,7 @@ function navGo(page, triggerEl) {
     'fci':          ()=>renderFci(),
     'petroleras':   ()=>renderPetrolerasPage(),
     'pasivos':      ()=>pasivosRender(),
+    'flota':        ()=>flotaRender(),
     'cashflow':     ()=>renderCashFlow(),
     'obras':        ()=>renderObras(),
     'riesgo':       ()=>renderRiesgo(),
@@ -9970,6 +10049,9 @@ async function cacheCargarTodo() {
             break;
           case 'pasivos':
             if (Array.isArray(val)) appState.pasivos = val;
+            break;
+          case 'flota':
+            if (val && val.vehiculos) { appState.flota = val.vehiculos; appState.flotaRegistros = val.registros||[]; }
             break;
         }
       } catch(e) { console.warn('cacheCargarTodo parse ['+row.clave+']:', e); }
@@ -13850,6 +13932,289 @@ function pasivosExportExcel() {
   showToast('📥 Excel exportado');
 }
 // ==================== FIN PASIVOS FINANCIEROS ====================
+
+// ==================== FLOTA AUTOMOTOR ====================
+var _flotaTab = 'todos';
+var _flotaEmp = 'grupo';
+var _flotaEditId = null;
+
+const FL_TIPOS = ['auto','camion','moto','maquinaria','otro'];
+const FL_TIPO_LABEL = {auto:'🚗 Auto/Pick-up',camion:'🚛 Camión/Utilitario',moto:'🏍️ Moto',maquinaria:'🚜 Maquinaria',otro:'🚙 Otro'};
+const FL_TIPO_ICON  = {auto:'🚗',camion:'🚛',moto:'🏍️',maquinaria:'🚜',otro:'🚙'};
+const FL_ESTADOS = ['Activo','En reparación','Baja','Vendido'];
+const FL_COMBUSTIBLES = ['Gasoil','Nafta Super','Nafta Premium','GNC','Eléctrico','Híbrido'];
+const FL_RAZON_F = {RS:'Rio Salado SRL',SC:'Serv. Cipolletti SRL',LP:'La Plaza SA'};
+
+function flotaInit() { if (!appState.flota) appState.flota=[]; if (!appState.flotaRegistros) appState.flotaRegistros=[]; }
+
+function flotaSetTab(tab,btn) {
+  _flotaTab=tab;
+  document.querySelectorAll('.flota-tab').forEach(b=>{b.style.background='none';b.style.color='var(--text3)';});
+  if(btn){btn.style.background='var(--bg3)';btn.style.color='var(--text)';}
+  flotaRender();
+}
+function flotaSetEmp(emp,btn) {
+  _flotaEmp=emp;
+  document.querySelectorAll('.flota-emp-btn').forEach(b=>{b.style.borderColor='rgba(255,255,255,0.12)';b.style.background='var(--bg3)';b.style.color='var(--text2)';});
+  if(btn){btn.style.borderColor='var(--accent)';btn.style.background='var(--accent)22';btn.style.color='var(--accent)';}
+  flotaRender();
+}
+function flotaDiasHasta(f){if(!f)return null;return Math.ceil((new Date(f+' 12:00:00')-new Date())/86400000);}
+function flotaVTVEstado(v){const d=flotaDiasHasta(v.vtv);if(!d&&!v.vtv)return{color:'var(--text3)',icon:'—',texto:'Sin VTV'};if(d<0)return{color:'var(--red)',icon:'🚨',texto:'VTV vencida'};if(d<=30)return{color:'var(--yellow)',icon:'⏰',texto:'VTV vence en '+d+'d'};return{color:'var(--green)',icon:'✓',texto:'VTV ok · '+v.vtv};}
+function flotaSeguroEstado(v){const d=flotaDiasHasta(v.seguroVto);if(!d&&!v.seguroVto)return{color:'var(--text3)',icon:'—',texto:'Sin seguro'};if(d<0)return{color:'var(--red)',icon:'🚨',texto:'Seguro vencido'};if(d<=30)return{color:'var(--yellow)',icon:'⏰',texto:'Seguro vence en '+d+'d'};return{color:'var(--green)',icon:'✓',texto:(v.seguroComp||'')+' · '+v.seguroVto};}
+
+function flotaRender() {
+  flotaInit();
+  const all=appState.flota.filter(v=>_flotaEmp==='grupo'||v.empresa===_flotaEmp);
+  const hoy=new Date().toISOString().slice(0,10);
+  const regs=appState.flotaRegistros||[];
+  const vtv_venc=all.filter(v=>v.vtv&&v.vtv<hoy).length;
+  const vtv_prox=all.filter(v=>{const d=flotaDiasHasta(v.vtv);return d!==null&&d>=0&&d<=30;}).length;
+  const seg_venc=all.filter(v=>v.seguroVto&&v.seguroVto<hoy).length;
+  const seg_prox=all.filter(v=>{const d=flotaDiasHasta(v.seguroVto);return d!==null&&d>=0&&d<=30;}).length;
+  const mesStr=hoy.slice(0,7);
+  const gastoMes=regs.filter(r=>r.tipo==='mantenimiento'&&(r.fecha||'').slice(0,7)===mesStr).reduce((s,r)=>s+(r.costo||0),0);
+  const infPend=regs.filter(r=>r.tipo==='infraccion'&&r.estado!=='Pagada').length;
+  const kEl=document.getElementById('flota-kpis');
+  if(kEl)kEl.innerHTML=[
+    ['🚗 Total flota',all.length+' veh.','var(--accent)','RS:'+all.filter(v=>v.empresa==='RS').length+' · SC:'+all.filter(v=>v.empresa==='SC').length+' · LP:'+all.filter(v=>v.empresa==='LP').length],
+    ['📋 VTV',vtv_venc>0?vtv_venc+' vencida'+(vtv_venc>1?'s':''):vtv_prox>0?vtv_prox+' por vencer':'✓ Al día',vtv_venc>0?'var(--red)':vtv_prox>0?'var(--yellow)':'var(--green)',vtv_venc+' vencidas · '+vtv_prox+' en 30d'],
+    ['🛡️ Seguros',seg_venc>0?seg_venc+' vencido'+(seg_venc>1?'s':''):seg_prox>0?seg_prox+' por vencer':'✓ Al día',seg_venc>0?'var(--red)':seg_prox>0?'var(--yellow)':'var(--green)',seg_venc+' vencidos · '+seg_prox+' en 30d'],
+    ['🔧 Gasto mantenimiento','$ '+fmtARS(gastoMes),'#a78bfa','Mes actual'],
+    ['🚫 Infracciones',''+infPend+' pendiente'+(infPend!==1?'s':''),infPend>0?'var(--red)':'var(--green)',infPend===0?'Sin infracciones':'Requieren atención'],
+  ].map(([l,v,c,s])=>'<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;border-left:3px solid '+c+'"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">'+l+'</div><div style="font-family:var(--mono);font-size:clamp(12px,1.4vw,17px);font-weight:900;color:'+c+'">'+v+'</div><div style="font-size:10px;color:var(--text3);margin-top:3px">'+s+'</div></div>').join('');
+  // Alertas
+  const alEl=document.getElementById('flota-alertas');
+  if(alEl){
+    const alertas=[];
+    const vtvV=all.filter(v=>v.vtv&&v.vtv<hoy);
+    const vtvP=all.filter(v=>{const d=flotaDiasHasta(v.vtv);return d!==null&&d>=0&&d<=15;});
+    const segV=all.filter(v=>v.seguroVto&&v.seguroVto<hoy);
+    const segP=all.filter(v=>{const d=flotaDiasHasta(v.seguroVto);return d!==null&&d>=0&&d<=15;});
+    const srvP=regs.filter(r=>r.tipo==='mantenimiento'&&r.estado==='Pendiente'&&r.fecha&&r.fecha>=hoy).slice(0,2);
+    if(vtvV.length)alertas.push({icon:'🚨',c:'var(--red)',bg:'rgba(248,113,113,0.08)',b:'rgba(248,113,113,0.2)',t:vtvV.length+' VTV vencida'+(vtvV.length>1?'s':''),s:vtvV.map(v=>v.patente).join(' · ')});
+    if(vtvP.length)alertas.push({icon:'⏰',c:'var(--yellow)',bg:'rgba(251,191,36,0.08)',b:'rgba(251,191,36,0.2)',t:vtvP.length+' VTV vence en 15 días',s:vtvP.map(v=>v.patente).join(' · ')});
+    if(segV.length)alertas.push({icon:'🚨',c:'var(--red)',bg:'rgba(248,113,113,0.08)',b:'rgba(248,113,113,0.2)',t:segV.length+' Seguro vencido',s:segV.map(v=>v.patente).join(' · ')});
+    if(segP.length)alertas.push({icon:'⏰',c:'var(--yellow)',bg:'rgba(251,191,36,0.08)',b:'rgba(251,191,36,0.2)',t:segP.length+' Seguro vence en 15 días',s:segP.map(v=>v.patente).join(' · ')});
+    if(srvP.length)alertas.push({icon:'🔧',c:'var(--accent)',bg:'rgba(74,159,212,0.08)',b:'rgba(74,159,212,0.2)',t:'Service programado',s:srvP.map(r=>r.vehiculo+' · '+r.fecha).join(' · ')});
+    alEl.innerHTML=alertas.length?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:14px">'+alertas.map(a=>'<div style="background:'+a.bg+';border:1px solid '+a.b+';border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px"><span style="font-size:22px">'+a.icon+'</span><div><div style="font-size:12px;font-weight:700;color:'+a.c+'">'+a.t+'</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+a.s+'</div></div></div>').join('')+'</div>':'';
+  }
+  const tabsReg=['mantenimiento','combustible','infraccion'];
+  const fc=document.getElementById('flota-cards');
+  const ft=document.getElementById('flota-tabla-card');
+  if(tabsReg.includes(_flotaTab)){
+    if(fc)fc.style.display='none';if(ft)ft.style.display='';flotaRenderTabla();
+  } else {
+    if(fc)fc.style.display='';if(ft)ft.style.display='none';
+    const filtered=all.filter(v=>_flotaTab==='todos'||v.tipo===_flotaTab);
+    if(!filtered.length){if(fc)fc.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:50px;color:var(--text3)"><div style="font-size:40px;margin-bottom:10px">🚗</div><div style="font-weight:700;margin-bottom:6px">Sin vehículos</div><div style="font-size:12px">Hacé clic en <strong>＋ Vehículo</strong> para agregar</div></div>';return;}
+    if(fc)fc.innerHTML=filtered.map(v=>{
+      const vtv=flotaVTVEstado(v),seg=flotaSeguroEstado(v);
+      const ec=v.empresa==='RS'?'#4a9fd4':v.empresa==='SC'?'#4ade80':'#fbbf24';
+      const estC=v.estado==='Activo'?'var(--green)':v.estado==='En reparación'?'var(--yellow)':'var(--text3)';
+      const icon=FL_TIPO_ICON[v.tipo]||'🚗';
+      const pct=v.kmProxService&&v.kmActuales?Math.min(100,v.kmActuales/v.kmProxService*100):0;
+      const kc=pct>=90?'var(--red)':pct>=75?'var(--yellow)':'var(--accent)';
+      const vRegs=regs.filter(r=>r.vehiculoId===v.id);
+      const tg=vRegs.filter(r=>r.tipo==='mantenimiento').reduce((s,r)=>s+(r.costo||0),0);
+      return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">'+
+        '<div style="padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--bg2)">'+
+          '<div style="font-size:24px">'+icon+'</div>'+
+          '<div style="flex:1"><div style="font-size:13px;font-weight:800;color:var(--text)">'+v.marca+' '+v.modelo+' '+(v.anio||'')+'</div>'+
+          '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--accent);background:var(--accent)15;padding:2px 8px;border-radius:4px;display:inline-block;margin-top:2px">'+v.patente+'</div></div>'+
+          '<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;background:'+estC+'22;color:'+estC+'">'+v.estado+'</span>'+
+        '</div>'+
+        '<div style="padding:12px 14px">'+
+          '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px"><span style="color:var(--text3)">Empresa</span><span style="font-weight:600;color:'+ec+'">'+FL_RAZON_F[v.empresa]+'</span></div>'+
+          (v.responsable?'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px"><span style="color:var(--text3)">Responsable</span><span style="font-weight:600;color:var(--text)">'+v.responsable+'</span></div>':'')+
+          (v.kmActuales?'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:var(--text3)">Km actuales</span><span style="font-family:var(--mono);font-weight:700;color:var(--text)">'+v.kmActuales.toLocaleString()+' km</span></div>':'')+
+          (v.kmProxService?'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:var(--text3)">Próx. service</span><span style="font-family:var(--mono);font-weight:700;color:'+kc+'">'+v.kmProxService.toLocaleString()+' km</span></div><div style="height:5px;background:var(--bg3);border-radius:99px;overflow:hidden;margin-bottom:8px"><div style="height:100%;background:'+kc+';width:'+pct.toFixed(0)+'%;border-radius:99px"></div></div>':'')+
+          '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px"><span style="color:var(--text3)">VTV</span><span style="color:'+vtv.color+'">'+vtv.icon+' '+vtv.texto+'</span></div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px"><span style="color:var(--text3)">Seguro</span><span style="color:'+seg.color+'">'+seg.icon+' '+seg.texto+'</span></div>'+
+          (v.combustible?'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:8px"><span style="color:var(--text3)">Combustible</span><span style="color:var(--text2)">'+v.combustible+'</span></div>':'')+
+          '<div style="display:flex;gap:4px;flex-wrap:wrap">'+
+            (v.gps?'<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(74,222,128,0.1);color:var(--green)">📡 GPS</span>':'')+
+            (v.propietario==='Propio'?'<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(167,139,250,0.1);color:#a78bfa">Propio</span>':v.propietario==='Leasing'?'<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(251,191,36,0.1);color:var(--yellow)">Leasing</span>':'')+
+            (tg>0?'<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(74,159,212,0.1);color:var(--accent)">$'+fmtARS(tg)+' mant.</span>':'')+
+          '</div>'+
+        '</div>'+
+        '<div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:6px">'+
+          '<button onclick="abrirModalFlotaRegistro(\'mantenimiento\',\''+v.id+'\')" style="flex:1;padding:5px;border-radius:6px;border:1px solid rgba(74,159,212,0.3);background:rgba(74,159,212,0.08);color:var(--accent);font-size:10px;cursor:pointer;font-family:var(--font)">🔧 Service</button>'+
+          '<button onclick="abrirModalFlotaRegistro(\'combustible\',\''+v.id+'\')" style="flex:1;padding:5px;border-radius:6px;border:1px solid rgba(74,159,212,0.3);background:rgba(74,159,212,0.08);color:var(--accent);font-size:10px;cursor:pointer;font-family:var(--font)">⛽ Carga</button>'+
+          '<button onclick="abrirModalFlota(\''+v.id+'\')" style="flex:1;padding:5px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:none;color:var(--text2);font-size:10px;cursor:pointer;font-family:var(--font)">✏️ Editar</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
+}
+
+function flotaRenderTabla() {
+  const thead=document.getElementById('flota-tabla-thead');
+  const tbody=document.getElementById('flota-tabla-tbody');
+  const titleEl=document.getElementById('flota-tabla-title');
+  if(!thead||!tbody)return;
+  const regs=(appState.flotaRegistros||[]).filter(r=>{
+    if(_flotaEmp!=='grupo'){const v=(appState.flota||[]).find(x=>x.id===r.vehiculoId);if(!v||v.empresa!==_flotaEmp)return false;}
+    return r.tipo===_flotaTab;
+  }).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const vInfo=id=>{const v=(appState.flota||[]).find(x=>x.id===id);return v?{n:v.marca+' '+v.modelo,p:v.patente,e:v.empresa}:{n:'—',p:'',e:''};};
+  const ec=e=>e==='RS'?'#4a9fd4':e==='SC'?'#4ade80':'#fbbf24';
+  if(_flotaTab==='mantenimiento'){
+    if(titleEl)titleEl.textContent='🔧 Mantenimiento ('+regs.length+')';
+    thead.innerHTML='<tr><th>Vehículo</th><th>Tipo</th><th>Fecha</th><th>Km</th><th style="text-align:right">Costo</th><th>Taller</th><th>Empresa</th><th>Estado</th><th></th></tr>';
+    tbody.innerHTML=!regs.length?'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3)">Sin registros</td></tr>':regs.map(r=>{const vi=vInfo(r.vehiculoId);const st=r.estado==='Realizado'?'var(--green)':r.estado==='Pendiente'?'var(--yellow)':'var(--text3)';return'<tr><td style="font-weight:600">'+vi.n+(vi.p?' <span style="font-size:10px;color:var(--accent)">'+vi.p+'</span>':'')+'</td><td><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(74,159,212,0.1);color:var(--accent)">'+(r.subtipo||'Service')+'</span></td><td style="font-family:var(--mono)">'+(r.fecha||'—')+'</td><td style="font-family:var(--mono)">'+(r.km?r.km.toLocaleString()+' km':'—')+'</td><td style="text-align:right;font-family:var(--mono);font-weight:700">$'+fmtARS(r.costo||0)+'</td><td style="color:var(--text2)">'+(r.taller||'—')+'</td><td><span style="font-size:10px;font-weight:600;color:'+ec(vi.e)+'">'+vi.e+'</span></td><td><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:'+st+'22;color:'+st+'">'+(r.estado||'—')+'</span></td><td><button onclick="flotaElimReg(\''+r.id+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">🗑</button></td></tr>';}).join('');
+  } else if(_flotaTab==='combustible'){
+    if(titleEl)titleEl.textContent='⛽ Combustible ('+regs.length+')';
+    thead.innerHTML='<tr><th>Vehículo</th><th>Fecha</th><th>Km</th><th>Tipo</th><th style="text-align:right">Litros</th><th style="text-align:right">Costo</th><th>Estación</th><th>Empresa</th><th></th></tr>';
+    tbody.innerHTML=!regs.length?'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3)">Sin registros</td></tr>':regs.map(r=>{const vi=vInfo(r.vehiculoId);return'<tr><td style="font-weight:600">'+vi.n+(vi.p?' <span style="font-size:10px;color:var(--accent)">'+vi.p+'</span>':'')+'</td><td style="font-family:var(--mono)">'+(r.fecha||'—')+'</td><td style="font-family:var(--mono)">'+(r.km?r.km.toLocaleString()+' km':'—')+'</td><td style="color:var(--text2)">'+(r.subtipo||'—')+'</td><td style="text-align:right;font-family:var(--mono)">'+(r.litros||'—')+'L</td><td style="text-align:right;font-family:var(--mono);font-weight:700">$'+fmtARS(r.costo||0)+'</td><td style="color:var(--text2)">'+(r.taller||'—')+'</td><td><span style="font-size:10px;font-weight:600;color:'+ec(vi.e)+'">'+vi.e+'</span></td><td><button onclick="flotaElimReg(\''+r.id+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">🗑</button></td></tr>';}).join('');
+  } else if(_flotaTab==='infraccion'){
+    if(titleEl)titleEl.textContent='🚫 Infracciones ('+regs.length+')';
+    thead.innerHTML='<tr><th>Vehículo</th><th>Fecha</th><th>Descripción</th><th style="text-align:right">Monto</th><th>Empresa</th><th>Estado</th><th></th></tr>';
+    tbody.innerHTML=!regs.length?'<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Sin infracciones</td></tr>':regs.map(r=>{const vi=vInfo(r.vehiculoId);const st=r.estado==='Pagada'?'var(--green)':r.estado==='Pendiente'?'var(--red)':'var(--yellow)';return'<tr><td style="font-weight:600">'+vi.n+(vi.p?' <span style="font-size:10px;color:var(--accent)">'+vi.p+'</span>':'')+'</td><td style="font-family:var(--mono)">'+(r.fecha||'—')+'</td><td style="color:var(--text2)">'+(r.descripcion||r.subtipo||'—')+'</td><td style="text-align:right;font-family:var(--mono);font-weight:700;color:var(--red)">$'+fmtARS(r.costo||0)+'</td><td><span style="font-size:10px;font-weight:600;color:'+ec(vi.e)+'">'+vi.e+'</span></td><td><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:'+st+'22;color:'+st+'">'+(r.estado||'Pendiente')+'</span></td><td><button onclick="flotaElimReg(\''+r.id+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">🗑</button></td></tr>';}).join('');
+  }
+}
+
+function flotaField(label,id,type,val,ph){return'<div><div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">'+label+'</div><input type="'+type+'" id="'+id+'" value="'+(val||'')+'" placeholder="'+(ph||'')+'" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box;font-family:var(--font)"></div>';}
+function flotaSelect(label,id,opts,val){return'<div><div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">'+label+'</div><select id="'+id+'" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;font-family:var(--font)">'+opts.map(([v,l])=>'<option value="'+v+'"'+(v===val?' selected':'')+'>'+l+'</option>').join('')+'</select></div>';}
+
+function abrirModalFlota(id){
+  flotaInit();_flotaEditId=id||null;
+  const v=id?(appState.flota||[]).find(x=>x.id===id):null;
+  const o=v||{tipo:'auto',empresa:'RS',marca:'',modelo:'',anio:'',patente:'',color:'',kmActuales:0,kmProxService:0,vtv:'',seguroVto:'',seguroComp:'',seguroPoliza:'',combustible:'Gasoil',responsable:'',propietario:'Propio',gps:false,estado:'Activo',nroMotor:'',nroChasis:'',notas:''};
+  document.getElementById('modal-flota-title').textContent=id?'✏️ Editar Vehículo':'🚗 Nuevo Vehículo';
+  const body=document.getElementById('modal-flota-body');
+  body.innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">'+
+      flotaSelect('Tipo','fl-tipo',FL_TIPOS.map(t=>[t,FL_TIPO_LABEL[t]]),o.tipo)+
+      flotaSelect('Empresa','fl-empresa',[['RS','Rio Salado SRL'],['SC','Serv. Cipolletti SRL'],['LP','La Plaza SA']],o.empresa)+
+      flotaSelect('Estado','fl-estado',FL_ESTADOS.map(e=>[e,e]),o.estado)+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">'+
+      flotaField('Marca','fl-marca','text',o.marca,'Toyota, Ford...')+
+      flotaField('Modelo','fl-modelo','text',o.modelo,'Hilux, S10...')+
+      flotaField('Año','fl-anio','number',o.anio,'2023')+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">'+
+      flotaField('Patente','fl-patente','text',o.patente,'AB 123 CD')+
+      flotaField('Color','fl-color','text',o.color,'Blanco...')+
+      flotaSelect('Combustible','fl-combustible',FL_COMBUSTIBLES.map(c=>[c,c]),o.combustible)+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">'+
+      flotaField('Km actuales','fl-km','number',o.kmActuales,'')+
+      flotaField('Km próximo service','fl-km-service','number',o.kmProxService,'')+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">'+
+      flotaField('VTV vencimiento','fl-vtv','date',o.vtv,'')+
+      flotaField('Responsable','fl-responsable','text',o.responsable,'')+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">'+
+      flotaField('Seguro vencimiento','fl-seg-vto','date',o.seguroVto,'')+
+      flotaField('Compañía seguro','fl-seg-comp','text',o.seguroComp,'Sancor, Zurich...')+
+      flotaField('Póliza Nº','fl-seg-pol','text',o.seguroPoliza,'')+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">'+
+      flotaSelect('Propietario','fl-propietario',[['Propio','Propio'],['Leasing','Leasing'],['Alquilado','Alquilado']],o.propietario)+
+      flotaField('Nº Motor','fl-motor','text',o.nroMotor,'')+
+      flotaField('Nº Chasis','fl-chasis','text',o.nroChasis,'')+
+    '</div>'+
+    '<div style="margin-bottom:14px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text2)"><input type="checkbox" id="fl-gps" '+(o.gps?'checked':'')+' style="width:16px;height:16px"> Tiene GPS</label></div>'+
+    '<div style="margin-bottom:16px"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Notas</div><textarea id="fl-notas" style="width:100%;min-height:60px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px;font-size:12px;color:var(--text);outline:none;resize:vertical;font-family:var(--font);box-sizing:border-box">'+(o.notas||'')+'</textarea></div>'+
+    '<div style="display:flex;gap:10px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border)">'+
+      (id?'<button onclick="flotaEliminarVehiculo(\''+id+'\')" style="padding:10px 18px;border-radius:8px;border:1px solid rgba(248,113,113,0.4);background:none;color:var(--red);font-size:13px;cursor:pointer;margin-right:auto;font-family:var(--font)">🗑 Eliminar</button>':'')+
+      '<button onclick="cerrarModalFlota()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font)">Cancelar</button>'+
+      '<button onclick="guardarFlotaVehiculo()" style="padding:10px 22px;border-radius:8px;border:none;background:var(--accent);color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font)">💾 Guardar</button>'+
+    '</div>';
+  document.getElementById('modal-flota').style.display='flex';
+}
+
+function cerrarModalFlota(){document.getElementById('modal-flota').style.display='none';_flotaEditId=null;}
+
+function guardarFlotaVehiculo(){
+  flotaInit();
+  const get=id=>document.getElementById(id)?.value||'';
+  const getN=id=>parseFloat(document.getElementById(id)?.value)||0;
+  if(!get('fl-marca')||!get('fl-patente')){showToast('⚠️ Marca y patente son obligatorios');return;}
+  const data={id:_flotaEditId||('veh_'+Date.now()),tipo:get('fl-tipo'),empresa:get('fl-empresa'),estado:get('fl-estado'),marca:get('fl-marca'),modelo:get('fl-modelo'),anio:get('fl-anio'),patente:get('fl-patente').toUpperCase(),color:get('fl-color'),combustible:get('fl-combustible'),kmActuales:getN('fl-km'),kmProxService:getN('fl-km-service'),vtv:get('fl-vtv'),responsable:get('fl-responsable'),seguroVto:get('fl-seg-vto'),seguroComp:get('fl-seg-comp'),seguroPoliza:get('fl-seg-pol'),propietario:get('fl-propietario'),nroMotor:get('fl-motor'),nroChasis:get('fl-chasis'),gps:document.getElementById('fl-gps')?.checked||false,notas:document.getElementById('fl-notas')?.value||''};
+  const idx=appState.flota.findIndex(v=>v.id===data.id);
+  if(idx>=0)appState.flota[idx]=data;else appState.flota.push(data);
+  cerrarModalFlota();
+  cacheGuardar('flota',{vehiculos:appState.flota,registros:appState.flotaRegistros||[]});
+  flotaRender();showToast('✅ Vehículo guardado');
+}
+
+function flotaEliminarVehiculo(id){
+  if(!confirm('¿Eliminar este vehículo y todos sus registros?'))return;
+  appState.flota=(appState.flota||[]).filter(v=>v.id!==id);
+  appState.flotaRegistros=(appState.flotaRegistros||[]).filter(r=>r.vehiculoId!==id);
+  cerrarModalFlota();
+  cacheGuardar('flota',{vehiculos:appState.flota,registros:appState.flotaRegistros});
+  flotaRender();showToast('🗑 Vehículo eliminado');
+}
+
+function abrirModalFlotaRegistro(tipo,vehiculoId){
+  flotaInit();tipo=tipo||_flotaTab;
+  if(!['mantenimiento','combustible','infraccion'].includes(tipo))tipo='mantenimiento';
+  const titles={mantenimiento:'🔧 Service / Mantenimiento',combustible:'⛽ Carga de Combustible',infraccion:'🚫 Infracción'};
+  document.getElementById('modal-flota-reg-title').textContent=titles[tipo];
+  const hoy=new Date().toISOString().slice(0,10);
+  const body=document.getElementById('modal-flota-reg-body');
+  const vSel='<div style="margin-bottom:14px">'+flotaSelect('Vehículo','flr-vehiculo',(appState.flota||[]).map(v=>[v.id,v.marca+' '+v.modelo+' · '+v.patente+' ('+v.empresa+')']),vehiculoId||'')+'</div>';
+  let campos='';
+  if(tipo==='mantenimiento'){
+    campos='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'+flotaField('Fecha','flr-fecha','date',hoy,'')+flotaField('Km actuales','flr-km','number','','')+'</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'+flotaSelect('Tipo','flr-subtipo',[['Service','Service'],['Reparación','Reparación'],['Neumáticos','Neumáticos'],['Frenos','Frenos'],['Batería','Batería'],['Aceite','Cambio de aceite'],['Otro','Otro']],'Service')+flotaSelect('Estado','flr-estado',[['Realizado','Realizado'],['Pendiente','Pendiente'],['En proceso','En proceso']],'Realizado')+'</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'+flotaField('Costo $','flr-costo','number','','')+flotaField('Taller','flr-taller','text','','')+'</div>'+
+    '<div style="margin-bottom:12px">'+flotaField('Observaciones','flr-desc','text','','')+'</div>';
+  } else if(tipo==='combustible'){
+    campos='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'+flotaField('Fecha','flr-fecha','date',hoy,'')+flotaField('Km actuales','flr-km','number','','')+'</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">'+flotaSelect('Combustible','flr-subtipo',FL_COMBUSTIBLES.map(c=>[c,c]),'Gasoil')+flotaField('Litros','flr-litros','number','','50')+flotaField('Costo $','flr-costo','number','','')+'</div>'+
+    '<div style="margin-bottom:12px">'+flotaField('Estación','flr-taller','text','','')+'</div>';
+  } else {
+    campos='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'+flotaField('Fecha','flr-fecha','date',hoy,'')+flotaField('Monto $','flr-costo','number','','')+'</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'+flotaSelect('Estado','flr-estado',[['Pendiente','Pendiente'],['Pagada','Pagada'],['Recurrida','Recurrida']],'Pendiente')+flotaField('Nº Infracción','flr-taller','text','','')+'</div>'+
+    '<div style="margin-bottom:12px">'+flotaField('Descripción','flr-desc','text','','')+'</div>';
+  }
+  body.innerHTML=vSel+campos+
+    '<div style="display:flex;gap:10px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border)">'+
+    '<button onclick="document.getElementById(\'modal-flota-reg\').style.display=\'none\'" style="padding:10px 18px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font)">Cancelar</button>'+
+    '<button onclick="guardarFlotaRegistro(\''+tipo+'\')" style="padding:10px 22px;border-radius:8px;border:none;background:var(--accent);color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font)">💾 Guardar</button>'+
+    '</div>';
+  document.getElementById('modal-flota-reg').style.display='flex';
+}
+
+function guardarFlotaRegistro(tipo){
+  flotaInit();
+  const get=id=>document.getElementById(id)?.value||'';
+  const getN=id=>parseFloat(document.getElementById(id)?.value)||0;
+  const vid=get('flr-vehiculo');
+  if(!vid){showToast('⚠️ Seleccioná un vehículo');return;}
+  const reg={id:'reg_'+Date.now(),tipo,vehiculoId:vid,fecha:get('flr-fecha'),km:getN('flr-km'),subtipo:get('flr-subtipo'),estado:get('flr-estado')||'Realizado',costo:getN('flr-costo'),taller:get('flr-taller'),litros:getN('flr-litros')||undefined,descripcion:get('flr-desc')};
+  if(reg.km>0){const v=appState.flota.find(x=>x.id===vid);if(v&&reg.km>v.kmActuales)v.kmActuales=reg.km;}
+  appState.flotaRegistros.push(reg);
+  document.getElementById('modal-flota-reg').style.display='none';
+  cacheGuardar('flota',{vehiculos:appState.flota,registros:appState.flotaRegistros});
+  flotaRender();showToast('✅ Registro guardado');
+}
+
+function flotaElimReg(id){
+  appState.flotaRegistros=(appState.flotaRegistros||[]).filter(r=>r.id!==id);
+  cacheGuardar('flota',{vehiculos:appState.flota,registros:appState.flotaRegistros});
+  flotaRenderTabla();showToast('🗑 Eliminado');
+}
+
+function flotaExportExcel(){
+  flotaInit();
+  const ws1=[['Tipo','Empresa','Marca','Modelo','Año','Patente','Color','Km','Km Prox Service','VTV','Seguro Vto','Compañía','Póliza','Combustible','Responsable','Propietario','GPS','Estado']];
+  (appState.flota||[]).forEach(v=>ws1.push([FL_TIPO_LABEL[v.tipo]||v.tipo,FL_RAZON_F[v.empresa]||v.empresa,v.marca,v.modelo,v.anio,v.patente,v.color,v.kmActuales,v.kmProxService,v.vtv,v.seguroVto,v.seguroComp,v.seguroPoliza,v.combustible,v.responsable,v.propietario,v.gps?'Sí':'No',v.estado]));
+  const ws2=[['Vehículo','Patente','Tipo','Subtipo','Fecha','Km','Costo','Taller','Estado']];
+  (appState.flotaRegistros||[]).forEach(r=>{const v=(appState.flota||[]).find(x=>x.id===r.vehiculoId);ws2.push([v?v.marca+' '+v.modelo:'—',v?v.patente:'—',r.tipo,r.subtipo||'',r.fecha,r.km,r.costo,r.taller||r.descripcion||'',r.estado||'']);});
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ws1),'Vehículos');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ws2),'Registros');
+  XLSX.writeFile(wb,'Flota_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  showToast('📥 Excel exportado');
+}
+// ==================== FIN FLOTA AUTOMOTOR ====================
 </script>
 </body>
 </html>
