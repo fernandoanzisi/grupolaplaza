@@ -2636,12 +2636,14 @@ function loadState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      const _prevExtracto = (appState && appState.extractoBancario && appState.extractoBancario.length > 0)
-        ? appState.extractoBancario : null;
-      appState = Object.assign({}, appState, JSON.parse(saved));
-      // Restaurar extractoBancario — no se guarda en localStorage por su tamaño (126k filas)
-      if (_prevExtracto) appState.extractoBancario = _prevExtracto;
-      if (!appState.empresas || !Array.isArray(appState.empresas)) appState.empresas = [];
+      const parsed = JSON.parse(saved);
+      // Si el localStorage tiene empresas vacías o datos corruptos, lo ignoramos
+      if (!parsed.empresas || !Array.isArray(parsed.empresas) || parsed.empresas.length === 0) {
+        localStorage.removeItem(STORAGE_KEY);
+        console.log('ℹ️ Sin datos guardados — cargando estado inicial');
+        return;
+      }
+      appState = Object.assign({}, appState, parsed);
       appState.empresas.forEach(e => {
         if (!e.icon) e.icon = EMOJI_EMP[Math.abs(e.id) % EMOJI_EMP.length];
         if (!e.transactions) e.transactions = [];
