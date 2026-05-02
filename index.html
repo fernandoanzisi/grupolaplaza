@@ -3666,6 +3666,11 @@ function dashSetView(view) {
   setTimeout(()=>dashEmpBtn(document.querySelector('[data-emp="'+view+'"][data-k="ef"]')),50);
 
   _renderHoyBanner(view);
+
+  // Secciones nuevas — solo en vista grupo
+  if (view === 'grupo') {
+    setTimeout(() => { renderTimelineMini(); renderComparativa(); }, 150);
+  }
 } // end dashSetView
 
 const DASH_EMP_METRICS = {
