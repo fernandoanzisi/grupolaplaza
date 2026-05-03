@@ -3372,49 +3372,56 @@ function renderDashboard() {
           <text x="150" y="120" fill="#3b82f6" font-size="8" opacity="0.4" text-anchor="middle">Río Negro</text>
           <path d="M0,75 Q75,70 150,73 Q225,76 300,72" stroke="#fbbf24" stroke-width="1" fill="none" opacity="0.25" stroke-dasharray="5,4"/>
         </svg>
-        <!-- Estaciones -->
+        <!-- Estaciones — etiquetas alternadas arriba/abajo para evitar superposición -->
+        <!-- Chichinales 1526 — ARRIBA -->
         <div style="position:absolute;left:6%;top:46%;cursor:pointer" title="Chichinales 1526">
           <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4ade80"></div>
           <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Chichinales 1526</div>
         </div>
+        <!-- Agro Pal Choele — ABAJO -->
+        <div style="position:absolute;left:10%;top:30%;cursor:pointer" title="Agro Pal Choele 50309 — Choele Choel">
+          <div style="width:11px;height:11px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.5)"></div>
+          <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.6);font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Agro Choele 50309</div>
+        </div>
+        <!-- V.Regina 15814 — ARRIBA -->
         <div style="position:absolute;left:21%;top:42%;cursor:pointer" title="V.Regina 15814">
           <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4ade80"></div>
           <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">V.Regina 15814</div>
         </div>
+        <!-- V.Regina 2016 — ABAJO -->
         <div style="position:absolute;left:29%;top:52%;cursor:pointer" title="V.Regina 2016">
           <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4ade80"></div>
-          <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">V.Regina 2016</div>
+          <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">V.Regina 2016</div>
         </div>
+        <!-- Roca 11902 — ARRIBA (destacado) -->
         <div style="position:absolute;left:45%;top:36%;cursor:pointer" title="Gral.Roca 11902">
           <div style="width:12px;height:12px;border-radius:50%;background:#4ade80;border:2px solid rgba(255,255,255,0.6);box-shadow:0 0 12px #4ade80"></div>
           <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:rgba(74,222,128,0.2);color:#4ade80;border:1px solid #4ade80;font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;white-space:nowrap">Roca 11902 ⭐</div>
         </div>
+        <!-- Agro Base Roca — ABAJO -->
+        <div style="position:absolute;left:46%;top:52%;cursor:pointer" title="Agro Base Roca 50282 — General Roca">
+          <div style="width:11px;height:11px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.5)"></div>
+          <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.6);font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Agro Base Roca</div>
+        </div>
+        <!-- Rotonda Ruta22/6 — ARRIBA -->
+        <div style="position:absolute;left:52%;top:38%;cursor:pointer" title="Rotonda Ruta 22 y Ruta 6 — General Roca">
+          <div style="width:11px;height:11px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.5)"></div>
+          <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.6);font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Rotonda Ruta22/6</div>
+        </div>
+        <!-- Cip 15431 — ARRIBA -->
         <div style="position:absolute;left:63%;top:34%;cursor:pointer" title="Cipolletti 15431">
           <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4a9fd4"></div>
           <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Cip 15431</div>
         </div>
+        <!-- Cip 1539 — ABAJO -->
         <div style="position:absolute;left:71%;top:44%;cursor:pointer" title="Cipolletti 1539">
           <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4a9fd4"></div>
-          <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Cip 1539</div>
+          <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Cip 1539</div>
         </div>
+        <!-- C.Saltos 1535 — ARRIBA -->
         <div style="position:absolute;left:84%;top:28%;cursor:pointer" title="C.Saltos 1535">
           <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4a9fd4"></div>
           <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">C.Saltos 1535</div>
-        </div>
-        <!-- Agro Pal Choele 50309 — Choele Choel, oeste -->
-        <div style="position:absolute;left:10%;top:30%;cursor:pointer" title="Agro Pal Choele 50309 — Choele Choel">
-          <div style="width:11px;height:11px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.5)"></div>
-          <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.6);font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Agro Pal Choele 50309</div>
-        </div>
-        <!-- Agro Base Roca 50282 — General Roca -->
-        <div style="position:absolute;left:46%;top:52%;cursor:pointer" title="Agro Base Roca 50282 — General Roca">
-          <div style="width:11px;height:11px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.5)"></div>
-          <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.6);font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Agro Base Roca 50282</div>
-        </div>
-        <!-- Rotonda Ruta22/Ruta6 — General Roca -->
-        <div style="position:absolute;left:52%;top:38%;cursor:pointer" title="Rotonda Ruta 22 y Ruta 6 — General Roca">
-          <div style="width:11px;height:11px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.5)"></div>
-          <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.6);font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Rotonda Ruta22/6</div>
         </div>
       </div>
       <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
