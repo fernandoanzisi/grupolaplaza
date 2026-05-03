@@ -15346,47 +15346,37 @@ function renderGuardia() {
     });
     return max || '—';
   })();
-  // ── Usar exactamente la misma lógica que el dashboard principal ──
-  const _empRS = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Rio'));
-  const _empSC = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Cipolletti'));
-  const _empLP = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Plaza'));
-  const _balD  = lastDate && lastDate !== '—' ? lastDate : '';
-  function _getHist(emp, fecha) { return (emp&&emp.diaHistory&&fecha) ? (emp.diaHistory[fecha]||null) : null; }
-  const _hRS = _getHist(_empRS, _balD);
-  const _hSC = _getHist(_empSC, _balD);
-  const _hLP = _getHist(_empLP, _balD);
-  // Ingresos del día — igual que dashboard: C71 tiene prioridad, luego B50+D50+F50
-  const _rsIngARS = _hRS ? (_hRS.b50||0) : (_empRS?_empRS.diaB50||0:0);
-  const _scIngARS = _hSC ? (_hSC.d50||0) : (_empSC?_empSC.diaD50||0:0);
-  const _lpIngARS = _hLP ? (_hLP.f50||0) : (_empLP?_empLP.diaF50||0:0);
-  const _c71val   = _hRS ? (_hRS.c71||0)  : (_empRS?_empRS.diaC71||0:0);
-  const totalGrupo = _c71val > 0 ? _c71val : (_rsIngARS + _scIngARS + _lpIngARS);
-  // HOY en curso
-  const hoyTotal = (() => {
-    if (!hoy||!hoy.byEmp) return 0;
-    return Object.values(hoy.byEmp).reduce((s,e)=>s+(e.ing||0),0);
-  })();
-  // USD — igual que dashboard: diaUSD de cada empresa
-  const _rsUSD = _hRS ? (_hRS.usd||0) : (_empRS?_empRS.diaUSD||0:0);
-  const _scUSD = _hSC ? (_hSC.usd||0) : (_empSC?_empSC.diaUSD||0:0);
-  const usd = _rsUSD + _scUSD;
-  // Cartera — igual que dashboard: diaCarteraGrupo > diaCartera > cheques XLS
-  function _sumCart(emp) {
-    if (!emp) return 0;
-    if (emp.diaCartera && emp.diaCartera > 0) return emp.diaCartera;
-    const xls = (emp.cheques||[]).filter(c=>c._fromCarteraXls&&c.estado==='EN CARTERA').reduce((s,c)=>s+(c.importe||0),0);
-    if (xls > 0) return xls;
-    return (emp.estaciones||[]).filter(e=>!_balD||e.fecha===_balD).reduce((s,e)=>s+(e.chqCartera||0),0);
-  }
-  const cartera = (_empRS&&_empRS.diaCarteraGrupo) ? _empRS.diaCarteraGrupo : (_sumCart(_empRS) + _sumCart(_empSC));
-  // FIMA — igual que dashboard: capital filtrado por fecha
-  const fima = (appState.empresas||[]).reduce((s,e)=>s+(e.investments||[]).filter(i=>!_balD||i.fecha===_balD).reduce((a,i)=>a+(i.capital||0),0),0);
 
-  // Barras por empresa — misma lógica que dashboard (B50/D50/F50)
+  // ── KPIs directo de celdas de la Minuta ──────────────────────
+  const empRS = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Rio'));
+  const empSC = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Cipolletti'));
+  const empLP = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Plaza'));
+  // Historial del último día cerrado
+  const _h = (emp) => (emp&&emp.diaHistory&&lastDate) ? (emp.diaHistory[lastDate]||null) : null;
+  const hRS = _h(empRS), hSC = _h(empSC);
+  // C71 — total ingresos grupo (celda directa)
+  const totalGrupo = hRS ? (hRS.c71||0) : (empRS ? empRS.diaC71||0 : 0);
+  // HOY parcial — suma ingresos RS+SC+LP de hoyData
+  const hoyTotal = (hoy&&hoy.byEmp) ? Object.values(hoy.byEmp).reduce((s,e)=>s+(e.ing||0),0) : 0;
+  // B152 — cartera de valores grupo (celda directa)
+  const cartera = empRS ? (empRS.diaCarteraGrupo||0) : 0;
+  // B34+B35+D34+D35 — inversiones en pesos (FIMA Premium + Ahorro)
+  const invPesos = (hRS?(hRS.b34||0):(empRS?empRS.diaB34||0:0))
+                 + (hRS?(hRS.b35||0):(empRS?empRS.diaB35||0:0))
+                 + (hSC?(hSC.d34||0):(empSC?empSC.diaD34||0:0))
+                 + (hSC?(hSC.d35||0):(empSC?empSC.diaD35||0:0));
+  // B37+D37 — inversiones en dólares (FIMA USD)
+  const invUSD   = (hRS?(hRS.b37||0):(empRS?empRS.diaB37||0:0))
+                 + (hSC?(hSC.d37||0):(empSC?empSC.diaD37||0:0));
+
+  // Barras por empresa — B50/D50/F50 directo
+  const _rsIng = hRS ? (hRS.b50||0) : (empRS?empRS.diaB50||0:0);
+  const _scIng = hSC ? (hSC.d50||0) : (empSC?empSC.diaD50||0:0);
+  const _lpIng = empLP ? (empLP.diaF50||0) : 0;
   const empData = [
-    { name: _empRS?_empRS.name:'Rio Salado SRL',           total: _rsIngARS },
-    { name: _empSC?_empSC.name:'Servicios Cipolletti SRL', total: _scIngARS },
-    { name: _empLP?_empLP.name:'La Plaza SA',              total: _lpIngARS },
+    {name: empRS?empRS.name:'Rio Salado SRL',           total:_rsIng},
+    {name: empSC?empSC.name:'Servicios Cipolletti SRL', total:_scIng},
+    {name: empLP?empLP.name:'La Plaza SA',              total:_lpIng},
   ].filter(e=>e.total>0);
   const maxEmp = Math.max(...empData.map(e=>e.total), 1);
   const empColors = {'Rio Salado SRL':'#4a9fd4','Servicios Cipolletti SRL':'#4ade80','La Plaza SA':'#fbbf24'};
@@ -15419,27 +15409,38 @@ function renderGuardia() {
       '</div>'+
     '</div>'+
 
-    // ── KPIs (4 tarjetas) ──
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'+
-      '<div style="background:#161c2a;border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:20px;text-align:center">'+
-        '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Ingresos del día</div>'+
-        '<div style="font-size:clamp(18px,3vw,36px);font-weight:900;font-family:monospace;color:#4ade80;line-height:1">$'+fmtARS(totalGrupo)+'</div>'+
-        '<div style="font-size:10px;color:#7a8399;margin-top:6px">Minuta · '+lastDate+'</div>'+
+    // ── KPIs (5 tarjetas — celdas directas de la Minuta) ──
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">'+
+      '<div style="background:#161c2a;border:1px solid rgba(74,222,128,0.25);border-radius:12px;padding:16px 12px;text-align:center">'+
+        '<div style="font-size:8px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px">Ingresos del día</div>'+
+        '<div style="font-size:clamp(14px,2.2vw,28px);font-weight:900;font-family:monospace;color:#4ade80;line-height:1">$'+fmtARS(totalGrupo)+'</div>'+
+        '<div style="font-size:9px;color:#7a8399;margin-top:5px">'+lastDate.split('-').reverse().join('/')+'</div>'+
+        '<div style="font-size:8px;color:rgba(74,159,212,0.5);margin-top:2px;font-family:monospace">C71 Minuta</div>'+
       '</div>'+
-      '<div style="background:#161c2a;border:1px solid rgba(251,191,36,0.2);border-radius:14px;padding:20px;text-align:center">'+
-        '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">HOY en curso</div>'+
-        '<div style="font-size:clamp(18px,3vw,36px);font-weight:900;font-family:monospace;color:#fbbf24;line-height:1">$'+fmtARS(hoyTotal)+'</div>'+
-        '<div style="font-size:10px;color:#7a8399;margin-top:6px">'+(hoy?'datos parciales':'sin datos hoy')+'</div>'+
+      '<div style="background:#161c2a;border:1px solid rgba(251,191,36,0.2);border-radius:12px;padding:16px 12px;text-align:center;position:relative">'+
+        (hoy?'<div style="position:absolute;top:-1px;right:-1px;font-size:7px;font-weight:700;background:#fbbf24;color:#0d1117;padding:2px 6px;border-radius:0 10px 0 6px">EN CURSO</div>':'')+
+        '<div style="font-size:8px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px">HOY parcial</div>'+
+        '<div style="font-size:clamp(14px,2.2vw,28px);font-weight:900;font-family:monospace;color:#fbbf24;line-height:1">$'+fmtARS(hoyTotal)+'</div>'+
+        '<div style="font-size:9px;color:#7a8399;margin-top:5px">'+(hoy?new Date().toLocaleDateString('es-AR',{day:'numeric',month:'short'}):'sin datos')+'</div>'+
+        '<div style="font-size:8px;color:rgba(74,159,212,0.5);margin-top:2px;font-family:monospace">no definitivo</div>'+
       '</div>'+
-      '<div style="background:#161c2a;border:1px solid rgba(74,159,212,0.2);border-radius:14px;padding:20px;text-align:center">'+
-        '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Cartera valores</div>'+
-        '<div style="font-size:clamp(18px,3vw,36px);font-weight:900;font-family:monospace;color:#4a9fd4;line-height:1">$'+fmtARS(cartera)+'</div>'+
-        '<div style="font-size:10px;color:#7a8399;margin-top:6px">total grupo</div>'+
+      '<div style="background:#161c2a;border:1px solid rgba(74,159,212,0.25);border-radius:12px;padding:16px 12px;text-align:center">'+
+        '<div style="font-size:8px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px">Cartera valores</div>'+
+        '<div style="font-size:clamp(14px,2.2vw,28px);font-weight:900;font-family:monospace;color:#4a9fd4;line-height:1">$'+fmtARS(cartera)+'</div>'+
+        '<div style="font-size:9px;color:#7a8399;margin-top:5px">total grupo</div>'+
+        '<div style="font-size:8px;color:rgba(74,159,212,0.5);margin-top:2px;font-family:monospace">B152 Minuta</div>'+
       '</div>'+
-      '<div style="background:#161c2a;border:1px solid rgba(167,139,250,0.2);border-radius:14px;padding:20px;text-align:center">'+
-        '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">USD total</div>'+
-        '<div style="font-size:clamp(18px,3vw,36px);font-weight:900;font-family:monospace;color:#a78bfa;line-height:1">U$S '+fmtARS(usd)+'</div>'+
-        '<div style="font-size:10px;color:#7a8399;margin-top:6px">FCI + inversiones</div>'+
+      '<div style="background:#161c2a;border:1px solid rgba(167,139,250,0.25);border-radius:12px;padding:16px 12px;text-align:center">'+
+        '<div style="font-size:8px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px">Inv. pesos</div>'+
+        '<div style="font-size:clamp(14px,2.2vw,28px);font-weight:900;font-family:monospace;color:#a78bfa;line-height:1">$'+fmtARS(invPesos)+'</div>'+
+        '<div style="font-size:9px;color:#7a8399;margin-top:5px">FIMA Premium+Ahorro</div>'+
+        '<div style="font-size:8px;color:rgba(74,159,212,0.5);margin-top:2px;font-family:monospace">B34+B35+D34+D35</div>'+
+      '</div>'+
+      '<div style="background:#161c2a;border:1px solid rgba(45,212,191,0.25);border-radius:12px;padding:16px 12px;text-align:center">'+
+        '<div style="font-size:8px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px">Inv. dólares</div>'+
+        '<div style="font-size:clamp(14px,2.2vw,28px);font-weight:900;font-family:monospace;color:#2dd4bf;line-height:1">U$S '+fmtARS(invUSD)+'</div>'+
+        '<div style="font-size:9px;color:#7a8399;margin-top:5px">FIMA USD grupo</div>'+
+        '<div style="font-size:8px;color:rgba(74,159,212,0.5);margin-top:2px;font-family:monospace">B37+D37</div>'+
       '</div>'+
     '</div>'+
 
