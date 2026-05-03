@@ -8909,8 +8909,9 @@ function renderExtractos() {
   const _sA = (document.getElementById('extractos-search-full')?.value || '').trim().toLowerCase();
   const _sB = (document.getElementById('extractos-search')?.value || '').trim().toLowerCase();
   const search = _sA || _sB;
-  const fFrom     = dateFilterFrom || '';
-  const fTo       = dateFilterTo   || '';
+  // Extractos usa sus propios filtros de fecha — NO los filtros globales del dashboard
+  const fFrom     = '';
+  const fTo       = '';
   const bancoFil  = (document.getElementById('extractos-filter-banco')?.value || 'todos');
   const cuentaFil = (document.getElementById('extractos-filter-cuenta')?.value || 'todos');
   const empFil    = (document.getElementById('exf-filter-emp')?.value || '');
@@ -9578,7 +9579,8 @@ async function _saveExtractosSupabase(data, mesNum, anioNum) {
     let delQuery = supa.from('extracto_bancario').delete();
     if (mesNum && anioNum) {
       const pfx = anioNum + '-' + String(mesNum).padStart(2,'0');
-      delQuery = delQuery.gte('fecha', pfx+'-01').lte('fecha', pfx+'-31');
+      const _lastDay = new Date(anioNum, mesNum, 0).getDate();
+      delQuery = delQuery.gte('fecha', pfx+'-01').lte('fecha', pfx+'-'+String(_lastDay).padStart(2,'0'));
     } else {
       const anioActual = new Date().getFullYear();
       delQuery = delQuery.gte('fecha', (anioActual-1)+'-01-01');
