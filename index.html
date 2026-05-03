@@ -3548,7 +3548,8 @@ function _renderHoyBanner(empTag) {
   const empNames  = {RS:'Rio Salado', SC:'Serv. Cipolletti', LP:'La Plaza'};
 
   if (titleEl) titleEl.textContent = 'Hoy en curso — ' + hoy.fecha.split('-').reverse().join('/');
-  if (subEl)   subEl.textContent   = 'Datos parciales · último import ' + hoy.importedAt + ' hs · no incluido en las sumas del ' + (appState.lastMinutaDate||'').split('-').reverse().join('/');
+  const _lastClosed = (hoy.lastClosed || appState.lastMinutaDate || '').split('-').reverse().join('/');
+  if (subEl)   subEl.textContent   = 'Datos parciales · último import ' + hoy.importedAt + ' hs · último día cerrado: ' + _lastClosed;
 
   if (chipsEl) {
     const tags = empTag === 'grupo' ? ['RS','SC','LP'] : [empTag];
@@ -5596,10 +5597,11 @@ function parseMinutaDiaria(wb) {
   // ── Parsear hoja HOY (datos parciales del día en curso, NUNCA se mezcla con histórico) ──
   appState.hoyData = null;
   if (hoySheetName) {
-    // HOY = día siguiente a la última hoja de fecha confirmada
+    // HOY = fecha real del sistema (no calculada desde la última hoja)
     const lastConfirmedDt = dateSheets.length > 0 ? dateSheets[dateSheets.length-1].dt : new Date();
-    const hoyDt = new Date(lastConfirmedDt.getTime() + 86400000);
+    const hoyDt = new Date(); // fecha real de hoy
     const todayStr = hoyDt.toISOString().slice(0, 10);
+    const lastClosedStr = lastConfirmedDt.toISOString().slice(0, 10);
     // Contar tx antes de parsear para aislar solo las de hoy
     const txCountBefore = {};
     appState.empresas.forEach(e => { txCountBefore[e.name] = (e.transactions||[]).length; });
@@ -5607,6 +5609,7 @@ function parseMinutaDiaria(wb) {
     // Extraer y aislar transacciones de HOY (removerlas del histórico, guardar separado)
     appState.hoyData = {
       fecha: todayStr,
+      lastClosed: lastClosedStr,
       importedAt: new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}),
       byEmp: {}
     };
@@ -5715,7 +5718,7 @@ function handleFile(input) {
         showToast('✅ Minuta Diaria importada — ' + result.totalCount + ' registros de ' + result.dias + ' días');
         // Auto-guardar todo en Supabase
         _saveEmpresasSupabase();
-        cacheGuardar('minuta', { empresas: appState.empresas, lastMinutaDate: appState.lastMinutaDate });
+        cacheGuardar('minuta', { empresas: appState.empresas, lastMinutaDate: appState.lastMinutaDate, hoyData: appState.hoyData || null });
         showToast('☁️ Minuta sincronizada — datos disponibles en todos los dispositivos');
         if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof navGo === 'function') navGo('dashboard', null);
@@ -8545,6 +8548,7 @@ p{color:var(--text2)}
   .grid-4 { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
   .grid-3 { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
   .grid-2 { grid-template-columns: 1fr !important; }
+  #dash-mapa-timeline-grid { grid-template-columns: 1fr !important; }
   /* Estaciones y Vencimientos: uno arriba del otro en mobile */
   #dash-mapa-timeline-grid { grid-template-columns: 1fr !important; }
 
@@ -10681,7 +10685,7 @@ async function loadFromSupabase() {
         try { saved = JSON.parse(saved); } catch(e) { console.warn('parse error', e); }
       }
       if (saved && saved.empresas) {
-        appState.hoyData = null; // HOY es siempre del import del dia, no se persiste
+        // hoyData: se preserva si ya está cargado y es de hoy
         appState.empresas = saved.empresas;
         appState.empresas.forEach(e => {
           if (!e.transactions)  e.transactions  = [];
@@ -10853,7 +10857,9 @@ async function cacheCargarTodo() {
         switch(row.clave) {
           case 'minuta':
             if (val && val.empresas) {
-              appState.hoyData = null;
+              const _hoyGuardado = val.hoyData || null;
+              const _hoyFechaHoy = new Date().toISOString().slice(0,10);
+              appState.hoyData = (_hoyGuardado && _hoyGuardado.fecha === _hoyFechaHoy) ? _hoyGuardado : null;
               val.empresas.forEach(e => {
                 if (!e.transactions) e.transactions = [];
                 if (!e.accounts)     e.accounts     = [];
@@ -15365,30 +15371,31 @@ function renderGuardia() {
     });
     return max || '—';
   })();
-  const totalGrupo = (() => {
-    const emp = appState.empresas||[];
-    if (!lastDate || lastDate === '—') return 0;
-    return emp.reduce((s,e)=>{
-      const txs = (e.transactions||[]).filter(t=>t.date===lastDate&&t.importe>0);
-      return s + txs.reduce((a,t)=>a+(t.importe||0),0);
-    },0);
-  })();
-  const hoyTotal = (() => {
-    if (!hoy||!hoy.byEmp) return 0;
-    return Object.values(hoy.byEmp).reduce((s,e)=>s+(e.ing||0),0);
-  })();
-  const usd = (appState.empresas||[]).reduce((s,e)=>{
-    return s + (e.investments||[]).filter(i=>(i.type||'').toLowerCase().includes('usd')||i.moneda==='USD')
-      .reduce((a,i)=>a+(i.importe||i.amount||0),0);
-  },0);
-  const cartera = (appState.cartDebo||[]).reduce((s,c)=>s+(c.importe||0),0);
-  const fima = (appState.empresas||[]).reduce((s,e)=>s+(e.investments||[]).filter(i=>i.tipo!=='USD'&&i.tipo!=='FCI USD').reduce((a,i)=>a+(i.importe||i.amount||0),0),0);
 
-  // Barras por empresa
-  const empData = (appState.empresas||[]).map(e=>{
-    const txs = lastDate&&lastDate!=='—' ? (e.transactions||[]).filter(t=>t.date===lastDate&&t.importe>0) : [];
-    return { name: e.name||'', total: txs.reduce((a,t)=>a+(t.importe||0),0) };
-  }).filter(e=>e.total>0);
+  // KPIs directo de celdas de la Minuta
+  const empRS = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Rio'));
+  const empSC = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Cipolletti'));
+  const empLP = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Plaza'));
+  const _h = (emp) => (emp&&emp.diaHistory&&lastDate) ? (emp.diaHistory[lastDate]||null) : null;
+  const hRS = _h(empRS), hSC = _h(empSC);
+  const totalGrupo = hRS ? (hRS.c71||0) : (empRS ? empRS.diaC71||0 : 0);
+  const hoyTotal = (hoy&&hoy.byEmp) ? Object.values(hoy.byEmp).reduce((s,e)=>s+(e.ing||0),0) : 0;
+  const cartera  = empRS ? (empRS.diaCarteraGrupo||0) : 0;
+  const invPesos = (hRS?(hRS.b34||0):(empRS?empRS.diaB34||0:0))
+                 + (hRS?(hRS.b35||0):(empRS?empRS.diaB35||0:0))
+                 + (hSC?(hSC.d34||0):(empSC?empSC.diaD34||0:0))
+                 + (hSC?(hSC.d35||0):(empSC?empSC.diaD35||0:0));
+  const invUSD   = (hRS?(hRS.b37||0):(empRS?empRS.diaB37||0:0))
+                 + (hSC?(hSC.d37||0):(empSC?empSC.diaD37||0:0));
+
+  const _rsIng = hRS ? (hRS.b50||0) : (empRS?empRS.diaB50||0:0);
+  const _scIng = hSC ? (hSC.d50||0) : (empSC?empSC.diaD50||0:0);
+  const _lpIng = empLP ? (empLP.diaF50||0) : 0;
+  const empData = [
+    {name: empRS?empRS.name:'Rio Salado SRL',           total:_rsIng},
+    {name: empSC?empSC.name:'Servicios Cipolletti SRL', total:_scIng},
+    {name: empLP?empLP.name:'La Plaza SA',              total:_lpIng},
+  ].filter(e=>e.total>0);
   const maxEmp = Math.max(...empData.map(e=>e.total), 1);
   const empColors = {'Rio Salado SRL':'#4a9fd4','Servicios Cipolletti SRL':'#4ade80','La Plaza SA':'#fbbf24'};
   const empShort  = {'Rio Salado SRL':'Rio Salado','Servicios Cipolletti SRL':'Serv. Cipolletti','La Plaza SA':'La Plaza'};
@@ -15420,27 +15427,38 @@ function renderGuardia() {
       '</div>'+
     '</div>'+
 
-    // ── KPIs (4 tarjetas) ──
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'+
-      '<div style="background:#161c2a;border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:20px;text-align:center">'+
-        '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Ingresos del día</div>'+
-        '<div style="font-size:clamp(18px,3vw,36px);font-weight:900;font-family:monospace;color:#4ade80;line-height:1">$'+fmtARS(totalGrupo)+'</div>'+
-        '<div style="font-size:10px;color:#7a8399;margin-top:6px">Minuta · '+lastDate+'</div>'+
+    // ── KPIs (5 tarjetas — celdas directas Minuta) ──
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">'+
+      '<div style="background:#161c2a;border:1px solid rgba(74,222,128,0.25);border-radius:12px;padding:16px 12px;text-align:center">'+
+        '<div style="font-size:8px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px">Ingresos del día</div>'+
+        '<div style="font-size:clamp(14px,2.2vw,28px);font-weight:900;font-family:monospace;color:#4ade80;line-height:1">$'+fmtARS(totalGrupo)+'</div>'+
+        '<div style="font-size:9px;color:#7a8399;margin-top:5px">'+lastDate.split('-').reverse().join('/')+'</div>'+
+        '<div style="font-size:8px;color:rgba(74,159,212,0.5);margin-top:2px;font-family:monospace">C71 Minuta</div>'+
       '</div>'+
-      '<div style="background:#161c2a;border:1px solid rgba(251,191,36,0.2);border-radius:14px;padding:20px;text-align:center">'+
-        '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">HOY en curso</div>'+
-        '<div style="font-size:clamp(18px,3vw,36px);font-weight:900;font-family:monospace;color:#fbbf24;line-height:1">$'+fmtARS(hoyTotal)+'</div>'+
-        '<div style="font-size:10px;color:#7a8399;margin-top:6px">'+(hoy?'datos parciales':'sin datos hoy')+'</div>'+
+      '<div style="background:#161c2a;border:1px solid rgba(251,191,36,0.2);border-radius:12px;padding:16px 12px;text-align:center;position:relative">'+
+        (hoy?'<div style="position:absolute;top:-1px;right:-1px;font-size:7px;font-weight:700;background:#fbbf24;color:#0d1117;padding:2px 6px;border-radius:0 10px 0 6px">EN CURSO</div>':'')+
+        '<div style="font-size:8px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px">HOY parcial</div>'+
+        '<div style="font-size:clamp(14px,2.2vw,28px);font-weight:900;font-family:monospace;color:#fbbf24;line-height:1">$'+fmtARS(hoyTotal)+'</div>'+
+        '<div style="font-size:9px;color:#7a8399;margin-top:5px">'+(hoy?new Date().toLocaleDateString('es-AR',{day:'numeric',month:'short'}):'sin datos')+'</div>'+
+        '<div style="font-size:8px;color:rgba(74,159,212,0.5);margin-top:2px;font-family:monospace">no definitivo</div>'+
       '</div>'+
-      '<div style="background:#161c2a;border:1px solid rgba(74,159,212,0.2);border-radius:14px;padding:20px;text-align:center">'+
-        '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Cartera valores</div>'+
-        '<div style="font-size:clamp(18px,3vw,36px);font-weight:900;font-family:monospace;color:#4a9fd4;line-height:1">$'+fmtARS(cartera)+'</div>'+
-        '<div style="font-size:10px;color:#7a8399;margin-top:6px">total grupo</div>'+
+      '<div style="background:#161c2a;border:1px solid rgba(74,159,212,0.25);border-radius:12px;padding:16px 12px;text-align:center">'+
+        '<div style="font-size:8px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px">Cartera valores</div>'+
+        '<div style="font-size:clamp(14px,2.2vw,28px);font-weight:900;font-family:monospace;color:#4a9fd4;line-height:1">$'+fmtARS(cartera)+'</div>'+
+        '<div style="font-size:9px;color:#7a8399;margin-top:5px">total grupo</div>'+
+        '<div style="font-size:8px;color:rgba(74,159,212,0.5);margin-top:2px;font-family:monospace">B152 Minuta</div>'+
       '</div>'+
-      '<div style="background:#161c2a;border:1px solid rgba(167,139,250,0.2);border-radius:14px;padding:20px;text-align:center">'+
-        '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">USD total</div>'+
-        '<div style="font-size:clamp(18px,3vw,36px);font-weight:900;font-family:monospace;color:#a78bfa;line-height:1">U$S '+fmtARS(usd)+'</div>'+
-        '<div style="font-size:10px;color:#7a8399;margin-top:6px">FCI + inversiones</div>'+
+      '<div style="background:#161c2a;border:1px solid rgba(167,139,250,0.25);border-radius:12px;padding:16px 12px;text-align:center">'+
+        '<div style="font-size:8px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px">Inv. pesos</div>'+
+        '<div style="font-size:clamp(14px,2.2vw,28px);font-weight:900;font-family:monospace;color:#a78bfa;line-height:1">$'+fmtARS(invPesos)+'</div>'+
+        '<div style="font-size:9px;color:#7a8399;margin-top:5px">FIMA Premium+Ahorro</div>'+
+        '<div style="font-size:8px;color:rgba(74,159,212,0.5);margin-top:2px;font-family:monospace">B34+B35+D34+D35</div>'+
+      '</div>'+
+      '<div style="background:#161c2a;border:1px solid rgba(45,212,191,0.25);border-radius:12px;padding:16px 12px;text-align:center">'+
+        '<div style="font-size:8px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px">Inv. dólares</div>'+
+        '<div style="font-size:clamp(14px,2.2vw,28px);font-weight:900;font-family:monospace;color:#2dd4bf;line-height:1">U$S '+fmtARS(invUSD)+'</div>'+
+        '<div style="font-size:9px;color:#7a8399;margin-top:5px">FIMA USD grupo</div>'+
+        '<div style="font-size:8px;color:rgba(74,159,212,0.5);margin-top:2px;font-family:monospace">B37+D37</div>'+
       '</div>'+
     '</div>'+
 
