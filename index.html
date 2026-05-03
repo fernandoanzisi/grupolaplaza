@@ -8887,7 +8887,7 @@ function _renderMesesCargados() {
 
 function renderExtractos() {
   _renderMesesCargados();
-  _poblarSelectorMeses(); // poblar selector con meses reales de Supabase
+  if (document.getElementById('exf-filter-mes')?.options.length <= 1) _poblarSelectorMeses();
   if (!appState.extractoBancario || appState.extractoBancario.length === 0) {
     const tbody = document.getElementById('extractos-table-ars');
     const statsEl = document.getElementById('extractos-stats');
@@ -15509,18 +15509,26 @@ async function _poblarSelectorMeses() {
   if (!sel || sel.options.length > 1) return; // ya poblado
   if (!_supaUser) return;
   try {
-    // Traer fechas únicas agrupadas por mes — solo columna fecha
+    // Usar campos mes+anio que ya están en la tabla — traer solo 1000 filas
+    // con limit para obtener los meses distintos sin traer todo
+    const anioActual = new Date().getFullYear();
     const { data, error } = await supa
       .from('extracto_bancario')
-      .select('fecha')
-      .order('fecha', {ascending: false});
+      .select('mes,anio')
+      .gte('fecha', (anioActual-1)+'-01-01')
+      .order('anio', {ascending: false})
+      .order('mes', {ascending: false})
+      .limit(500);
     if (error || !data) return;
-    // Obtener meses únicos
     const mesesSet = new Set();
-    data.forEach(r => { if (r.fecha) mesesSet.add(r.fecha.slice(0,7)); });
+    data.forEach(r => {
+      if (r.anio && r.mes) {
+        const ym = r.anio + '-' + String(r.mes).padStart(2,'0');
+        mesesSet.add(ym);
+      }
+    });
     const MESES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-    const meses = Array.from(mesesSet).sort().reverse();
-    meses.forEach(ym => {
+    Array.from(mesesSet).sort().reverse().forEach(ym => {
       const [y, m] = ym.split('-');
       const label = MESES[parseInt(m)] + ' ' + y;
       const loaded = (appState.extractoBancario||[]).some(r=>(r.fecha||'').startsWith(ym));
