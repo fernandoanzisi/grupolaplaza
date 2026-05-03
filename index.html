@@ -4641,17 +4641,22 @@ function importCarteraDeValores(wb) {
   };
 
   // ── Procesar cada hoja ─────────────────────────────────────
+  // Nombres posibles: soporta nombre viejo y nuevo
   const sheetConfig = [
-    { name:'RS E-Cheqs RS', empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ' },
-    { name:'SC E-Cheqs',    empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ' },
-    { name:'Cartera RS',    empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:8 },
-    { name:'Cartera SC',    empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:8 },
-    { name:'Cartera AGRO',  empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO',   importeCol:7 },
+    { names:['RS E-Cheqs RS','RS E-Cheqs'], empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ' },
+    { names:['SC E-Cheqs'],                 empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ' },
+    { names:['Cartera Fisico RS','Cartera RS'],   empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:9 },
+    { names:['Cartera Fisico SC','Cartera SC'],   empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:9 },
+    { names:['Cartera Fisico AGRO','Cartera AGRO'], empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO', importeCol:8 },
   ];
 
   sheetConfig.forEach(cfg => {
-    const ws = wb.Sheets[cfg.name];
+    // Buscar la primera hoja que exista
+    const realName = cfg.names.find(n => wb.Sheets[n]);
+    if (!realName) { console.warn('Hoja no encontrada:', cfg.names); return; }
+    const ws = wb.Sheets[realName];
     if (!ws) return;
+    cfg = {...cfg, name: realName};
     const rows = XLSX.utils.sheet_to_json(ws, {
       header:1, defval:null, raw:true,
       range: cfg.headerRow - 1
@@ -5579,7 +5584,7 @@ function handleFile(input) {
       // ¿Es Cartera de Valores?
       // Detectar por hojas clave: RS E-Cheqs RS, SC E-Cheqs, Cartera RS, etc.
       const isCartera = wb.SheetNames.some(s =>
-        /^(rs e-cheq|sc e-cheq|cartera rs|cartera sc|cartera agro|resumen cartera)/i.test(s.trim()));
+        /^(rs e-cheq|sc e-cheq|cartera rs|cartera sc|cartera agro|cartera fisico|resumen cartera)/i.test(s.trim()));
       if (isCartera) {
         const result = importCarteraDeValores(wb);
         saveState();
