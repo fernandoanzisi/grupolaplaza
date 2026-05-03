@@ -4641,7 +4641,6 @@ function importCarteraDeValores(wb) {
   };
 
   // ── Procesar cada hoja ─────────────────────────────────────
-  // Nombres posibles: soporta nombre viejo y nuevo
   const sheetConfig = [
     { names:['RS E-Cheqs RS','RS E-Cheqs'], empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ' },
     { names:['SC E-Cheqs'],                 empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ' },
@@ -4651,7 +4650,6 @@ function importCarteraDeValores(wb) {
   ];
 
   sheetConfig.forEach(cfg => {
-    // Buscar la primera hoja que exista
     const realName = cfg.names.find(n => wb.Sheets[n]);
     if (!realName) { console.warn('Hoja no encontrada:', cfg.names); return; }
     const ws = wb.Sheets[realName];
@@ -5583,8 +5581,11 @@ function handleFile(input) {
 
       // ¿Es Cartera de Valores?
       // Detectar por hojas clave: RS E-Cheqs RS, SC E-Cheqs, Cartera RS, etc.
-      const isCartera = wb.SheetNames.some(s =>
-        /^(rs e-cheq|sc e-cheq|cartera rs|cartera sc|cartera agro|cartera fisico|resumen cartera)/i.test(s.trim()));
+      const isCartera = wb.SheetNames.some(s => {
+        const sl = s.trim().toLowerCase();
+        return sl.startsWith('rs e-cheq') || sl.startsWith('sc e-cheq') ||
+               sl.startsWith('cartera') || sl === 'resumen cartera';
+      });
       if (isCartera) {
         const result = importCarteraDeValores(wb);
         saveState();
