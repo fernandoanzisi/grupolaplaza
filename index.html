@@ -8887,13 +8887,12 @@ function _renderMesesCargados() {
 
 function renderExtractos() {
   _renderMesesCargados();
-  _poblarSelectorMeses();
-  // Si no hay datos, mostrar mensaje para elegir mes
+  _poblarSelectorMeses(); // poblar selector con meses reales de Supabase
   if (!appState.extractoBancario || appState.extractoBancario.length === 0) {
     const tbody = document.getElementById('extractos-table-ars');
     const statsEl = document.getElementById('extractos-stats');
     if (statsEl) statsEl.innerHTML = '';
-    if (tbody) tbody.innerHTML = '<tr><td colspan="17" style="text-align:center;color:var(--text3);padding:48px 32px"><div style="font-size:28px;margin-bottom:12px">📅</div><div style="font-size:14px;font-weight:700;color:var(--text2);margin-bottom:6px">Seleccioná un mes para cargar los extractos</div><div style="font-size:11px;color:var(--text3)">Los datos se cargan bajo demanda para mayor velocidad</div></td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="17" style="text-align:center;color:var(--text3);padding:48px 32px"><div style="font-size:28px;margin-bottom:12px">📅</div><div style="font-size:14px;font-weight:700;color:var(--text2);margin-bottom:6px">Elegí un mes del selector para cargar los extractos</div><div style="font-size:11px;color:var(--text3)">Cada mes se carga en segundos desde Supabase</div></td></tr>';
     return;
   }
   const allData = appState.extractoBancario && appState.extractoBancario.length
@@ -10623,7 +10622,7 @@ async function onLogin(user) {
   // Cargar datos desde Supabase en background (no bloquea la UI)
   loadFromSupabase().then(() => {
     if (typeof renderDashboard === 'function') renderDashboard();
-    // Extractos se cargan bajo demanda al elegir mes
+    // Extractos: se cargan bajo demanda cuando el usuario elige un mes
   }).catch(e => console.warn('loadFromSupabase error:', e));
 }
 
@@ -10741,9 +10740,37 @@ async function loadFromSupabase() {
       }));
     }
 
-    // Extracto bancario: carga bajo demanda por mes
+    // Extracto bancario — paginado de a 1000 (límite Supabase) hasta traer todo
+    {
+      const _PAGE = 1000; let _pg = 0; let _extAll = [];
+      const _anioActual = new Date().getFullYear();
+      while (true) {
+        const { data: _extChunk, error: _extErr } = await supa.from('extracto_bancario')
+          .select('*')
+          .gte('fecha', (_anioActual-1)+'-01-01')
+          .order('fecha', {ascending:false})
+          .range(_pg*_PAGE, (_pg+1)*_PAGE-1);
+        if (_extErr || !_extChunk || !_extChunk.length) break;
+        _extAll = _extAll.concat(_extChunk.map(r => ({
+          fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
+          nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
+          denominacion:r.denominacion||'', cat:r.categoria||r.cat||'',
+          cuit:r.cuit||'', mes:r.mes||null, anio:r.anio||null,
+          importe:parseFloat(r.importe)||0, importeOriginal:parseFloat(r.importe_original||r.importe)||0,
+          saldo:r.saldo!=null?parseFloat(r.saldo):null, tipo:r.tipo||'ingreso',
+          _fromExtracto:true
+        })));
+        if (_extChunk.length < 1000) break;
+        _pg++;
+        if (_pg > 200) break; // safety: max 200k rows
+      }
+      if (_extAll.length > 0) {
+        appState.extractoBancario = _extAll;
+        console.log('✅ Extractos cargados:', _extAll.length, 'movimientos');
+      }
+    }
 
-        // Cash flow filas
+    // Cash flow filas
     const { data: cfRows } = await supa.from('cashflow_filas').select('*').order('fecha');
     if (cfRows && cfRows.length) {
       appState.cfFilas = cfRows.map(r => ({
@@ -15475,52 +15502,62 @@ function renderGuardia() {
   cargarNoticias(false);
 }
 // ── EXTRACTOS BAJO DEMANDA ───────────────────────────────────
-// Poblar selector con los últimos 12 meses disponibles
-function _poblarSelectorMeses() {
+
+// Poblar selector consultando qué meses existen en Supabase
+async function _poblarSelectorMeses() {
   const sel = document.getElementById('exf-filter-mes');
-  if (!sel || sel.options.length > 2) return; // ya poblado
-  const MESES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const hoy = new Date();
-  // Generar opciones para los últimos 12 meses
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
-    const ym = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-    const label = MESES[d.getMonth()+1] + ' ' + d.getFullYear();
-    // Marcar si ya está cargado
-    const loaded = (appState.extractoBancario||[]).some(m=>(m.fecha||'').startsWith(ym));
-    const opt = document.createElement('option');
-    opt.value = ym;
-    opt.textContent = (loaded ? '✅ ' : '') + label;
-    sel.appendChild(opt);
-  }
+  if (!sel || sel.options.length > 1) return; // ya poblado
+  if (!_supaUser) return;
+  try {
+    // Traer fechas únicas agrupadas por mes — solo columna fecha
+    const { data, error } = await supa
+      .from('extracto_bancario')
+      .select('fecha')
+      .order('fecha', {ascending: false});
+    if (error || !data) return;
+    // Obtener meses únicos
+    const mesesSet = new Set();
+    data.forEach(r => { if (r.fecha) mesesSet.add(r.fecha.slice(0,7)); });
+    const MESES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const meses = Array.from(mesesSet).sort().reverse();
+    meses.forEach(ym => {
+      const [y, m] = ym.split('-');
+      const label = MESES[parseInt(m)] + ' ' + y;
+      const loaded = (appState.extractoBancario||[]).some(r=>(r.fecha||'').startsWith(ym));
+      const opt = document.createElement('option');
+      opt.value = ym;
+      opt.textContent = (loaded ? '✅ ' : '') + label;
+      sel.appendChild(opt);
+    });
+  } catch(e) { console.warn('_poblarSelectorMeses:', e); }
 }
 
+// Cargar un mes específico desde Supabase bajo demanda
 async function onMesExtractoCambia(ym) {
   if (!ym) { renderExtractos(); return; }
-  // Si el mes ya está cargado, solo renderizar
+  // Si ya está cargado, solo renderizar
   const yaLoaded = (appState.extractoBancario||[]).some(m=>(m.fecha||'').startsWith(ym));
   if (yaLoaded) { renderExtractos(); return; }
-  // Cargar desde Supabase solo ese mes
   if (!_supaUser) { renderExtractos(); return; }
   const tbody = document.getElementById('extractos-table-ars');
+  const statsEl = document.getElementById('extractos-stats');
+  if (statsEl) statsEl.innerHTML = '';
   if (tbody) tbody.innerHTML = '<tr><td colspan="17" style="text-align:center;color:var(--text3);padding:32px">⏳ Cargando ' + ym + '...</td></tr>';
   try {
     const [y, m] = ym.split('-').map(Number);
     const lastDay = new Date(y, m, 0).getDate();
     const desde = ym + '-01';
     const hasta = ym + '-' + String(lastDay).padStart(2,'0');
-    // Primero limpiar ese mes de memoria
-    appState.extractoBancario = (appState.extractoBancario||[]).filter(r=>!(r.fecha||'').startsWith(ym));
     let page = 0; let loaded = [];
-    while (page <= 50) {
+    while (page <= 60) {
       const { data: chunk, error } = await supa
         .from('extracto_bancario')
         .select('fecha,emp_tag,banco,cuenta,nro_cta,concepto,detalle,categoria,cuit,denominacion,importe,importe_original,tipo,saldo,mes,anio')
         .gte('fecha', desde).lte('fecha', hasta)
-        .order('fecha', {ascending:false})
+        .order('fecha', {ascending: false})
         .range(page*1000, page*1000+999);
       if (error || !chunk || !chunk.length) break;
-      loaded = loaded.concat(chunk.map(r=>({
+      loaded = loaded.concat(chunk.map(r => ({
         fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
         nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
         cat:r.categoria||'', cuit:r.cuit||'', denominacion:r.denominacion||'',
@@ -15531,21 +15568,19 @@ async function onMesExtractoCambia(ym) {
       if (chunk.length < 1000) break;
       page++;
     }
-    // Agregar al estado manteniendo otros meses ya cargados
-    appState.extractoBancario = (appState.extractoBancario||[]).concat(loaded)
+    // Agregar al estado manteniendo otros meses
+    appState.extractoBancario = ((appState.extractoBancario||[]).concat(loaded))
       .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-    showToast('✅ ' + ym + ' — ' + loaded.length.toLocaleString('es-AR') + ' movimientos');
-    // Actualizar label del selector
+    showToast('✅ ' + ym + ' — ' + loaded.length.toLocaleString('es-AR') + ' mov.');
+    // Marcar como cargado en el selector
     const sel = document.getElementById('exf-filter-mes');
-    if (sel) {
-      Array.from(sel.options).forEach(o => {
-        if (o.value === ym && !o.textContent.startsWith('✅')) o.textContent = '✅ ' + o.textContent;
-      });
-    }
+    if (sel) Array.from(sel.options).forEach(o => {
+      if (o.value === ym) o.textContent = '✅ ' + o.textContent.replace('✅ ','');
+    });
     renderExtractos();
   } catch(e) {
     console.error('onMesExtractoCambia:', e);
-    showToast('❌ Error cargando ' + ym);
+    showToast('❌ Error al cargar ' + ym);
   }
 }
 // ── FIN PANEL GUARDIA ─────────────────────────────────────────
