@@ -10627,6 +10627,7 @@ async function onLogin(user) {
   // Cargar datos desde Supabase en background (no bloquea la UI)
   loadFromSupabase().then(() => {
     if (typeof renderDashboard === 'function') renderDashboard();
+    setTimeout(() => _cargarExtractosBackground(), 800);
   }).catch(e => console.warn('loadFromSupabase error:', e));
 }
 
@@ -10744,35 +10745,7 @@ async function loadFromSupabase() {
       }));
     }
 
-    // Extracto bancario — paginado de a 1000 (límite Supabase) hasta traer todo
-    {
-      const _PAGE = 1000; let _pg = 0; let _extAll = [];
-      const _anioActual = new Date().getFullYear();
-      while (true) {
-        const { data: _extChunk, error: _extErr } = await supa.from('extracto_bancario')
-          .select('*')
-          .gte('fecha', (_anioActual-1)+'-01-01')
-          .order('fecha', {ascending:false})
-          .range(_pg*_PAGE, (_pg+1)*_PAGE-1);
-        if (_extErr || !_extChunk || !_extChunk.length) break;
-        _extAll = _extAll.concat(_extChunk.map(r => ({
-          fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
-          nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
-          denominacion:r.denominacion||'', cat:r.categoria||r.cat||'',
-          cuit:r.cuit||'', mes:r.mes||null, anio:r.anio||null,
-          importe:parseFloat(r.importe)||0, importeOriginal:parseFloat(r.importe_original||r.importe)||0,
-          saldo:r.saldo!=null?parseFloat(r.saldo):null, tipo:r.tipo||'ingreso',
-          _fromExtracto:true
-        })));
-        if (_extChunk.length < 1000) break;
-        _pg++;
-        if (_pg > 200) break; // safety: max 200k rows
-      }
-      if (_extAll.length > 0) {
-        appState.extractoBancario = _extAll;
-        console.log('✅ Extractos cargados:', _extAll.length, 'movimientos');
-      }
-    }
+    // Extracto bancario: se carga en background desde _cargarExtractosBackground()
 
     // Cash flow filas
     const { data: cfRows } = await supa.from('cashflow_filas').select('*').order('fecha');
@@ -15504,6 +15477,64 @@ function renderGuardia() {
 
   // Cargar noticias en guardia
   cargarNoticias(false);
+}
+// ── CARGA EXTRACTOS EN BACKGROUND (paralelo) ────────────────
+async function _cargarExtractosBackground() {
+  if (!_supaUser) return;
+  try {
+    // Paso 1: obtener el total de registros
+    const anioActual = new Date().getFullYear();
+    const fechaDesde = (anioActual-1)+'-01-01';
+    const { count, error: cntErr } = await supa
+      .from('extracto_bancario')
+      .select('*', {count:'exact', head:true})
+      .gte('fecha', fechaDesde);
+    if (cntErr || !count) {
+      console.warn('extractos count error:', cntErr?.message); return;
+    }
+    const totalPages = Math.ceil(count / 1000);
+    console.log('Extractos a cargar:', count, '— páginas:', totalPages);
+    showToast('⏳ Cargando extractos (' + count.toLocaleString('es-AR') + ' movimientos)...', 5000);
+
+    // Paso 2: descargar todas las páginas en paralelo (de a 10)
+    const mapRow = r => ({
+      fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
+      nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
+      cat:r.categoria||'', cuit:r.cuit||'', denominacion:r.denominacion||'',
+      importe:parseFloat(r.importe)||0, importeOriginal:parseFloat(r.importe_original||r.importe)||0,
+      tipo:r.tipo||'ingreso', saldo:r.saldo!=null?parseFloat(r.saldo):null,
+      mes:r.mes||null, anio:r.anio||null, _fromExtracto:true
+    });
+
+    let allData = new Array(count);
+    const BATCH = 10; // 10 requests en paralelo = ~10k rows por ronda
+    for (let b = 0; b < totalPages; b += BATCH) {
+      const pages = [];
+      for (let p = b; p < Math.min(b+BATCH, totalPages); p++) pages.push(p);
+      const results = await Promise.all(pages.map(p =>
+        supa.from('extracto_bancario')
+          .select('fecha,emp_tag,banco,cuenta,nro_cta,concepto,detalle,categoria,cuit,denominacion,importe,importe_original,tipo,saldo,mes,anio')
+          .gte('fecha', fechaDesde)
+          .order('fecha', {ascending:false})
+          .range(p*1000, p*1000+999)
+      ));
+      results.forEach((res, i) => {
+        if (res.error || !res.data) return;
+        const offset = pages[i] * 1000;
+        res.data.forEach((r, j) => { allData[offset+j] = mapRow(r); });
+      });
+    }
+
+    // Filtrar nulls por si alguna página falló
+    allData = allData.filter(Boolean);
+    if (allData.length > 0) {
+      appState.extractoBancario = allData;
+      console.log('✅ Extractos listos:', allData.length);
+      showToast('✅ Extractos — ' + allData.length.toLocaleString('es-AR') + ' movimientos listos');
+      const pg = document.getElementById('page-extractos');
+      if (pg && pg.classList.contains('active') && typeof renderExtractos === 'function') renderExtractos();
+    }
+  } catch(e) { console.error('_cargarExtractosBackground:', e); }
 }
 // ── FIN PANEL GUARDIA ─────────────────────────────────────────
 </script>
