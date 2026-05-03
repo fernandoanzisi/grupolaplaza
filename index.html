@@ -8909,7 +8909,7 @@ function renderExtractos() {
   const _sA = (document.getElementById('extractos-search-full')?.value || '').trim().toLowerCase();
   const _sB = (document.getElementById('extractos-search')?.value || '').trim().toLowerCase();
   const search = _sA || _sB;
-  // Extractos usa sus propios filtros de fecha — NO los filtros globales del dashboard
+  // Extractos usa sus propios filtros — NO los del dashboard
   const fFrom     = '';
   const fTo       = '';
   const bancoFil  = (document.getElementById('extractos-filter-banco')?.value || 'todos');
@@ -10744,9 +10744,9 @@ async function loadFromSupabase() {
       }));
     }
 
-    // Extracto bancario — paginado para traer todos los registros sin límite
+    // Extracto bancario — paginado de a 1000 (límite Supabase) hasta traer todo
     {
-      const _PAGE = 5000; let _pg = 0; let _extAll = [];
+      const _PAGE = 1000; let _pg = 0; let _extAll = [];
       const _anioActual = new Date().getFullYear();
       while (true) {
         const { data: _extChunk, error: _extErr } = await supa.from('extracto_bancario')
@@ -10764,9 +10764,9 @@ async function loadFromSupabase() {
           saldo:r.saldo!=null?parseFloat(r.saldo):null, tipo:r.tipo||'ingreso',
           _fromExtracto:true
         })));
-        if (_extChunk.length < _PAGE) break;
+        if (_extChunk.length < 1000) break;
         _pg++;
-        if (_pg > 200) break; // safety: max 1M rows
+        if (_pg > 200) break; // safety: max 200k rows
       }
       if (_extAll.length > 0) {
         appState.extractoBancario = _extAll;
