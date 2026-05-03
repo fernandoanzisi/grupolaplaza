@@ -3548,7 +3548,8 @@ function _renderHoyBanner(empTag) {
   const empNames  = {RS:'Rio Salado', SC:'Serv. Cipolletti', LP:'La Plaza'};
 
   if (titleEl) titleEl.textContent = 'Hoy en curso — ' + hoy.fecha.split('-').reverse().join('/');
-  if (subEl)   subEl.textContent   = 'Datos parciales · último import ' + hoy.importedAt + ' hs · no incluido en las sumas del ' + (appState.lastMinutaDate||'').split('-').reverse().join('/');
+  const _lastClosed = (hoy.lastClosed || appState.lastMinutaDate || '').split('-').reverse().join('/');
+  if (subEl)   subEl.textContent   = 'Datos parciales · último import ' + hoy.importedAt + ' hs · último día cerrado: ' + _lastClosed;
 
   if (chipsEl) {
     const tags = empTag === 'grupo' ? ['RS','SC','LP'] : [empTag];
@@ -5596,10 +5597,11 @@ function parseMinutaDiaria(wb) {
   // ── Parsear hoja HOY (datos parciales del día en curso, NUNCA se mezcla con histórico) ──
   appState.hoyData = null;
   if (hoySheetName) {
-    // HOY = día siguiente a la última hoja de fecha confirmada
+    // HOY = fecha real del sistema (no calculada desde la última hoja)
     const lastConfirmedDt = dateSheets.length > 0 ? dateSheets[dateSheets.length-1].dt : new Date();
-    const hoyDt = new Date(lastConfirmedDt.getTime() + 86400000);
+    const hoyDt = new Date(); // fecha real de hoy
     const todayStr = hoyDt.toISOString().slice(0, 10);
+    const lastClosedStr = lastConfirmedDt.toISOString().slice(0, 10);
     // Contar tx antes de parsear para aislar solo las de hoy
     const txCountBefore = {};
     appState.empresas.forEach(e => { txCountBefore[e.name] = (e.transactions||[]).length; });
@@ -5607,6 +5609,7 @@ function parseMinutaDiaria(wb) {
     // Extraer y aislar transacciones de HOY (removerlas del histórico, guardar separado)
     appState.hoyData = {
       fecha: todayStr,
+      lastClosed: lastClosedStr,
       importedAt: new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}),
       byEmp: {}
     };
@@ -5715,7 +5718,7 @@ function handleFile(input) {
         showToast('✅ Minuta Diaria importada — ' + result.totalCount + ' registros de ' + result.dias + ' días');
         // Auto-guardar todo en Supabase
         _saveEmpresasSupabase();
-        cacheGuardar('minuta', { empresas: appState.empresas, lastMinutaDate: appState.lastMinutaDate });
+        cacheGuardar('minuta', { empresas: appState.empresas, lastMinutaDate: appState.lastMinutaDate, hoyData: appState.hoyData || null });
         showToast('☁️ Minuta sincronizada — datos disponibles en todos los dispositivos');
         if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof navGo === 'function') navGo('dashboard', null);
@@ -10679,7 +10682,7 @@ async function loadFromSupabase() {
         try { saved = JSON.parse(saved); } catch(e) { console.warn('parse error', e); }
       }
       if (saved && saved.empresas) {
-        appState.hoyData = null; // HOY es siempre del import del dia, no se persiste
+        // hoyData: se preserva si ya está cargado y es de hoy — no se resetea aquí
         appState.empresas = saved.empresas;
         appState.empresas.forEach(e => {
           if (!e.transactions)  e.transactions  = [];
@@ -10834,7 +10837,10 @@ async function cacheCargarTodo() {
         switch(row.clave) {
           case 'minuta':
             if (val && val.empresas) {
-              appState.hoyData = null;
+              // Restaurar hoyData si existe y es de hoy — sino null
+              const _hoyGuardado = val.hoyData || null;
+              const _hoyFechaHoy = new Date().toISOString().slice(0,10);
+              appState.hoyData = (_hoyGuardado && _hoyGuardado.fecha === _hoyFechaHoy) ? _hoyGuardado : null;
               val.empresas.forEach(e => {
                 if (!e.transactions) e.transactions = [];
                 if (!e.accounts)     e.accounts     = [];
