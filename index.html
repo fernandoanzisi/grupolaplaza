@@ -3548,8 +3548,7 @@ function _renderHoyBanner(empTag) {
   const empNames  = {RS:'Rio Salado', SC:'Serv. Cipolletti', LP:'La Plaza'};
 
   if (titleEl) titleEl.textContent = 'Hoy en curso — ' + hoy.fecha.split('-').reverse().join('/');
-  const _lastClosed = (hoy.lastClosed || appState.lastMinutaDate || '').split('-').reverse().join('/');
-  if (subEl)   subEl.textContent   = 'Datos parciales · último import ' + hoy.importedAt + ' hs · último día cerrado: ' + _lastClosed;
+  if (subEl)   subEl.textContent   = 'Datos parciales · último import ' + hoy.importedAt + ' hs · no incluido en las sumas del ' + (appState.lastMinutaDate||'').split('-').reverse().join('/');
 
   if (chipsEl) {
     const tags = empTag === 'grupo' ? ['RS','SC','LP'] : [empTag];
@@ -5597,11 +5596,10 @@ function parseMinutaDiaria(wb) {
   // ── Parsear hoja HOY (datos parciales del día en curso, NUNCA se mezcla con histórico) ──
   appState.hoyData = null;
   if (hoySheetName) {
-    // HOY = fecha real del sistema (no calculada desde la última hoja)
+    // HOY = día siguiente a la última hoja de fecha confirmada
     const lastConfirmedDt = dateSheets.length > 0 ? dateSheets[dateSheets.length-1].dt : new Date();
-    const hoyDt = new Date(); // fecha real de hoy
+    const hoyDt = new Date(lastConfirmedDt.getTime() + 86400000);
     const todayStr = hoyDt.toISOString().slice(0, 10);
-    const lastClosedStr = lastConfirmedDt.toISOString().slice(0, 10);
     // Contar tx antes de parsear para aislar solo las de hoy
     const txCountBefore = {};
     appState.empresas.forEach(e => { txCountBefore[e.name] = (e.transactions||[]).length; });
@@ -5609,7 +5607,6 @@ function parseMinutaDiaria(wb) {
     // Extraer y aislar transacciones de HOY (removerlas del histórico, guardar separado)
     appState.hoyData = {
       fecha: todayStr,
-      lastClosed: lastClosedStr,
       importedAt: new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}),
       byEmp: {}
     };
@@ -5718,7 +5715,7 @@ function handleFile(input) {
         showToast('✅ Minuta Diaria importada — ' + result.totalCount + ' registros de ' + result.dias + ' días');
         // Auto-guardar todo en Supabase
         _saveEmpresasSupabase();
-        cacheGuardar('minuta', { empresas: appState.empresas, lastMinutaDate: appState.lastMinutaDate, hoyData: appState.hoyData || null });
+        cacheGuardar('minuta', { empresas: appState.empresas, lastMinutaDate: appState.lastMinutaDate });
         showToast('☁️ Minuta sincronizada — datos disponibles en todos los dispositivos');
         if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof navGo === 'function') navGo('dashboard', null);
@@ -10682,7 +10679,7 @@ async function loadFromSupabase() {
         try { saved = JSON.parse(saved); } catch(e) { console.warn('parse error', e); }
       }
       if (saved && saved.empresas) {
-        // hoyData: se preserva si ya está cargado y es de hoy — no se resetea aquí
+        appState.hoyData = null; // HOY es siempre del import del dia, no se persiste
         appState.empresas = saved.empresas;
         appState.empresas.forEach(e => {
           if (!e.transactions)  e.transactions  = [];
@@ -10837,10 +10834,7 @@ async function cacheCargarTodo() {
         switch(row.clave) {
           case 'minuta':
             if (val && val.empresas) {
-              // Restaurar hoyData si existe y es de hoy — sino null
-              const _hoyGuardado = val.hoyData || null;
-              const _hoyFechaHoy = new Date().toISOString().slice(0,10);
-              appState.hoyData = (_hoyGuardado && _hoyGuardado.fecha === _hoyFechaHoy) ? _hoyGuardado : null;
+              appState.hoyData = null;
               val.empresas.forEach(e => {
                 if (!e.transactions) e.transactions = [];
                 if (!e.accounts)     e.accounts     = [];
@@ -15352,30 +15346,48 @@ function renderGuardia() {
     });
     return max || '—';
   })();
-  const totalGrupo = (() => {
-    const emp = appState.empresas||[];
-    if (!lastDate || lastDate === '—') return 0;
-    return emp.reduce((s,e)=>{
-      const txs = (e.transactions||[]).filter(t=>t.date===lastDate&&t.importe>0);
-      return s + txs.reduce((a,t)=>a+(t.importe||0),0);
-    },0);
-  })();
+  // ── Usar exactamente la misma lógica que el dashboard principal ──
+  const _empRS = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Rio'));
+  const _empSC = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Cipolletti'));
+  const _empLP = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Plaza'));
+  const _balD  = lastDate && lastDate !== '—' ? lastDate : '';
+  function _getHist(emp, fecha) { return (emp&&emp.diaHistory&&fecha) ? (emp.diaHistory[fecha]||null) : null; }
+  const _hRS = _getHist(_empRS, _balD);
+  const _hSC = _getHist(_empSC, _balD);
+  const _hLP = _getHist(_empLP, _balD);
+  // Ingresos del día — igual que dashboard: C71 tiene prioridad, luego B50+D50+F50
+  const _rsIngARS = _hRS ? (_hRS.b50||0) : (_empRS?_empRS.diaB50||0:0);
+  const _scIngARS = _hSC ? (_hSC.d50||0) : (_empSC?_empSC.diaD50||0:0);
+  const _lpIngARS = _hLP ? (_hLP.f50||0) : (_empLP?_empLP.diaF50||0:0);
+  const _c71val   = _hRS ? (_hRS.c71||0)  : (_empRS?_empRS.diaC71||0:0);
+  const totalGrupo = _c71val > 0 ? _c71val : (_rsIngARS + _scIngARS + _lpIngARS);
+  // HOY en curso
   const hoyTotal = (() => {
     if (!hoy||!hoy.byEmp) return 0;
     return Object.values(hoy.byEmp).reduce((s,e)=>s+(e.ing||0),0);
   })();
-  const usd = (appState.empresas||[]).reduce((s,e)=>{
-    return s + (e.investments||[]).filter(i=>(i.type||'').toLowerCase().includes('usd')||i.moneda==='USD')
-      .reduce((a,i)=>a+(i.importe||i.amount||0),0);
-  },0);
-  const cartera = (appState.cartDebo||[]).reduce((s,c)=>s+(c.importe||0),0);
-  const fima = (appState.empresas||[]).reduce((s,e)=>s+(e.investments||[]).filter(i=>i.tipo!=='USD'&&i.tipo!=='FCI USD').reduce((a,i)=>a+(i.importe||i.amount||0),0),0);
+  // USD — igual que dashboard: diaUSD de cada empresa
+  const _rsUSD = _hRS ? (_hRS.usd||0) : (_empRS?_empRS.diaUSD||0:0);
+  const _scUSD = _hSC ? (_hSC.usd||0) : (_empSC?_empSC.diaUSD||0:0);
+  const usd = _rsUSD + _scUSD;
+  // Cartera — igual que dashboard: diaCarteraGrupo > diaCartera > cheques XLS
+  function _sumCart(emp) {
+    if (!emp) return 0;
+    if (emp.diaCartera && emp.diaCartera > 0) return emp.diaCartera;
+    const xls = (emp.cheques||[]).filter(c=>c._fromCarteraXls&&c.estado==='EN CARTERA').reduce((s,c)=>s+(c.importe||0),0);
+    if (xls > 0) return xls;
+    return (emp.estaciones||[]).filter(e=>!_balD||e.fecha===_balD).reduce((s,e)=>s+(e.chqCartera||0),0);
+  }
+  const cartera = (_empRS&&_empRS.diaCarteraGrupo) ? _empRS.diaCarteraGrupo : (_sumCart(_empRS) + _sumCart(_empSC));
+  // FIMA — igual que dashboard: capital filtrado por fecha
+  const fima = (appState.empresas||[]).reduce((s,e)=>s+(e.investments||[]).filter(i=>!_balD||i.fecha===_balD).reduce((a,i)=>a+(i.capital||0),0),0);
 
-  // Barras por empresa
-  const empData = (appState.empresas||[]).map(e=>{
-    const txs = lastDate&&lastDate!=='—' ? (e.transactions||[]).filter(t=>t.date===lastDate&&t.importe>0) : [];
-    return { name: e.name||'', total: txs.reduce((a,t)=>a+(t.importe||0),0) };
-  }).filter(e=>e.total>0);
+  // Barras por empresa — misma lógica que dashboard (B50/D50/F50)
+  const empData = [
+    { name: _empRS?_empRS.name:'Rio Salado SRL',           total: _rsIngARS },
+    { name: _empSC?_empSC.name:'Servicios Cipolletti SRL', total: _scIngARS },
+    { name: _empLP?_empLP.name:'La Plaza SA',              total: _lpIngARS },
+  ].filter(e=>e.total>0);
   const maxEmp = Math.max(...empData.map(e=>e.total), 1);
   const empColors = {'Rio Salado SRL':'#4a9fd4','Servicios Cipolletti SRL':'#4ade80','La Plaza SA':'#fbbf24'};
   const empShort  = {'Rio Salado SRL':'Rio Salado','Servicios Cipolletti SRL':'Serv. Cipolletti','La Plaza SA':'La Plaza'};
