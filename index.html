@@ -10744,17 +10744,34 @@ async function loadFromSupabase() {
       }));
     }
 
-    // Extracto bancario
-    const { data: extracto } = await supa.from('extracto_bancario').select('*').order('fecha', {ascending:false}).limit(50000);
-    if (extracto && extracto.length) {
-      appState.extractoBancario = extracto.map(r => ({
-        fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
-        nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
-        denominacion:r.denominacion||'', cat:r.categoria||'',
-        importe:parseFloat(r.importe)||0, importeOriginal:parseFloat(r.importe_original)||0,
-        saldo:r.saldo?parseFloat(r.saldo):null, tipo:r.tipo||'ingreso',
-        _fromExtracto:true
-      }));
+    // Extracto bancario — paginado para traer todos los registros sin límite
+    {
+      const _PAGE = 5000; let _pg = 0; let _extAll = [];
+      const _anioActual = new Date().getFullYear();
+      while (true) {
+        const { data: _extChunk, error: _extErr } = await supa.from('extracto_bancario')
+          .select('*')
+          .gte('fecha', (_anioActual-1)+'-01-01')
+          .order('fecha', {ascending:false})
+          .range(_pg*_PAGE, (_pg+1)*_PAGE-1);
+        if (_extErr || !_extChunk || !_extChunk.length) break;
+        _extAll = _extAll.concat(_extChunk.map(r => ({
+          fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
+          nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
+          denominacion:r.denominacion||'', cat:r.categoria||r.cat||'',
+          cuit:r.cuit||'', mes:r.mes||null, anio:r.anio||null,
+          importe:parseFloat(r.importe)||0, importeOriginal:parseFloat(r.importe_original||r.importe)||0,
+          saldo:r.saldo!=null?parseFloat(r.saldo):null, tipo:r.tipo||'ingreso',
+          _fromExtracto:true
+        })));
+        if (_extChunk.length < _PAGE) break;
+        _pg++;
+        if (_pg > 200) break; // safety: max 1M rows
+      }
+      if (_extAll.length > 0) {
+        appState.extractoBancario = _extAll;
+        console.log('✅ Extractos cargados:', _extAll.length, 'movimientos');
+      }
     }
 
     // Cash flow filas
