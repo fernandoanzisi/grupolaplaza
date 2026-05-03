@@ -4642,8 +4642,8 @@ function importCarteraDeValores(wb) {
 
   // ── Procesar cada hoja ─────────────────────────────────────
   const sheetConfig = [
-    { names:['RS E-Cheqs RS','RS E-Cheqs'], empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ' },
-    { names:['SC E-Cheqs'],                 empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ' },
+    { names:['RS E-Cheqs RS','RS E-Cheqs'], empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ', importeCol:7 },
+    { names:['SC E-Cheqs'],                 empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ', importeCol:7 },
     { names:['Cartera Fisico RS','Cartera RS'],   empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:9 },
     { names:['Cartera Fisico SC','Cartera SC'],   empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:9 },
     { names:['Cartera Fisico AGRO','Cartera AGRO'], empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO', importeCol:8 },
