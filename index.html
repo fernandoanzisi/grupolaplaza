@@ -3459,6 +3459,36 @@ function renderDashboard() {
     </div>
   </div>
 
+  <!-- NOTICIAS DEL SECTOR -->
+  <div class="card" id="dash-noticias-card" style="padding:16px;margin-top:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div id="dash-noticias-dot" style="width:6px;height:6px;border-radius:50%;background:var(--green)"></div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase">📰 Noticias del sector — en vivo</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span id="dash-noticias-badge-surt" onclick="filtrarNoticias('surt')" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer;background:rgba(74,222,128,0.12);color:#4ade80;border:1px solid rgba(74,222,128,0.25)">Surtidores</span>
+        <span id="dash-noticias-badge-inf" onclick="filtrarNoticias('inf')" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer;background:rgba(74,159,212,0.12);color:var(--accent);border:1px solid rgba(74,159,212,0.25)">Infobae</span>
+        <span id="dash-noticias-badge-amb" onclick="filtrarNoticias('amb')" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer;background:rgba(167,139,250,0.12);color:var(--purple);border:1px solid rgba(167,139,250,0.25)">Ámbito</span>
+        <span id="dash-noticias-badge-cro" onclick="filtrarNoticias('cro')" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer;background:rgba(251,191,36,0.12);color:var(--yellow);border:1px solid rgba(251,191,36,0.25)">Cronista</span>
+        <span id="dash-noticias-badge-all" onclick="filtrarNoticias('all')" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer;background:rgba(255,255,255,0.08);color:var(--text2);border:1px solid var(--border2)">Todos ✓</span>
+        <span id="dash-noticias-refresh-label" style="font-size:9px;color:var(--text3);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:99px;border:1px solid var(--border)">⟳ 30min</span>
+      </div>
+    </div>
+    <div id="dash-noticias-lista" style="display:flex;flex-direction:column;gap:0">
+      <div style="font-size:11px;color:var(--text3);padding:12px 0;text-align:center">Cargando noticias...</div>
+    </div>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <span style="font-size:9px;color:#4ade80">✓ surtidores.com.ar</span>
+        <span style="font-size:9px;color:var(--accent)">✓ infobae.com</span>
+        <span style="font-size:9px;color:var(--purple)">✓ ambito.com</span>
+        <span style="font-size:9px;color:var(--yellow)">✓ cronista.com</span>
+      </div>
+      <span id="dash-noticias-ultima" style="font-size:9px;color:var(--text3)">—</span>
+    </div>
+  </div>
+
 </div>
 <div id="dash-view-empresa" style="display:none">
   <div id="dash-emp-header" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:14px;position:relative;overflow:hidden">
@@ -15120,14 +15150,195 @@ const _origRenderDash = renderDashboard;
 renderDashboard = function() {
   _origRenderDash.apply(this, arguments);
   setTimeout(()=>{ renderTimelineMini(); renderComparativa(); }, 100);
+  // Cargar noticias al abrir el dashboard (usa caché si tiene menos de 30min)
+  setTimeout(()=>{ cargarNoticias(false); }, 300);
 };
+// Iniciar timer de actualización automática cada 30 minutos
+_iniciarTimerNoticias();
+
+// ── SISTEMA DE NOTICIAS ───────────────────────────────────────
+window._noticiasCache = [];
+window._noticiasFiltro = 'all';
+window._noticiasTimer = null;
+
+const NOTICIAS_FUENTES = [
+  { key:'surt', label:'Surtidores', color:'#4ade80', bg:'rgba(74,222,128,0.12)', border:'rgba(74,222,128,0.25)',
+    urls:['https://www.surtidores.com.ar/feed/','https://surtidores.com.ar/feed/'] },
+  { key:'inf',  label:'Infobae',    color:'#4a9fd4', bg:'rgba(74,159,212,0.12)', border:'rgba(74,159,212,0.25)',
+    urls:['https://www.infobae.com/economia/feed/','https://www.infobae.com/feeds/rss/economia.xml'] },
+  { key:'amb',  label:'Ámbito',     color:'#a78bfa', bg:'rgba(167,139,250,0.12)', border:'rgba(167,139,250,0.25)',
+    urls:['https://www.ambito.com/rss/pages/economia.xml','https://www.ambito.com/rss/economia.xml'] },
+  { key:'cro',  label:'Cronista',   color:'#fbbf24', bg:'rgba(251,191,36,0.12)', border:'rgba(251,191,36,0.25)',
+    urls:['https://www.cronista.com/rss/economia.xml','https://www.cronista.com/arc/outboundfeeds/rss/'] },
+];
+
+async function _fetchRSS(url) {
+  const proxies = [
+    'https://api.allorigins.win/get?url=' + encodeURIComponent(url),
+    'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(url),
+  ];
+  for (const proxy of proxies) {
+    try {
+      const r = await fetch(proxy, {signal: AbortSignal.timeout(8000)});
+      if (!r.ok) continue;
+      const j = await r.json();
+      // allorigins format
+      if (j.contents) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(j.contents, 'text/xml');
+        const items = Array.from(doc.querySelectorAll('item')).slice(0,6);
+        return items.map(it => ({
+          titulo: it.querySelector('title')?.textContent?.trim() || '',
+          link:   it.querySelector('link')?.textContent?.trim() || '',
+          fecha:  it.querySelector('pubDate')?.textContent?.trim() || '',
+        })).filter(n=>n.titulo);
+      }
+      // rss2json format
+      if (j.items) {
+        return j.items.slice(0,6).map(it => ({
+          titulo: it.title?.trim() || '',
+          link:   it.link || it.guid || '',
+          fecha:  it.pubDate || it.published || '',
+        })).filter(n=>n.titulo);
+      }
+    } catch(e) { continue; }
+  }
+  return [];
+}
+
+function _tiempoRelativo(fechaStr) {
+  if (!fechaStr) return '';
+  try {
+    const d = new Date(fechaStr);
+    if (isNaN(d)) return '';
+    const diff = Math.floor((Date.now() - d) / 60000);
+    if (diff < 2)   return 'hace un momento';
+    if (diff < 60)  return 'hace ' + diff + ' min';
+    if (diff < 120) return 'hace 1 hora';
+    if (diff < 1440) return 'hace ' + Math.floor(diff/60) + ' horas';
+    return 'ayer';
+  } catch(e) { return ''; }
+}
+
+async function cargarNoticias(forzar) {
+  const ahora = Date.now();
+  if (!forzar && window._noticiasCache.length && window._noticiasUltimaActualizacion &&
+      (ahora - window._noticiasUltimaActualizacion) < 30*60*1000) {
+    renderNoticias();
+    return;
+  }
+  _renderNoticiasLoading();
+  const todas = [];
+  for (const fuente of NOTICIAS_FUENTES) {
+    let items = [];
+    for (const url of fuente.urls) {
+      items = await _fetchRSS(url);
+      if (items.length) break;
+    }
+    items.forEach(n => todas.push({...n, fuente}));
+  }
+  // Ordenar por fecha desc si hay fechas, sino mantener orden
+  todas.sort((a,b) => {
+    const da = a.fecha ? new Date(a.fecha) : 0;
+    const db = b.fecha ? new Date(b.fecha) : 0;
+    return db - da;
+  });
+  window._noticiasCache = todas;
+  window._noticiasUltimaActualizacion = Date.now();
+  renderNoticias();
+  // Actualizar label de última actualización
+  const ts = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  const el1 = document.getElementById('dash-noticias-ultima');
+  const el2 = document.getElementById('guardia-noticias-ultima');
+  if (el1) el1.textContent = 'última actualización: ' + ts;
+  if (el2) el2.textContent = '⟳ actualizado: ' + ts;
+}
+
+function filtrarNoticias(filtro) {
+  window._noticiasFiltro = filtro;
+  // Resaltar badge activo en portada
+  ['all','surt','inf','amb','cro'].forEach(k => {
+    const b = document.getElementById('dash-noticias-badge-' + k);
+    if (!b) return;
+    if (k === filtro) {
+      b.style.fontWeight = '900';
+      b.style.opacity = '1';
+    } else {
+      b.style.fontWeight = '700';
+      b.style.opacity = '0.5';
+    }
+  });
+  renderNoticias();
+}
+
+function _renderNoticiasLoading() {
+  ['dash-noticias-lista','guardia-noticias-lista'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<div style="font-size:11px;color:#7a8399;padding:14px 0;text-align:center">Cargando noticias...</div>';
+  });
+}
+
+function renderNoticias() {
+  const cache = window._noticiasCache || [];
+  const filtro = window._noticiasFiltro || 'all';
+  const filtradas = filtro === 'all' ? cache : cache.filter(n => n.fuente.key === filtro);
+  const top4 = filtradas.slice(0, 4);
+
+  // Para portada (4 noticias con fila completa)
+  const listaPortada = document.getElementById('dash-noticias-lista');
+  if (listaPortada) {
+    if (!top4.length) {
+      listaPortada.innerHTML = '<div style="font-size:11px;color:#7a8399;padding:14px 0;text-align:center">Sin noticias disponibles por el momento</div>';
+    } else {
+      listaPortada.innerHTML = top4.map(n =>
+        '<div style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.06)">' +
+          '<div style="width:7px;height:7px;border-radius:50%;background:'+n.fuente.color+';flex-shrink:0;margin-top:5px"></div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:12px;color:var(--text2);line-height:1.45;margin-bottom:3px">'+escH(n.titulo)+'</div>' +
+            '<div style="font-size:10px;color:var(--text3)">' +
+              '<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 7px;border-radius:99px;margin-right:5px;background:'+n.fuente.bg+';color:'+n.fuente.color+';border:1px solid '+n.fuente.border+'">'+n.fuente.label+'</span>' +
+              _tiempoRelativo(n.fecha) +
+            '</div>' +
+          '</div>' +
+          (n.link ? '<a href="'+escH(n.link)+'" target="_blank" style="font-size:10px;color:var(--accent);text-decoration:none;white-space:nowrap;flex-shrink:0;margin-top:3px">abrir →</a>' : '') +
+        '</div>'
+      ).join('') + '<div style="height:4px"></div>';
+    }
+  }
+
+  // Para panel guardia (3 noticias en formato card compacto)
+  const listaGuardia = document.getElementById('guardia-noticias-lista');
+  if (listaGuardia) {
+    const top3 = filtradas.slice(0,3);
+    if (!top3.length) {
+      listaGuardia.innerHTML = '<div style="font-size:11px;color:#7a8399;padding:10px 0">Sin noticias</div>';
+    } else {
+      listaGuardia.innerHTML = top3.map(n =>
+        '<div style="background:#161c2a;border-left:2px solid '+n.fuente.color+';border-radius:0 8px 8px 0;padding:8px 12px;margin-bottom:6px">' +
+          '<div style="font-size:11px;color:#c8cede;line-height:1.35;margin-bottom:4px">'+escH(n.titulo)+'</div>' +
+          '<div style="display:flex;align-items:center;gap:6px">' +
+            '<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;background:'+n.fuente.bg+';color:'+n.fuente.color+';border:1px solid '+n.fuente.border+'">'+n.fuente.label+'</span>' +
+            '<span style="font-size:9px;color:#7a8399">'+_tiempoRelativo(n.fecha)+'</span>' +
+            (n.link ? '<a href="'+escH(n.link)+'" target="_blank" style="font-size:9px;color:#4a9fd4;text-decoration:none;margin-left:auto">abrir →</a>' : '') +
+          '</div>' +
+        '</div>'
+      ).join('');
+    }
+  }
+}
+
+function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function _iniciarTimerNoticias() {
+  if (window._noticiasTimer) clearInterval(window._noticiasTimer);
+  window._noticiasTimer = setInterval(()=>cargarNoticias(true), 30*60*1000);
+}
 
 // ── PANEL GUARDIA ─────────────────────────────────────────────
 function renderGuardia() {
   const pg = document.getElementById('page-guardia');
   if (!pg) return;
   const hoy = appState.hoyData;
-  // Usar lastMinutaDate o la última fecha disponible en transacciones
   const lastDate = appState.lastMinutaDate || (() => {
     let max = '';
     (appState.empresas||[]).forEach(e => {
@@ -15137,8 +15348,7 @@ function renderGuardia() {
   })();
   const totalGrupo = (() => {
     const emp = appState.empresas||[];
-    const bal = lastDate && lastDate !== '—';
-    if (!bal) return 0;
+    if (!lastDate || lastDate === '—') return 0;
     return emp.reduce((s,e)=>{
       const txs = (e.transactions||[]).filter(t=>t.date===lastDate&&t.importe>0);
       return s + txs.reduce((a,t)=>a+(t.importe||0),0);
@@ -15148,63 +15358,129 @@ function renderGuardia() {
     if (!hoy||!hoy.byEmp) return 0;
     return Object.values(hoy.byEmp).reduce((s,e)=>s+(e.ing||0),0);
   })();
-  const usd = (() => {
-    return (appState.empresas||[]).reduce((s,e)=>{
-      const inv = e.investments||[];
-      const usdI = inv.filter(i=>(i.type||'').toLowerCase().includes('usd')||i.moneda==='USD');
-      return s + usdI.reduce((a,i)=>a+(i.importe||i.amount||0),0);
-    },0);
-  })();
-  const cartera = appState.cartDebo ? appState.cartDebo.reduce((s,c)=>s+(c.importe||0),0) : 0;
+  const usd = (appState.empresas||[]).reduce((s,e)=>{
+    return s + (e.investments||[]).filter(i=>(i.type||'').toLowerCase().includes('usd')||i.moneda==='USD')
+      .reduce((a,i)=>a+(i.importe||i.amount||0),0);
+  },0);
+  const cartera = (appState.cartDebo||[]).reduce((s,c)=>s+(c.importe||0),0);
+  const fima = (appState.empresas||[]).reduce((s,e)=>s+(e.investments||[]).filter(i=>i.tipo!=='USD'&&i.tipo!=='FCI USD').reduce((a,i)=>a+(i.importe||i.amount||0),0),0);
+
+  // Barras por empresa
+  const empData = (appState.empresas||[]).map(e=>{
+    const txs = lastDate&&lastDate!=='—' ? (e.transactions||[]).filter(t=>t.date===lastDate&&t.importe>0) : [];
+    return { name: e.name||'', total: txs.reduce((a,t)=>a+(t.importe||0),0) };
+  }).filter(e=>e.total>0);
+  const maxEmp = Math.max(...empData.map(e=>e.total), 1);
+  const empColors = {'Rio Salado SRL':'#4a9fd4','Servicios Cipolletti SRL':'#4ade80','La Plaza SA':'#fbbf24'};
+  const empShort  = {'Rio Salado SRL':'Rio Salado','Servicios Cipolletti SRL':'Serv. Cipolletti','La Plaza SA':'La Plaza'};
+
   // Alertas
   const alertas = [];
   const hoyStr = new Date().toISOString().slice(0,10);
-  (appState.flota||[]).filter(v=>v.vtv&&v.vtv<hoyStr).slice(0,3).forEach(v=>alertas.push({icon:'🚨',color:'#f87171',bg:'rgba(248,113,113,0.1)',b:'rgba(248,113,113,0.25)',t:'VTV vencida: '+v.patente,s:v.empresa}));
-  (appState.pasivos||[]).filter(p=>p.proxVenc===hoyStr&&(p.estado==='Vigente'||p.estado==='En mora')).forEach(p=>alertas.push({icon:'📅',color:'#fbbf24',bg:'rgba(251,191,36,0.08)',b:'rgba(251,191,36,0.25)',t:'Cuota vence hoy: '+(p.descripcion||p.banco),s:'$'+fmtARS(p.cuota||0)+' · '+p.empresa}));
+  (appState.flota||[]).filter(v=>v.vtv&&v.vtv<hoyStr).slice(0,3).forEach(v=>
+    alertas.push({icon:'🚨',color:'#f87171',bg:'rgba(248,113,113,0.1)',b:'rgba(248,113,113,0.25)',t:'VTV vencida: '+v.patente,s:v.empresa}));
+  (appState.pasivos||[]).filter(p=>p.proxVenc===hoyStr&&(p.estado==='Vigente'||p.estado==='En mora')).forEach(p=>
+    alertas.push({icon:'📅',color:'#fbbf24',bg:'rgba(251,191,36,0.08)',b:'rgba(251,191,36,0.25)',t:'Cuota vence hoy: '+(p.descripcion||p.banco),s:'$'+fmtARS(p.cuota||0)+' · '+p.empresa}));
   if (!alertas.length) alertas.push({icon:'✅',color:'#4ade80',bg:'rgba(74,222,128,0.08)',b:'rgba(74,222,128,0.2)',t:'Sin alertas urgentes',s:'Todo en orden'});
+
   pg.innerHTML =
-    '<div style="min-height:100vh;background:#0d1117;padding:32px;display:flex;flex-direction:column;gap:24px">'+
-    // Header
+    '<div style="min-height:100vh;background:#0d1117;padding:28px 32px;display:flex;flex-direction:column;gap:20px">'+
+
+    // ── Header ──
     '<div style="display:flex;align-items:center;justify-content:space-between">'+
       '<div>'+
-        '<div style="font-size:13px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:3px">🏦 Grupo La Plaza · En vivo</div>'+
-        '<div style="font-size:11px;color:#7a8399;margin-top:4px">'+new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</div>'+
+        '<div style="font-size:11px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:3px;margin-bottom:4px">🏦 Grupo La Plaza · En vivo</div>'+
+        '<div style="font-size:13px;color:#4a9fd4;font-weight:500">'+new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</div>'+
       '</div>'+
       '<div style="display:flex;align-items:center;gap:16px">'+
-        '<div id="guardia-clock" style="font-size:48px;font-weight:900;color:#4a9fd4;font-family:monospace;letter-spacing:2px">--:--:--</div>'+
-        '<button onclick="navGo(\'dashboard\',null)" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:none;color:#7a8399;font-size:13px;cursor:pointer;font-family:inherit">✕ Cerrar</button>'+
+        '<div style="text-align:right">'+
+          '<div id="guardia-clock" style="font-size:52px;font-weight:900;color:#4a9fd4;font-family:monospace;letter-spacing:2px;line-height:1">--:--:--</div>'+
+          '<div style="font-size:9px;color:#7a8399;margin-top:2px;text-align:right">hora local</div>'+
+        '</div>'+
+        '<button onclick="navGo(\'dashboard\',null)" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:none;color:#7a8399;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.2s" onmouseover="this.style.color=\'#f0f2f7\'" onmouseout="this.style.color=\'#7a8399\'">✕ Cerrar</button>'+
       '</div>'+
     '</div>'+
-    // KPIs grandes
-    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">'+
-      '<div style="background:#1a1f2e;border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:24px;text-align:center">'+
-        '<div style="font-size:11px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Total ingresos hoy</div>'+
-        '<div style="font-size:clamp(24px,4vw,42px);font-weight:900;font-family:monospace;color:#4ade80;line-height:1">$'+fmtARS(totalGrupo)+'</div>'+
-        '<div style="font-size:11px;color:#7a8399;margin-top:6px">ARS · C71 Minuta · '+lastDate+'</div>'+
+
+    // ── KPIs (4 tarjetas) ──
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'+
+      '<div style="background:#161c2a;border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:20px;text-align:center">'+
+        '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Ingresos del día</div>'+
+        '<div style="font-size:clamp(18px,3vw,36px);font-weight:900;font-family:monospace;color:#4ade80;line-height:1">$'+fmtARS(totalGrupo)+'</div>'+
+        '<div style="font-size:10px;color:#7a8399;margin-top:6px">Minuta · '+lastDate+'</div>'+
       '</div>'+
-      '<div style="background:#1a1f2e;border:1px solid rgba(251,191,36,0.2);border-radius:14px;padding:24px;text-align:center">'+
-        '<div style="font-size:11px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">HOY en curso</div>'+
-        '<div style="font-size:clamp(20px,3.5vw,36px);font-weight:900;font-family:monospace;color:#fbbf24;line-height:1">$'+fmtARS(hoyTotal)+'</div>'+
-        '<div style="font-size:11px;color:#7a8399;margin-top:6px">'+(hoy?'Datos parciales · '+new Date().toLocaleDateString('es-AR',{day:'numeric',month:'long'}):'Sin datos de hoy')+'</div>'+
+      '<div style="background:#161c2a;border:1px solid rgba(251,191,36,0.2);border-radius:14px;padding:20px;text-align:center">'+
+        '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">HOY en curso</div>'+
+        '<div style="font-size:clamp(18px,3vw,36px);font-weight:900;font-family:monospace;color:#fbbf24;line-height:1">$'+fmtARS(hoyTotal)+'</div>'+
+        '<div style="font-size:10px;color:#7a8399;margin-top:6px">'+(hoy?'datos parciales':'sin datos hoy')+'</div>'+
       '</div>'+
-      '<div style="background:#1a1f2e;border:1px solid rgba(74,159,212,0.2);border-radius:14px;padding:24px;text-align:center">'+
-        '<div style="font-size:11px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Cartera de valores</div>'+
-        '<div style="font-size:clamp(20px,3.5vw,36px);font-weight:900;font-family:monospace;color:#4a9fd4;line-height:1">$'+fmtARS(cartera)+'</div>'+
-        '<div style="font-size:11px;color:#7a8399;margin-top:6px">Total grupo</div>'+
+      '<div style="background:#161c2a;border:1px solid rgba(74,159,212,0.2);border-radius:14px;padding:20px;text-align:center">'+
+        '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Cartera valores</div>'+
+        '<div style="font-size:clamp(18px,3vw,36px);font-weight:900;font-family:monospace;color:#4a9fd4;line-height:1">$'+fmtARS(cartera)+'</div>'+
+        '<div style="font-size:10px;color:#7a8399;margin-top:6px">total grupo</div>'+
+      '</div>'+
+      '<div style="background:#161c2a;border:1px solid rgba(167,139,250,0.2);border-radius:14px;padding:20px;text-align:center">'+
+        '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">USD total</div>'+
+        '<div style="font-size:clamp(18px,3vw,36px);font-weight:900;font-family:monospace;color:#a78bfa;line-height:1">U$S '+fmtARS(usd)+'</div>'+
+        '<div style="font-size:10px;color:#7a8399;margin-top:6px">FCI + inversiones</div>'+
       '</div>'+
     '</div>'+
-    // Alertas
-    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">'+
-      alertas.map(a=>'<div style="background:'+a.bg+';border:1px solid '+a.b+';border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px"><span style="font-size:28px">'+a.icon+'</span><div><div style="font-size:14px;font-weight:700;color:'+a.color+'">'+a.t+'</div><div style="font-size:11px;color:#7a8399;margin-top:3px">'+a.s+'</div></div></div>').join('')+
+
+    // ── Fila inferior: alertas + barras empresa | noticias ──
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'+
+
+      // Col izquierda: alertas + barras
+      '<div style="display:flex;flex-direction:column;gap:12px">'+
+        '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px">Alertas operativas</div>'+
+        alertas.map(a=>
+          '<div style="background:'+a.bg+';border:1px solid '+a.b+';border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px">'+
+            '<span style="font-size:22px">'+a.icon+'</span>'+
+            '<div><div style="font-size:13px;font-weight:700;color:'+a.color+'">'+a.t+'</div>'+
+            '<div style="font-size:10px;color:#7a8399;margin-top:2px">'+a.s+'</div></div>'+
+          '</div>'
+        ).join('')+
+        '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px">'+
+          '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px">Ingresos por empresa</div>'+
+          (empData.length ? empData.map(e=>{
+            const pct = Math.round(e.total/maxEmp*100);
+            const col = empColors[e.name]||'#7a8399';
+            const short = empShort[e.name]||e.name;
+            return '<div style="margin-bottom:10px">'+
+              '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">'+
+                '<span style="color:'+col+';font-weight:600">'+short+'</span>'+
+                '<span style="font-family:monospace;color:#c8cede">$'+fmtARS(e.total)+'</span>'+
+              '</div>'+
+              '<div style="background:rgba(255,255,255,0.06);border-radius:99px;height:5px">'+
+                '<div style="background:'+col+';height:5px;border-radius:99px;width:'+pct+'%;transition:width 0.6s ease"></div>'+
+              '</div>'+
+            '</div>';
+          }).join('') : '<div style="font-size:11px;color:#7a8399">Sin datos de ingresos</div>')+
+        '</div>'+
+      '</div>'+
+
+      // Col derecha: noticias
+      '<div style="display:flex;flex-direction:column;gap:10px">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between">'+
+          '<div style="font-size:9px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px">📰 Noticias del sector</div>'+
+          '<span id="guardia-noticias-ultima" style="font-size:9px;color:#7a8399;background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:99px;border:1px solid rgba(255,255,255,0.07)">⟳ 30min</span>'+
+        '</div>'+
+        '<div id="guardia-noticias-lista" style="display:flex;flex-direction:column">'+
+          '<div style="font-size:11px;color:#7a8399;padding:10px 0">Cargando noticias...</div>'+
+        '</div>'+
+      '</div>'+
+
     '</div>'+
     '</div>';
-  // Reloj grande en panel guardia
+
+  // Reloj
   const gc = setInterval(()=>{
-    const el=document.getElementById('guardia-clock');
-    if(!el){clearInterval(gc);return;}
-    const n=new Date();
-    el.textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
-  },1000);
+    const el = document.getElementById('guardia-clock');
+    if (!el) { clearInterval(gc); return; }
+    const n = new Date();
+    el.textContent = String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+  }, 1000);
+
+  // Cargar noticias en guardia
+  cargarNoticias(false);
 }
 // ── FIN PANEL GUARDIA ─────────────────────────────────────────
 </script>
