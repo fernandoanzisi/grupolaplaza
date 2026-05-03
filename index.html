@@ -4677,8 +4677,8 @@ function dropFile(e)  { e.preventDefault(); dragLeave(); handleFile({ files: [e.
 
 // ══════════════════════════════════════════════════════════════
 // IMPORT: CARTERA DE VALORES
-// Hojas: RS E-Cheqs RS (R5+), SC E-Cheqs (R7+),
-//        Cartera RS (R4+), Cartera SC (R6+), Cartera AGRO (R7+)
+// Hojas: RS E-Cheqs (R5+), SC E-Cheqs (R7+),
+//        Cartera Fisico RS (R4+), Cartera Fisico SC (R6+), Cartera Fisico AGRO (R7+)
 // ══════════════════════════════════════════════════════════════
 function importCarteraDeValores(wb) {
   const APIES = {
@@ -4719,11 +4719,11 @@ function importCarteraDeValores(wb) {
 
   // ── Procesar cada hoja ─────────────────────────────────────
   const sheetConfig = [
-    { name:'RS E-Cheqs RS', empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ' },
-    { name:'SC E-Cheqs',    empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ' },
-    { name:'Cartera RS',    empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:8 },
-    { name:'Cartera SC',    empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:8 },
-    { name:'Cartera AGRO',  empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO',   importeCol:7 },
+    { name:'RS E-Cheqs',          empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ' },
+    { name:'SC E-Cheqs',          empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ' },
+    { name:'Cartera Fisico RS',   empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:9 },
+    { name:'Cartera Fisico SC',   empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:9 },
+    { name:'Cartera Fisico AGRO', empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO',   importeCol:8 },
   ];
 
   sheetConfig.forEach(cfg => {
@@ -5656,9 +5656,9 @@ function handleFile(input) {
       // ── DETECCIÓN AUTOMÁTICA ─────────────────────────────────
 
       // ¿Es Cartera de Valores?
-      // Detectar por hojas clave: RS E-Cheqs RS, SC E-Cheqs, Cartera RS, etc.
+      // Detectar por hojas clave: RS E-Cheqs, SC E-Cheqs, Cartera Fisico RS, etc.
       const isCartera = wb.SheetNames.some(s =>
-        /^(rs e-cheq|sc e-cheq|cartera rs|cartera sc|cartera agro|resumen cartera)/i.test(s.trim()));
+        /^(rs e-cheq|sc e-cheq|cartera fisico|resumen cartera)/i.test(s.trim()));
       if (isCartera) {
         const result = importCarteraDeValores(wb);
         saveState();
