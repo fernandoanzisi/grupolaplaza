@@ -408,6 +408,7 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('bancos',this)"    data-page="bancos">💳 Bancos</button>
           <button class="nav-dd-item" onclick="navGo('efectivo',this)"  data-page="efectivo">💵 Efectivo</button>
           <button class="nav-dd-item" onclick="navGo('cheques',this)"   data-page="cheques">📋 Cheques</button>
+          <button class="nav-dd-item" onclick="navGo('cheques_rech',this)" data-page="cheques_rech">🔴 Cheques Rechazados</button>
           <button class="nav-dd-item" onclick="navGo('cuentas',this)"   data-page="cuentas">🏦 Cuentas</button>
         </div>
       </div>
@@ -1133,7 +1134,6 @@ let _supaUser=null,_supaRol=null;
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="rate-btn active" id="chqf-todos"     onclick="filterCheques('todos',this)">Todos</button>
         <button class="rate-btn" id="chqf-cartera"   onclick="filterCheques('EN CARTERA',this)" style="border-color:rgba(108,143,255,0.4);color:var(--accent)">📋 En Cartera</button>
-        <button class="rate-btn" id="chqf-rechazado" onclick="filterCheques('RECHAZADO',this)"  style="border-color:rgba(242,107,107,0.4);color:var(--red)">🔴 Rechazados</button>
         <button class="rate-btn" id="chqf-pendiente" onclick="filterCheques('PENDIENTE',this)"  style="border-color:rgba(245,200,66,0.4);color:var(--yellow)">⏳ Pendientes</button>
         <button class="rate-btn" id="chqf-cobrado"   onclick="filterCheques('COBRADO',this)"    style="border-color:rgba(62,207,142,0.4);color:var(--green)">🟢 Cobrados</button>
       </div>
@@ -1361,6 +1361,99 @@ let _supaUser=null,_supaRol=null;
     </div>
   </div>
 
+</div>
+
+<!-- ═══════════════ CHEQUES RECHAZADOS ═══════════════ -->
+<div class="page" id="page-cheques_rech">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <div>
+      <h2 style="font-size:20px;font-weight:700;color:var(--text)">🔴 Cheques Rechazados</h2>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px" id="rech-subtitle">Consolidado UUNN — historial completo</div>
+    </div>
+    <button onclick="exportRechazadosExcel()" style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.4);color:var(--green);padding:6px 14px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font)">📥 Excel</button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid-4 mb" id="rech-stats"></div>
+
+  <!-- Filtros -->
+  <div class="card mb" style="padding:10px 14px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:8px">
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Banco</div>
+        <select id="rech-f-banco" onchange="renderRechazados()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none"><option value="">Todos</option></select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">APIES</div>
+        <select id="rech-f-apies" onchange="renderRechazados()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none"><option value="">Todas</option></select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Estado actual</div>
+        <select id="rech-f-estado" onchange="renderRechazados()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none">
+          <option value="">Todos</option>
+          <option value="PENDIENTE">Pendiente</option>
+          <option value="COBRADO">Cobrado</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Motivo</div>
+        <select id="rech-f-motivo" onchange="renderRechazados()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none"><option value="">Todos</option></select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">F. rechazo desde</div>
+        <input type="date" id="rech-f-desde" oninput="renderRechazados()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">F. rechazo hasta</div>
+        <input type="date" id="rech-f-hasta" oninput="renderRechazados()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Días sin cobrar</div>
+        <select id="rech-f-dias" onchange="renderRechazados()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none">
+          <option value="">Todos</option>
+          <option value="0-30">0–30 días</option>
+          <option value="31-90">31–90 días</option>
+          <option value="91-180">91–180 días</option>
+          <option value="+180">Más de 180 días</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Buscar</div>
+        <input type="text" id="rech-f-search" oninput="renderRechazados()" placeholder="Cliente, NRO, banco..." style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
+      </div>
+    </div>
+    <button onclick="limpiarFiltrosRech()" style="font-size:11px;color:var(--text3);background:none;border:1px solid var(--border);border-radius:99px;padding:4px 12px;cursor:pointer;font-family:var(--font)">✕ Limpiar filtros</button>
+  </div>
+
+  <!-- Gráficos -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px" id="rech-graficos"></div>
+
+  <!-- Tabla -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto;max-height:500px;overflow-y:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead style="position:sticky;top:0;background:var(--bg2);z-index:1">
+          <tr>
+            <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap">Banco</th>
+            <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap">N° Cheque</th>
+            <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap">F.Emisión</th>
+            <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap">F.Cobro</th>
+            <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--red);text-transform:uppercase;white-space:nowrap">F.Rechazo</th>
+            <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--green);text-transform:uppercase;white-space:nowrap">F.Recupero</th>
+            <th style="padding:7px 8px;text-align:right;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap">Importe</th>
+            <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap">Cliente</th>
+            <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap">Motivo</th>
+            <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--yellow);text-transform:uppercase;white-space:nowrap">Días</th>
+            <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap">Estado</th>
+            <th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap">APIES</th>
+            <th style="padding:7px 8px;text-align:right;font-size:9px;font-weight:700;color:var(--accent);text-transform:uppercase;white-space:nowrap">Int. no perc.</th>
+          </tr>
+        </thead>
+        <tbody id="rech-table"></tbody>
+      </table>
+    </div>
+    <div id="rech-footer" style="padding:8px 12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);display:flex;justify-content:space-between"></div>
+  </div>
 </div>
 
 <!-- ═══════════════ BANCOS ═══════════════ -->
@@ -4642,19 +4735,16 @@ function importCarteraDeValores(wb) {
 
   // ── Procesar cada hoja ─────────────────────────────────────
   const sheetConfig = [
-    { names:['RS E-Cheqs RS','RS E-Cheqs'], empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ', importeCol:7 },
-    { names:['SC E-Cheqs'],                 empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ', importeCol:7 },
-    { names:['Cartera Fisico RS','Cartera RS'],   empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:9 },
-    { names:['Cartera Fisico SC','Cartera SC'],   empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:9 },
-    { names:['Cartera Fisico AGRO','Cartera AGRO'], empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO', importeCol:8 },
+    { name:'RS E-Cheqs RS', empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ' },
+    { name:'SC E-Cheqs',    empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ' },
+    { name:'Cartera RS',    empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:8 },
+    { name:'Cartera SC',    empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:8 },
+    { name:'Cartera AGRO',  empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO',   importeCol:7 },
   ];
 
   sheetConfig.forEach(cfg => {
-    const realName = cfg.names.find(n => wb.Sheets[n]);
-    if (!realName) { console.warn('Hoja no encontrada:', cfg.names); return; }
-    const ws = wb.Sheets[realName];
+    const ws = wb.Sheets[cfg.name];
     if (!ws) return;
-    cfg = {...cfg, name: realName};
     const rows = XLSX.utils.sheet_to_json(ws, {
       header:1, defval:null, raw:true,
       range: cfg.headerRow - 1
@@ -5579,13 +5669,20 @@ function handleFile(input) {
 
       // ── DETECCIÓN AUTOMÁTICA ─────────────────────────────────
 
+      // ¿Es Consolidado Rechazados?
+      if (typeof isRechazadosXls === 'function' && isRechazadosXls(wb)) {
+        const result = parseRechazadosXls(wb);
+        showToast('🔴 Rechazados importados — ' + result.total.toLocaleString() + ' registros');
+        cacheGuardar('rechazados', appState.rechazadosData);
+        if (typeof renderRechazados === 'function') renderRechazados();
+        if (typeof navGo === 'function') navGo('cheques_rech', null);
+        return;
+      }
+
       // ¿Es Cartera de Valores?
       // Detectar por hojas clave: RS E-Cheqs RS, SC E-Cheqs, Cartera RS, etc.
-      const isCartera = wb.SheetNames.some(s => {
-        const sl = s.trim().toLowerCase();
-        return sl.startsWith('rs e-cheq') || sl.startsWith('sc e-cheq') ||
-               sl.startsWith('cartera') || sl === 'resumen cartera';
-      });
+      const isCartera = wb.SheetNames.some(s =>
+        /^(rs e-cheq|sc e-cheq|cartera rs|cartera sc|cartera agro|resumen cartera)/i.test(s.trim()));
       if (isCartera) {
         const result = importCarteraDeValores(wb);
         saveState();
@@ -6735,7 +6832,7 @@ function renderCheques() {
   ensureNewArrays();
 
   // Recolectar todos los cheques de todas las empresas
-  const chqEmps = appState.vistaConsolidada ? appState.empresas : [empresa()];
+  const chqEmps = appState.empresas; // Cheques siempre muestra todas las empresas
   let all = [];
   chqEmps.forEach(e => {
     (e.cheques||[]).forEach(c => all.push({...c, empName:e.name, empColor:e.color||'#6c8fff'}));
@@ -6780,8 +6877,8 @@ function renderCheques() {
     if (fEmp && !c.empName.includes(fEmp)) return false;
     // Tipo (E-CHEQ / FISICO / AGRO)
     if (fTipo) {
-      const ct = c.tipo ? c.tipo.toUpperCase() : (c.elect==='Si' ? 'E-CHEQ' : 'FISICO');
-      if (!ct.includes(fTipo.toUpperCase())) return false;
+      const ct = (c.tipo||c.elect==='Si'?'E-CHEQ':'FISICO');
+      if (!ct.includes(fTipo)) return false;
     }
     // Hoja origen
     if (fHoja && (c.hoja||'') !== fHoja) return false;
@@ -6929,8 +7026,7 @@ function renderCheques() {
 
   const statsEl = document.getElementById('cheques-stats');
   if (statsEl) statsEl.innerHTML = [
-    ['🔴 Rechazados', totRech, 'var(--red)'],
-    ['📋 En Cartera'+(fTipo||fHoja?' (filtrado)':''), fTipo ? filtered.reduce((s,c)=>s+(c.importe||0),0) : totCart, 'var(--accent)'],
+    ['📋 En Cartera'+(fTipo||fHoja?' (filtrado)':''), totCart, 'var(--accent)'],
     ['🟢 Cobrados',   totCob,  'var(--green)'],
     ['⏳ Pendientes', totPend, 'var(--yellow)'],
   ].map(([l,v,c])=>'<div class="stat-card" style="border-left:3px solid '+c+'"><div class="label">'+l+'</div><div class="value" style="color:'+c+';font-size:18px">'+fmtMoney(v)+'</div></div>').join('');
@@ -7085,6 +7181,269 @@ function renderGalicia() {
 }
 
 // ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+// CHEQUES RECHAZADOS
+// ════════════════════════════════════════════════════════════════
+function isRechazadosXls(wb) {
+  return wb.SheetNames.some(s => {
+    const sl = s.trim().toLowerCase();
+    return sl === 'tabla consolidada' || sl.includes('consolidado') && sl.includes('valor');
+  });
+}
+
+function parseRechazadosXls(wb) {
+  if (!appState.rechazadosData) appState.rechazadosData = [];
+  // Limpiar y recargar
+  appState.rechazadosData = [];
+  
+  // Buscar la hoja con los datos
+  const sheetName = wb.SheetNames.find(s => {
+    const sl = s.trim().toLowerCase();
+    return sl === 'tabla consolidada' || (sl.includes('consolidado') && sl.includes('valor'));
+  }) || wb.SheetNames.find(s => s.trim().toLowerCase().includes('consolid'));
+  
+  if (!sheetName) { showToast('⚠️ No se encontró hoja Consolidada'); return {total:0}; }
+  
+  const ws = wb.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
+  
+  // Buscar fila de headers
+  let hdrRow = -1;
+  for (let i=0; i<Math.min(10,rows.length); i++) {
+    const r = rows[i]; if (!r) continue;
+    const rs = r.map(c=>String(c||'').toLowerCase().trim());
+    if (rs.some(h=>h.includes('f.rechazo')||h.includes('rechazo'))) {
+      hdrRow = i; break;
+    }
+  }
+  if (hdrRow < 0) { showToast('⚠️ No se encontró encabezado en hoja consolidada'); return {total:0}; }
+  
+  const hdr = rows[hdrRow].map(h=>String(h||'').toLowerCase().trim());
+  const ci = k => hdr.findIndex(h=>h.includes(k));
+  
+  const iBanco   = ci('banco');
+  const iNro     = ci('nro.cheq') >= 0 ? ci('nro.cheq') : ci('nro');
+  const iEmi     = ci('emision') >= 0 ? ci('emision') : ci('f.emis');
+  const iCobro   = ci('f.cobro') >= 0 ? ci('f.cobro') : ci('cobro');
+  const iRech    = ci('f.rechazo') >= 0 ? ci('f.rechazo') : ci('rechazo');
+  const iRecup   = ci('f.recupero') >= 0 ? ci('f.recupero') : ci('recupero');
+  const iImp     = ci('importe');
+  const iCliente = ci('cliente');
+  const iLibrador= ci('librador');
+  const iMotivo  = ci('motivo');
+  const iDias    = ci('dias');
+  const iEstado  = ci('estado');
+  const iUbicacion=ci('ubicac') >= 0 ? ci('ubicac') : ci('ubic');
+  const iApies   = ci('apies');
+  const iInt     = ci('int no') >= 0 ? ci('int no') : ci('int.no');
+  
+  const fmtD = v => {
+    if (!v) return '';
+    if (typeof v === 'number' && v > 40000) {
+      const d = new Date(Math.round((v-25569)*86400*1000));
+      return d.toISOString().slice(0,10);
+    }
+    const s = String(v);
+    if (s.match(/\d{4}-\d{2}-\d{2}/)) return s.slice(0,10);
+    return s;
+  };
+  const pn = v => { if (!v) return 0; if (typeof v==='number') return v; return parseFloat(String(v).replace(/[^0-9.,-]/g,'').replace(',','.')) || 0; };
+  
+  let total = 0;
+  rows.slice(hdrRow+1).forEach(row => {
+    if (!row || !row.some(v=>v!==null)) return;
+    const imp = pn(iImp >= 0 ? row[iImp] : null);
+    if (!imp || imp <= 0) return;
+    const fRech = fmtD(iRech >= 0 ? row[iRech] : null);
+    if (!fRech) return; // debe tener fecha de rechazo
+    
+    appState.rechazadosData.push({
+      banco:    String(row[iBanco]    ||'').trim(),
+      nro:      String(row[iNro]      ||'').trim(),
+      fEmi:     fmtD(row[iEmi]),
+      fCobro:   fmtD(row[iCobro]),
+      fRech,
+      fRecup:   fmtD(iRecup >= 0 ? row[iRecup] : null),
+      importe:  imp,
+      cliente:  String(row[iCliente]  ||'').trim(),
+      librador: String(row[iLibrador] ||'').trim(),
+      motivo:   String(row[iMotivo]   ||'').trim(),
+      dias:     pn(iDias >= 0 ? row[iDias] : null),
+      estado:   String(row[iEstado]   ||'').trim().toUpperCase(),
+      ubicacion:String(row[iUbicacion]||'').trim(),
+      apies:    String(row[iApies]    ||'').trim(),
+      intNoPer: pn(iInt >= 0 ? row[iInt] : null),
+    });
+    total++;
+  });
+  
+  return {total};
+}
+
+function renderRechazados() {
+  const data = appState.rechazadosData || [];
+  
+  // Filtros
+  const fBanco  = document.getElementById('rech-f-banco')?.value  || '';
+  const fApies  = document.getElementById('rech-f-apies')?.value  || '';
+  const fEstado = document.getElementById('rech-f-estado')?.value || '';
+  const fMotivo = document.getElementById('rech-f-motivo')?.value || '';
+  const fDesde  = document.getElementById('rech-f-desde')?.value  || '';
+  const fHasta  = document.getElementById('rech-f-hasta')?.value  || '';
+  const fDias   = document.getElementById('rech-f-dias')?.value   || '';
+  const search  = (document.getElementById('rech-f-search')?.value|| '').toLowerCase();
+
+  // Actualizar dropdowns dinámicos
+  ['rech-f-banco','rech-f-apies','rech-f-motivo'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const field = id === 'rech-f-banco' ? 'banco' : id === 'rech-f-apies' ? 'apies' : 'motivo';
+    const vals = [...new Set(data.map(r=>r[field]).filter(Boolean))].sort();
+    const cur = el.value;
+    el.innerHTML = '<option value="">Todos</option>' + vals.map(v=>`<option value="${v}"${v===cur?' selected':''}>${v}</option>`).join('');
+  });
+
+  // Filtrar
+  const filtered = data.filter(r => {
+    if (fBanco  && r.banco  !== fBanco)  return false;
+    if (fApies  && r.apies  !== fApies)  return false;
+    if (fMotivo && !r.motivo.toLowerCase().includes(fMotivo.toLowerCase())) return false;
+    if (fEstado && r.estado !== fEstado) return false;
+    if (fDesde  && r.fRech  && r.fRech < fDesde) return false;
+    if (fHasta  && r.fRech  && r.fRech > fHasta) return false;
+    if (fDias) {
+      const d = r.dias || 0;
+      if (fDias === '0-30'   && (d<0||d>30))   return false;
+      if (fDias === '31-90'  && (d<31||d>90))  return false;
+      if (fDias === '91-180' && (d<91||d>180)) return false;
+      if (fDias === '+180'   && d<=180)         return false;
+    }
+    if (search) {
+      const hay = [r.banco,r.nro,r.cliente,r.librador,r.motivo,r.apies].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  // KPIs
+  const totImp    = filtered.reduce((s,r)=>s+r.importe,0);
+  const totPend   = filtered.filter(r=>r.estado==='PENDIENTE').reduce((s,r)=>s+r.importe,0);
+  const totCob    = filtered.filter(r=>r.estado==='COBRADO').reduce((s,r)=>s+r.importe,0);
+  const totInt    = filtered.reduce((s,r)=>s+r.intNoPer,0);
+  const masAntiguo = filtered.filter(r=>r.dias>0).sort((a,b)=>b.dias-a.dias)[0];
+
+  const statsEl = document.getElementById('rech-stats');
+  if (statsEl) statsEl.innerHTML = [
+    ['🔴 Total rechazado', totImp,  'var(--red)'],
+    ['⏳ Pendiente cobro', totPend, 'var(--yellow)'],
+    ['🟢 Recuperado',      totCob,  'var(--green)'],
+    ['📊 Int. no percibidos', totInt, 'var(--accent)'],
+  ].map(([l,v,c])=>'<div class="stat-card" style="border-left:3px solid '+c+'"><div class="label">'+l+'</div><div class="value" style="color:'+c+';font-size:18px">'+fmtMoney(v)+'</div></div>').join('');
+
+  const sub = document.getElementById('rech-subtitle');
+  if (sub) sub.textContent = filtered.length.toLocaleString('es-AR') + ' registros' + (masAntiguo ? ' · Más antiguo: ' + masAntiguo.dias + 'd (' + (masAntiguo.cliente||masAntiguo.librador||'').slice(0,25) + ')' : '');
+
+  // Gráficos
+  const grafDiv = document.getElementById('rech-graficos');
+  if (grafDiv && filtered.length) {
+    // Cascada días
+    const buckets = [
+      {l:'+180d',col:'var(--red)',    fn:r=>r.dias>180},
+      {l:'91-180',col:'var(--yellow)',fn:r=>r.dias>=91&&r.dias<=180},
+      {l:'31-90', col:'var(--accent)',fn:r=>r.dias>=31&&r.dias<=90},
+      {l:'0-30',  col:'var(--green)', fn:r=>r.dias>=0&&r.dias<=30},
+    ];
+    const bData = buckets.map(b=>({...b, tot:filtered.filter(b.fn).reduce((s,r)=>s+r.importe,0), cnt:filtered.filter(b.fn).length}));
+    const bMax = Math.max(...bData.map(b=>b.tot),1);
+    const c1 = '<div class="card"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">⏱ Días sin cobrar</div>'+
+      bData.map(b=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'+
+        '<div style="width:45px;font-size:10px;color:'+b.col+'">'+b.l+'</div>'+
+        '<div style="flex:1;height:7px;background:var(--bg3);border-radius:4px;overflow:hidden"><div style="height:100%;background:'+b.col+';width:'+Math.round((b.tot/bMax)*100)+'%;border-radius:4px"></div></div>'+
+        '<div style="font-size:9px;color:var(--text3);width:60px;text-align:right;font-family:var(--mono)">'+fmtMoney(b.tot)+'</div>'+
+      '</div>').join('')+'</div>';
+
+    // Por motivo
+    const motivoMap = {};
+    filtered.forEach(r=>{ const k=(r.motivo||'Otro').slice(0,20); motivoMap[k]=(motivoMap[k]||0)+r.importe; });
+    const mTop = Object.entries(motivoMap).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    const mMax = Math.max(...mTop.map(m=>m[1]),1);
+    const motivoCols = ['var(--red)','var(--yellow)','var(--accent)','var(--text3)'];
+    const c2 = '<div class="card"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📋 Por motivo</div>'+
+      mTop.map(([k,v],i)=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'+
+        '<div style="width:80px;font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+k+'</div>'+
+        '<div style="flex:1;height:7px;background:var(--bg3);border-radius:4px;overflow:hidden"><div style="height:100%;background:'+motivoCols[i]+';width:'+Math.round((v/mMax)*100)+'%;border-radius:4px"></div></div>'+
+        '<div style="font-size:9px;color:var(--text3);width:55px;text-align:right;font-family:var(--mono)">'+fmtMoney(v)+'</div>'+
+      '</div>').join('')+'</div>';
+
+    // Top 5 más antiguos
+    const top5 = [...filtered].filter(r=>r.dias>0).sort((a,b)=>b.dias-a.dias).slice(0,5);
+    const c3 = '<div class="card"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🕐 Top 5 más antiguos</div>'+
+      (top5.length ? top5.map(r=>'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+        '<div><div style="font-size:10px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px">'+(r.cliente||r.librador||'—').slice(0,22)+'</div>'+
+        '<div style="font-size:9px;color:var(--red)">'+r.dias+'d · '+r.motivo.slice(0,15)+'</div></div>'+
+        '<div style="font-size:10px;color:var(--text);font-family:var(--mono);font-weight:700">'+fmtMoney(r.importe)+'</div>'+
+      '</div>').join('') : '<div style="font-size:11px;color:var(--text3)">Sin datos</div>')+
+      '</div>';
+
+    grafDiv.innerHTML = c1 + c2 + c3;
+  } else if (grafDiv) {
+    grafDiv.innerHTML = '';
+  }
+
+  // Tabla
+  const tbody = document.getElementById('rech-table');
+  const footer = document.getElementById('rech-footer');
+  if (!tbody) return;
+  const MAX = 1000;
+  const vis = filtered.slice(0, MAX);
+  
+  if (!vis.length) {
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:var(--text3);padding:24px">Sin registros para los filtros seleccionados</td></tr>';
+  } else {
+    tbody.innerHTML = vis.map(r => {
+      const estadoBadge = r.estado === 'COBRADO'
+        ? '<span style="font-size:9px;font-weight:700;color:var(--green);background:rgba(74,222,128,0.12);padding:2px 6px;border-radius:3px">Cobrado</span>'
+        : '<span style="font-size:9px;font-weight:700;color:var(--yellow);background:rgba(251,191,36,0.12);padding:2px 6px;border-radius:3px">Pendiente</span>';
+      const diasColor = r.dias > 180 ? 'var(--red)' : r.dias > 90 ? 'var(--yellow)' : 'var(--text3)';
+      return `<tr style="border-bottom:0.5px solid var(--border)">
+        <td style="padding:5px 8px;font-size:10px">${r.banco||'—'}</td>
+        <td style="padding:5px 8px;font-size:10px;font-family:var(--mono)">${r.nro||'—'}</td>
+        <td style="padding:5px 8px;font-size:10px;color:var(--text3)">${r.fEmi||'—'}</td>
+        <td style="padding:5px 8px;font-size:10px;color:var(--text3)">${r.fCobro||'—'}</td>
+        <td style="padding:5px 8px;font-size:10px;color:var(--red);font-weight:500">${r.fRech||'—'}</td>
+        <td style="padding:5px 8px;font-size:10px;color:var(--green)">${r.fRecup||'—'}</td>
+        <td style="padding:5px 8px;font-size:10px;font-family:var(--mono);text-align:right;font-weight:500">${fmtMoney(r.importe)}</td>
+        <td style="padding:5px 8px;font-size:10px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.cliente}">${r.cliente||r.librador||'—'}</td>
+        <td style="padding:5px 8px;font-size:10px">${r.motivo||'—'}</td>
+        <td style="padding:5px 8px;font-size:10px;font-weight:700;color:${diasColor}">${r.dias||0}d</td>
+        <td style="padding:5px 8px">${estadoBadge}</td>
+        <td style="padding:5px 8px;font-size:10px;color:var(--text3)">${r.apies||r.ubicacion||'—'}</td>
+        <td style="padding:5px 8px;font-size:10px;font-family:var(--mono);text-align:right;color:var(--accent)">${r.intNoPer ? fmtMoney(r.intNoPer) : '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+  
+  const totFil = filtered.reduce((s,r)=>s+r.importe,0);
+  if (footer) footer.innerHTML = `<span>${filtered.length.toLocaleString('es-AR')} registros${filtered.length > MAX ? ' (mostrando '+MAX+')' : ''}</span><span style="font-family:var(--mono);font-weight:700;color:var(--red)">Total: ${fmtMoney(totFil)}</span>`;
+}
+
+function limpiarFiltrosRech() {
+  ['rech-f-desde','rech-f-hasta','rech-f-search'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+  ['rech-f-banco','rech-f-apies','rech-f-estado','rech-f-motivo','rech-f-dias'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+  renderRechazados();
+}
+
+function exportRechazadosExcel() {
+  const data = appState.rechazadosData || [];
+  if (!data.length) { showToast('⚠️ Sin datos para exportar'); return; }
+  const rows = [['Banco','N° Cheque','F.Emisión','F.Cobro','F.Rechazo','F.Recupero','Importe','Cliente','Librador','Motivo','Días','Estado','APIES','Int.No.Perc.']];
+  data.forEach(r=>rows.push([r.banco,r.nro,r.fEmi,r.fCobro,r.fRech,r.fRecup,r.importe,r.cliente,r.librador,r.motivo,r.dias,r.estado,r.apies,r.intNoPer]));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb2 = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2, ws, 'Rechazados');
+  XLSX.writeFile(wb2, 'cheques_rechazados_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
 // BANCOS PAGE
 // ════════════════════════════════════════════════════════════════
 
@@ -9584,6 +9943,7 @@ function parseCarteraDebo(wb) {
     'dep. galicia agro': 'AGRO',
   };
   if (!appState.galiciaDepositos) appState.galiciaDepositos = [];
+  if (!appState.rechazadosData)   appState.rechazadosData   = [];
 
   const today = new Date().toISOString().slice(0,10);
 
@@ -10651,6 +11011,9 @@ async function cacheCargarTodo() {
             break;
           case 'galicia':
             if (Array.isArray(val)) appState.galiciaDepositos = val;
+            break;
+          case 'rechazados':
+            if (Array.isArray(val)) appState.rechazadosData = val;
             break;
           case 'petroData':
             if (val && typeof val === 'object') appState.petroData = val;
