@@ -10381,28 +10381,30 @@ function exportClientesExcel(){
         <input id="new-user-email" type="email" placeholder="Gmail real del empleado"
           style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+      <div style="display:grid;grid-template-columns:120px 1fr 1fr;gap:8px;margin-bottom:8px;align-items:start">
         <select id="new-user-rol"
           style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
           <option value="usuario">👤 Usuario</option>
           <option value="admin">⭐ Admin</option>
         </select>
-        <select id="new-user-rubro"
-          style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
-          <option value="">— Rubro —</option>
-          <option value="administracion">🏢 Administración</option>
-          <option value="finanzas">💰 Finanzas</option>
-          <option value="operaciones">⚙️ Operaciones</option>
-          <option value="combustibles">⛽ Combustibles</option>
-          <option value="agro">🌾 Agro</option>
-          <option value="logistica">🚛 Logística</option>
-          <option value="sistemas">💻 Sistemas</option>
-        </select>
+        <div>
+          <select id="new-user-rubro" multiple
+            style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:4px 8px;font-size:12px;color:var(--text);outline:none;height:80px;width:100%">
+            <option value="administracion">🏢 Administración</option>
+            <option value="finanzas">💰 Finanzas</option>
+            <option value="operaciones">⚙️ Operaciones</option>
+            <option value="combustibles">⛽ Combustibles</option>
+            <option value="agro">🌾 Agro</option>
+            <option value="logistica">🚛 Logística</option>
+            <option value="sistemas">💻 Sistemas</option>
+          </select>
+          <div style="font-size:9px;color:var(--text3);margin-top:2px">Ctrl+click para varios rubros</div>
+        </div>
         <div style="display:flex;gap:6px;align-items:center">
           <input id="new-user-pass" type="text" placeholder="Pass (auto si vacío)"
-            style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
+            style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none">
           <button onclick="generarPassAuto()" title="Generar contraseña automática"
-            style="padding:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-size:14px">🔑</button>
+            style="padding:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-size:14px;flex-shrink:0">🔑</button>
         </div>
       </div>
       <button onclick="crearUsuario()" style="width:100%;padding:10px;background:var(--accent);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">➕ Crear usuario</button>
@@ -11021,7 +11023,7 @@ async function cargarListaUsuarios() {
       <div style="flex:1">
         <div style="font-size:13px;font-weight:700">${u.nombre||'Sin nombre'}</div>
         <div style="font-size:11px;color:var(--text3)">${u.email}</div>
-        ${u.rubros&&u.rubros[0]?'<div style="font-size:10px;color:var(--accent);margin-top:2px">'+u.rubros[0]+'</div>':''}
+        ${u.rubros&&u.rubros.length?'<div style="font-size:10px;color:var(--accent);margin-top:2px">'+u.rubros.join(', ')+'</div>':''}
       </div>
       <select onchange="cambiarRol('${u.id}',this.value)"
         style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);outline:none">
@@ -11071,25 +11073,24 @@ async function eliminarUsuario(userId) {
 
 function generarPassAuto() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
-  let pass = 'LP'; // prefijo Grupo La Plaza
+  let pass = 'LP';
   for (let i = 0; i < 8; i++) pass += chars[Math.floor(Math.random()*chars.length)];
   document.getElementById('new-user-pass').value = pass;
-  document.getElementById('new-user-pass').type = 'text';
 }
 
 async function crearUsuario() {
   const email  = document.getElementById('new-user-email').value.trim().toLowerCase();
   const nombre = document.getElementById('new-user-nombre').value.trim();
   const rol    = document.getElementById('new-user-rol').value;
-  const rubro  = document.getElementById('new-user-rubro').value;
+  const rubros = Array.from(document.getElementById('new-user-rubro').selectedOptions).map(o=>o.value);
   const msgEl  = document.getElementById('new-user-msg');
   let pass     = document.getElementById('new-user-pass').value;
 
   if (!email || !nombre) {
-    msgEl.textContent = 'Completá nombre y email'; msgEl.style.display='block'; msgEl.style.color='#f87171'; return;
+    msgEl.textContent='Completá nombre y email'; msgEl.style.display='block'; msgEl.style.color='#f87171'; return;
   }
   if (!email.includes('@')) {
-    msgEl.textContent = 'El email no es válido'; msgEl.style.display='block'; msgEl.style.color='#f87171'; return;
+    msgEl.textContent='Email no válido'; msgEl.style.display='block'; msgEl.style.color='#f87171'; return;
   }
 
   // Generar contraseña automática si está vacía
@@ -11099,42 +11100,30 @@ async function crearUsuario() {
     for (let i = 0; i < 8; i++) pass += chars[Math.floor(Math.random()*chars.length)];
   }
 
-  msgEl.textContent = '⏳ Creando usuario...'; msgEl.style.display='block'; msgEl.style.color='var(--text3)';
+  msgEl.textContent='⏳ Creando usuario...'; msgEl.style.display='block'; msgEl.style.color='var(--text3)';
 
   try {
-    // Llamar a la Vercel Function con el token del admin
     const session = await supa.auth.getSession();
     const token = session?.data?.session?.access_token;
-
     const res = await fetch('/api/create-user', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      },
-      body: JSON.stringify({ email, nombre, password: pass, rol, rubros: rubro ? [rubro] : [] })
+      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+      body: JSON.stringify({ email, nombre, password: pass, rol, rubros })
     });
-
     const result = await res.json();
-
     if (!res.ok) {
-      msgEl.textContent = '❌ ' + (result.error || 'Error al crear usuario');
-      msgEl.style.color = '#f87171'; return;
+      msgEl.textContent='❌ '+(result.error||'Error al crear usuario');
+      msgEl.style.color='#f87171'; return;
     }
-
-    // Mostrar contraseña generada para que el admin se la pueda dar al empleado
-    msgEl.innerHTML = '✅ Usuario creado: <strong>' + email + '</strong><br>Contraseña temporal: <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px">' + pass + '</code><br><span style="color:var(--text3);font-size:10px">Compartí esta contraseña con el empleado. Podrá cambiarla luego.</span>';
-    msgEl.style.display = 'block'; msgEl.style.color = '#4ade80';
-
-    document.getElementById('new-user-email').value = '';
-    document.getElementById('new-user-nombre').value = '';
-    document.getElementById('new-user-pass').value = '';
-    document.getElementById('new-user-rubro').value = '';
+    msgEl.innerHTML='✅ Usuario creado: <strong>'+email+'</strong><br>Contraseña temporal: <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px">'+pass+'</code><br><span style="color:var(--text3);font-size:10px">Compartí esta contraseña con el empleado.</span>';
+    msgEl.style.display='block'; msgEl.style.color='#4ade80';
+    document.getElementById('new-user-email').value='';
+    document.getElementById('new-user-nombre').value='';
+    document.getElementById('new-user-pass').value='';
+    Array.from(document.getElementById('new-user-rubro').options).forEach(o=>o.selected=false);
     await cargarListaUsuarios();
-
   } catch(e) {
-    msgEl.textContent = '❌ Error: ' + e.message;
-    msgEl.style.display = 'block'; msgEl.style.color = '#f87171';
+    msgEl.textContent='❌ Error: '+e.message; msgEl.style.display='block'; msgEl.style.color='#f87171';
   }
 }
 
