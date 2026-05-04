@@ -10381,30 +10381,29 @@ function exportClientesExcel(){
         <input id="new-user-email" type="email" placeholder="Gmail real del empleado"
           style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
       </div>
-      <div style="display:grid;grid-template-columns:120px 1fr 1fr;gap:8px;margin-bottom:8px;align-items:start">
-        <select id="new-user-rol"
-          style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
-          <option value="usuario">👤 Usuario</option>
-          <option value="admin">⭐ Admin</option>
-        </select>
-        <div>
-          <select id="new-user-rubro" multiple
-            style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:4px 8px;font-size:12px;color:var(--text);outline:none;height:80px;width:100%">
-            <option value="administracion">🏢 Administración</option>
-            <option value="finanzas">💰 Finanzas</option>
-            <option value="operaciones">⚙️ Operaciones</option>
-            <option value="combustibles">⛽ Combustibles</option>
-            <option value="agro">🌾 Agro</option>
-            <option value="logistica">🚛 Logística</option>
-            <option value="sistemas">💻 Sistemas</option>
+      <div style="display:grid;grid-template-columns:110px 1fr 1fr;gap:8px;margin-bottom:8px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <select id="new-user-rol"
+            style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none">
+            <option value="usuario">👤 Usuario</option>
+            <option value="admin">⭐ Admin</option>
           </select>
-          <div style="font-size:9px;color:var(--text3);margin-top:2px">Ctrl+click para varios rubros</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="new-user-pass" type="text" placeholder="Contraseña"
+              style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 8px;font-size:12px;color:var(--text);outline:none;min-width:0">
+            <button onclick="generarPassAuto()" title="Generar contraseña"
+              style="padding:7px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0">🔑</button>
+          </div>
         </div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <input id="new-user-pass" type="text" placeholder="Pass (auto si vacío)"
-            style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none">
-          <button onclick="generarPassAuto()" title="Generar contraseña automática"
-            style="padding:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-size:14px;flex-shrink:0">🔑</button>
+        <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Rubros</div>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" value="administracion" class="rubro-chk" style="accent-color:var(--accent);width:14px;height:14px"> 🏢 Administración</label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" value="finanzas"       class="rubro-chk" style="accent-color:var(--accent);width:14px;height:14px"> 💰 Finanzas</label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" value="operaciones"    class="rubro-chk" style="accent-color:var(--accent);width:14px;height:14px"> ⚙️ Operaciones</label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" value="combustibles"   class="rubro-chk" style="accent-color:var(--accent);width:14px;height:14px"> ⛽ Combustibles</label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" value="agro"           class="rubro-chk" style="accent-color:var(--accent);width:14px;height:14px"> 🌾 Agro</label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" value="logistica"      class="rubro-chk" style="accent-color:var(--accent);width:14px;height:14px"> 🚛 Logística</label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text);cursor:pointer"><input type="checkbox" value="sistemas"       class="rubro-chk" style="accent-color:var(--accent);width:14px;height:14px"> 💻 Sistemas</label>
         </div>
       </div>
       <button onclick="crearUsuario()" style="width:100%;padding:10px;background:var(--accent);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">➕ Crear usuario</button>
@@ -11023,7 +11022,7 @@ async function cargarListaUsuarios() {
       <div style="flex:1">
         <div style="font-size:13px;font-weight:700">${u.nombre||'Sin nombre'}</div>
         <div style="font-size:11px;color:var(--text3)">${u.email}</div>
-        ${u.rubros&&u.rubros.length?'<div style="font-size:10px;color:var(--accent);margin-top:2px">'+u.rubros.join(', ')+'</div>':''}
+        ${u.rubros&&u.rubros.length?'<div style="font-size:10px;color:var(--accent);margin-top:2px">'+u.rubros.join(' · ')+'</div>':''}
       </div>
       <select onchange="cambiarRol('${u.id}',this.value)"
         style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);outline:none">
@@ -11082,7 +11081,7 @@ async function crearUsuario() {
   const email  = document.getElementById('new-user-email').value.trim().toLowerCase();
   const nombre = document.getElementById('new-user-nombre').value.trim();
   const rol    = document.getElementById('new-user-rol').value;
-  const rubros = Array.from(document.getElementById('new-user-rubro').selectedOptions).map(o=>o.value);
+  const rubros = Array.from(document.querySelectorAll('.rubro-chk:checked')).map(c=>c.value);
   const msgEl  = document.getElementById('new-user-msg');
   let pass     = document.getElementById('new-user-pass').value;
 
@@ -11092,8 +11091,6 @@ async function crearUsuario() {
   if (!email.includes('@')) {
     msgEl.textContent='Email no válido'; msgEl.style.display='block'; msgEl.style.color='#f87171'; return;
   }
-
-  // Generar contraseña automática si está vacía
   if (!pass) {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
     pass = 'LP';
@@ -11120,7 +11117,7 @@ async function crearUsuario() {
     document.getElementById('new-user-email').value='';
     document.getElementById('new-user-nombre').value='';
     document.getElementById('new-user-pass').value='';
-    Array.from(document.getElementById('new-user-rubro').options).forEach(o=>o.selected=false);
+    document.querySelectorAll('.rubro-chk').forEach(c=>c.checked=false);
     await cargarListaUsuarios();
   } catch(e) {
     msgEl.textContent='❌ Error: '+e.message; msgEl.style.display='block'; msgEl.style.color='#f87171';
