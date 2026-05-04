@@ -10375,20 +10375,37 @@ function exportClientesExcel(){
     </div>
     <div style="padding:16px 20px;border-bottom:1px solid var(--border)">
       <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">➕ Crear usuario</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <input id="new-user-email" type="email" placeholder="email@grupoplaza.com"
-          style="flex:1;min-width:180px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <input id="new-user-nombre" type="text" placeholder="Nombre completo"
-          style="flex:1;min-width:140px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
-        <input id="new-user-pass" type="password" placeholder="Contraseña"
-          style="width:130px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
+          style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
+        <input id="new-user-email" type="email" placeholder="Gmail real del empleado"
+          style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
         <select id="new-user-rol"
           style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
-          <option value="usuario">Usuario</option>
-          <option value="admin">Admin</option>
+          <option value="usuario">👤 Usuario</option>
+          <option value="admin">⭐ Admin</option>
         </select>
-        <button onclick="crearUsuario()" style="padding:8px 16px;background:var(--accent);color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">Crear</button>
+        <select id="new-user-rubro"
+          style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
+          <option value="">— Rubro —</option>
+          <option value="administracion">🏢 Administración</option>
+          <option value="finanzas">💰 Finanzas</option>
+          <option value="operaciones">⚙️ Operaciones</option>
+          <option value="combustibles">⛽ Combustibles</option>
+          <option value="agro">🌾 Agro</option>
+          <option value="logistica">🚛 Logística</option>
+          <option value="sistemas">💻 Sistemas</option>
+        </select>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input id="new-user-pass" type="text" placeholder="Pass (auto si vacío)"
+            style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none">
+          <button onclick="generarPassAuto()" title="Generar contraseña automática"
+            style="padding:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-size:14px">🔑</button>
+        </div>
       </div>
+      <button onclick="crearUsuario()" style="width:100%;padding:10px;background:var(--accent);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">➕ Crear usuario</button>
       <div id="new-user-msg" style="font-size:11px;margin-top:8px;display:none"></div>
     </div>
     <div style="overflow-y:auto;flex:1;padding:16px 20px">
@@ -11004,6 +11021,7 @@ async function cargarListaUsuarios() {
       <div style="flex:1">
         <div style="font-size:13px;font-weight:700">${u.nombre||'Sin nombre'}</div>
         <div style="font-size:11px;color:var(--text3)">${u.email}</div>
+        ${u.rubros&&u.rubros[0]?'<div style="font-size:10px;color:var(--accent);margin-top:2px">'+u.rubros[0]+'</div>':''}
       </div>
       <select onchange="cambiarRol('${u.id}',this.value)"
         style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);outline:none">
@@ -11051,39 +11069,73 @@ async function eliminarUsuario(userId) {
   }
 }
 
+function generarPassAuto() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+  let pass = 'LP'; // prefijo Grupo La Plaza
+  for (let i = 0; i < 8; i++) pass += chars[Math.floor(Math.random()*chars.length)];
+  document.getElementById('new-user-pass').value = pass;
+  document.getElementById('new-user-pass').type = 'text';
+}
+
 async function crearUsuario() {
-  const email  = document.getElementById('new-user-email').value.trim();
+  const email  = document.getElementById('new-user-email').value.trim().toLowerCase();
   const nombre = document.getElementById('new-user-nombre').value.trim();
-  const pass   = document.getElementById('new-user-pass').value;
   const rol    = document.getElementById('new-user-rol').value;
+  const rubro  = document.getElementById('new-user-rubro').value;
   const msgEl  = document.getElementById('new-user-msg');
+  let pass     = document.getElementById('new-user-pass').value;
 
-  if (!email || !pass) { msgEl.textContent='Completá email y contraseña'; msgEl.style.display='block'; msgEl.style.color='#f87171'; return; }
-
-  // Crear usuario con Admin API via edge function no disponible desde browser
-  // Usar signUp normal — el trigger creará el perfil con rol correcto
-  const { data, error } = await supa.auth.signUp({
-    email, password: pass,
-    options: { data: { nombre, rol } }
-  });
-
-  if (error) {
-    msgEl.textContent = error.message; msgEl.style.display='block'; msgEl.style.color='#f87171';
-    return;
+  if (!email || !nombre) {
+    msgEl.textContent = 'Completá nombre y email'; msgEl.style.display='block'; msgEl.style.color='#f87171'; return;
+  }
+  if (!email.includes('@')) {
+    msgEl.textContent = 'El email no es válido'; msgEl.style.display='block'; msgEl.style.color='#f87171'; return;
   }
 
-  // Si el usuario ya existe en auth pero no en perfiles, upsert el perfil
-  if (data.user) {
-    const rolFinal = (rol === 'admin') ? 'admin' : 'usuario';
-    await supa.from('perfiles').upsert({ id:data.user.id, email, nombre, rol:rolFinal }, { onConflict:'id' });
+  // Generar contraseña automática si está vacía
+  if (!pass) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+    pass = 'LP';
+    for (let i = 0; i < 8; i++) pass += chars[Math.floor(Math.random()*chars.length)];
   }
 
-  msgEl.textContent = '✅ Usuario creado: ' + email;
-  msgEl.style.display = 'block'; msgEl.style.color = '#4ade80';
-  document.getElementById('new-user-email').value = '';
-  document.getElementById('new-user-nombre').value = '';
-  document.getElementById('new-user-pass').value = '';
-  await cargarListaUsuarios();
+  msgEl.textContent = '⏳ Creando usuario...'; msgEl.style.display='block'; msgEl.style.color='var(--text3)';
+
+  try {
+    // Llamar a la Vercel Function con el token del admin
+    const session = await supa.auth.getSession();
+    const token = session?.data?.session?.access_token;
+
+    const res = await fetch('/api/create-user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ email, nombre, password: pass, rol, rubros: rubro ? [rubro] : [] })
+    });
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      msgEl.textContent = '❌ ' + (result.error || 'Error al crear usuario');
+      msgEl.style.color = '#f87171'; return;
+    }
+
+    // Mostrar contraseña generada para que el admin se la pueda dar al empleado
+    msgEl.innerHTML = '✅ Usuario creado: <strong>' + email + '</strong><br>Contraseña temporal: <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px">' + pass + '</code><br><span style="color:var(--text3);font-size:10px">Compartí esta contraseña con el empleado. Podrá cambiarla luego.</span>';
+    msgEl.style.display = 'block'; msgEl.style.color = '#4ade80';
+
+    document.getElementById('new-user-email').value = '';
+    document.getElementById('new-user-nombre').value = '';
+    document.getElementById('new-user-pass').value = '';
+    document.getElementById('new-user-rubro').value = '';
+    await cargarListaUsuarios();
+
+  } catch(e) {
+    msgEl.textContent = '❌ Error: ' + e.message;
+    msgEl.style.display = 'block'; msgEl.style.color = '#f87171';
+  }
 }
 
 // ── Arrancar Supabase cuando carga la página ──────────────────
