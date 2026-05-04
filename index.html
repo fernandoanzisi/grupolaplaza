@@ -441,6 +441,7 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('petroleras',this)"      data-page="petroleras">⛽ Pago a Petroleras</button>
           <button class="nav-dd-item" onclick="navGo('pasivos',this)"          data-page="pasivos">📊 Pasivos Financieros</button>
           <button class="nav-dd-item" onclick="navGo('flota',this)"            data-page="flota">🚗 Flota Automotor</button>
+          <button class="nav-dd-item" onclick="navGo('tarjetas',this)"         data-page="tarjetas">💳 Tarjetas de Crédito</button>
           <hr style="border:none;border-top:1px solid var(--border);margin:4px 0">
           <button class="nav-dd-item" onclick="window.open('https://bancogalicia.com.ar','_blank')" style="color:#e30613">🏦 Galicia</button>
           <button class="nav-dd-item" onclick="window.open('https://interbanking.com.ar','_blank')" style="color:#4a9fd4">🔗 Interbanking</button>
@@ -2579,6 +2580,7 @@ let _supaUser=null,_supaRol=null;
 </div>
 
 <!-- FLOTA AUTOMOTOR -->
+<div class="page" id="page-tarjetas"></div>
 <div class="page" id="page-flota">
 
   <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
@@ -5743,6 +5745,16 @@ function handleFile(input) {
         return;
       }
       // 3. Cartera DEBO (hoja CLIENTES / Valores en Cartera)
+      // Detectar Excel de Tarjetas de Crédito
+      const isTarjetas = wb.SheetNames.some(s => /resumen.compras/i.test(s.trim()));
+      if (isTarjetas) {
+        const result = importTarjetas(wb);
+        saveState();
+        statusEl.innerHTML = result.html;
+        renderTarjetas();
+        return;
+      }
+
       if (typeof isCarteraDebo === 'function' && isCarteraDebo(wb)) {
         const result = parseCarteraDebo(wb);
         const logDiv = document.getElementById('import-log');
@@ -8126,6 +8138,7 @@ const _origSheetMap = null; // markerashSetView
   <button class="more-item" onclick="navGo('lc',this);closeMoreMenu()">💳 Límite de Crédito</button>
   <button class="more-item" onclick="navGo('pasivos',this);closeMoreMenu()">📊 Pasivos Financieros</button>
   <button class="more-item" onclick="navGo('flota',this);closeMoreMenu()">🚗 Flota Automotor</button>
+  <button class="more-item" onclick="navGo('tarjetas',this);closeMoreMenu()">💳 Tarjetas de Crédito</button>
   <button class="more-item" onclick="navGo('riesgo',this);closeMoreMenu()">🎯 Riesgo Crediticio</button>
 </div>
 
@@ -8361,6 +8374,7 @@ function navGo(page, triggerEl) {
     'petroleras':   ()=>renderPetrolerasPage(),
     'pasivos':      ()=>pasivosRender(),
     'flota':        ()=>flotaRender(),
+    'tarjetas':     ()=>renderTarjetas(),
     'guardia':      ()=>renderGuardia(),
     'cashflow':     ()=>renderCashFlow(),
     'obras':        ()=>renderObras(),
@@ -10895,6 +10909,9 @@ async function cacheCargarTodo() {
             break;
           case 'pasivos':
             if (Array.isArray(val)) appState.pasivos = val;
+            break;
+          case 'tarjetas':
+            if (Array.isArray(val)) appState.tarjetas = val;
             break;
           case 'flota':
             if (val && val.vehiculos) { appState.flota = val.vehiculos; appState.flotaRegistros = val.registros||[]; }
@@ -15631,6 +15648,231 @@ async function onMesExtractoCambia(ym) {
     console.error('onMesExtractoCambia:', e);
     showToast('❌ Error al cargar ' + ym);
   }
+}
+// ── TARJETAS DE CRÉDITO ──────────────────────────────────────
+function importTarjetas(wb) {
+  const ws = wb.Sheets['RESUMEN COMPRAS'];
+  if (!ws) return { html: '<span style="color:var(--red)">❌ No se encontró la hoja RESUMEN COMPRAS</span>' };
+  const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+  const data = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r[0] && !r[6]) continue;
+    const fechaCompra = r[0] ? (r[0] instanceof Date ? r[0].toISOString().slice(0,10) : String(r[0]).slice(0,10)) : '';
+    const fechaResumen = r[1] ? (r[1] instanceof Date ? r[1].toISOString().slice(0,10) : String(r[1]).slice(0,10)) : '';
+    data.push({
+      fechaCompra, fechaResumen,
+      apies:       String(r[2]||'').trim(),
+      sector:      String(r[3]||'').trim(),
+      solicitadoPor: String(r[4]||'').trim(),
+      autorizadoPor: String(r[5]||'').trim(),
+      monto:       parseFloat(r[6])||0,
+      medioPago:   String(r[7]||'').trim(),
+    });
+  }
+  appState.tarjetas = data;
+  cacheGuardar('tarjetas', data);
+  return { html: '<span style="color:var(--green)">✅ Tarjetas importadas: ' + data.length + ' registros</span>' };
+}
+
+function renderTarjetas() {
+  const pg = document.getElementById('page-tarjetas');
+  if (!pg) return;
+
+  const data = appState.tarjetas || [];
+
+  // Filtros activos
+  const fMedio  = pg._fMedio  || 'todos';
+  const fSector = pg._fSector || '';
+  const fApies  = pg._fApies  || '';
+  const fBuscar = pg._fBuscar || '';
+
+  const filtered = data.filter(r => {
+    if (fMedio !== 'todos' && r.medioPago !== fMedio) return false;
+    if (fSector && r.sector !== fSector) return false;
+    if (fApies  && r.apies  !== fApies)  return false;
+    if (fBuscar) {
+      const q = fBuscar.toLowerCase();
+      if (!(r.solicitadoPor+r.autorizadoPor+r.apies+r.sector+r.medioPago).toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  // KPIs por tarjeta
+  const totPorMedio = {};
+  data.forEach(r => { totPorMedio[r.medioPago] = (totPorMedio[r.medioPago]||0) + r.monto; });
+  const totalGeneral = data.reduce((s,r)=>s+r.monto, 0);
+
+  // Sectores y APIES únicos
+  const sectores = [...new Set(data.map(r=>r.sector).filter(Boolean))].sort();
+  const apiesUnicos = [...new Set(data.map(r=>r.apies).filter(Boolean))].sort();
+  const medios = [...new Set(data.map(r=>r.medioPago).filter(Boolean))].sort();
+
+  // Colores por medio
+  const medioColor = {
+    'TC GAL RS GH': '#4ade80',
+    'TC GAL SC GH': '#4a9fd4',
+    'TC MACRO RS':  '#fbbf24',
+    'EFECTIVO':     '#a78bfa',
+  };
+
+  // Totales por sector (para gráfico)
+  const totSector = {};
+  filtered.forEach(r => { totSector[r.sector] = (totSector[r.sector]||0) + r.monto; });
+  const topSectores = Object.entries(totSector).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxSec = topSectores[0]?.[1] || 1;
+
+  // Totales por mes
+  const totMes = {};
+  filtered.forEach(r => {
+    const m = r.fechaCompra.slice(0,7);
+    if (m) totMes[m] = (totMes[m]||0) + r.monto;
+  });
+  const meses = Object.entries(totMes).sort((a,b)=>a[0].localeCompare(b[0]));
+  const maxMes = Math.max(...meses.map(m=>m[1]), 1);
+
+  const MESES_ES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  pg.innerHTML = `
+    <div style="padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div style="font-size:20px;font-weight:800">💳 Tarjetas de Crédito</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${data.length} registros totales · ${medios.join(' · ')}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          ${_supaRol==='admin'?'<label style="padding:7px 14px;background:rgba(74,159,212,0.1);border:1px solid rgba(74,159,212,0.3);border-radius:8px;font-size:12px;font-weight:700;color:var(--accent);cursor:pointer">📥 Importar Excel<input type="file" accept=".xlsx,.xls" style="display:none" onchange="handleFileImport(this.files[0])"></label>':''}
+          <button onclick="exportTarjetasExcel()" style="padding:7px 14px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:8px;font-size:12px;font-weight:700;color:var(--green);cursor:pointer">📤 Excel</button>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+        ${[...Object.entries(totPorMedio), ['TOTAL GENERAL', totalGeneral]].map(([k,v],i)=>{
+          const col = i===Object.keys(totPorMedio).length ? '#c8cede' : (medioColor[k]||'#7a8399');
+          return `<div style="background:#161c2a;border:1px solid ${col}33;border-radius:12px;padding:14px;text-align:center">
+            <div style="font-size:8px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">${k}</div>
+            <div style="font-size:clamp(14px,2vw,22px);font-weight:900;font-family:monospace;color:${col}">${fmtMoney(v)}</div>
+            <div style="font-size:9px;color:#7a8399;margin-top:4px">${data.filter(r=>k==='TOTAL GENERAL'||r.medioPago===k).length} compras</div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Filtros -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <button onclick="tcFiltrar('medio','todos')" style="padding:6px 12px;border-radius:7px;font-size:11px;font-weight:600;border:none;cursor:pointer;font-family:inherit;background:${fMedio==='todos'?'rgba(74,159,212,0.15)':'rgba(255,255,255,0.04)'};color:${fMedio==='todos'?'var(--accent)':'#7a8399'}">Todos</button>
+        ${medios.map(m=>`<button onclick="tcFiltrar('medio','${m}')" style="padding:6px 12px;border-radius:7px;font-size:11px;font-weight:600;border:none;cursor:pointer;font-family:inherit;background:${fMedio===m?'rgba(74,159,212,0.15)':'rgba(255,255,255,0.04)'};color:${fMedio===m?(medioColor[m]||'var(--accent)'):'#7a8399'}">${m}</button>`).join('')}
+        <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+          <select onchange="tcFiltrar('sector',this.value)" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:11px;color:var(--text);outline:none">
+            <option value="">Todos los sectores</option>
+            ${sectores.map(s=>`<option value="${s}" ${fSector===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+          <select onchange="tcFiltrar('apies',this.value)" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:11px;color:var(--text);outline:none">
+            <option value="">Todos los APIES</option>
+            ${apiesUnicos.map(a=>`<option value="${a}" ${fApies===a?'selected':''}>${a}</option>`).join('')}
+          </select>
+          <input type="text" placeholder="🔍 Buscar..." value="${fBuscar}"
+            oninput="tcFiltrar('buscar',this.value)"
+            style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:11px;color:var(--text);outline:none;width:140px">
+        </div>
+      </div>
+
+      <!-- Gráficos -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <!-- Por sector -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">
+          <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Por sector</div>
+          ${topSectores.map(([s,v])=>`
+            <div style="margin-bottom:8px">
+              <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+                <span style="color:var(--text2)">${s}</span>
+                <span style="font-family:monospace;color:var(--text)">${fmtMoney(v)}</span>
+              </div>
+              <div style="background:rgba(255,255,255,0.06);border-radius:99px;height:5px">
+                <div style="background:var(--accent);height:5px;border-radius:99px;width:${Math.round(v/maxSec*100)}%;transition:width 0.5s"></div>
+              </div>
+            </div>`).join('')}
+        </div>
+        <!-- Por mes -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">
+          <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Por mes</div>
+          <div style="display:flex;align-items:flex-end;gap:6px;height:80px;padding-bottom:20px;position:relative">
+            ${meses.map(([m,v])=>{
+              const pct = Math.round(v/maxMes*100);
+              const [y,mo] = m.split('-');
+              return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative" title="${MESES_ES[parseInt(mo)]} ${y}: ${fmtMoney(v)}">
+                <div style="background:var(--accent);border-radius:3px 3px 0 0;width:100%;height:${pct}%;min-height:2px;opacity:0.8"></div>
+                <div style="position:absolute;bottom:-16px;font-size:8px;color:var(--text3);white-space:nowrap">${MESES_ES[parseInt(mo)]}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3)">${filtered.length} registros</div>
+        <div style="overflow-x:auto;max-height:420px;overflow-y:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead style="position:sticky;top:0;background:var(--bg2)">
+              <tr>
+                <th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;white-space:nowrap">F. Compra</th>
+                <th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">APIES</th>
+                <th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Sector</th>
+                <th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Solicitado por</th>
+                <th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Autorizado por</th>
+                <th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Medio de pago</th>
+                <th style="padding:8px 10px;text-align:right;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Monto</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.slice(0,500).map(r=>{
+                const col = medioColor[r.medioPago]||'#7a8399';
+                const fd = r.fechaCompra ? r.fechaCompra.split('-').reverse().join('/') : '';
+                return `<tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:7px 10px;color:var(--text3);white-space:nowrap">${fd}</td>
+                  <td style="padding:7px 10px"><span style="background:rgba(74,159,212,0.1);color:var(--accent);font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px">${r.apies}</span></td>
+                  <td style="padding:7px 10px;color:var(--text2)">${r.sector}</td>
+                  <td style="padding:7px 10px;color:var(--text2)">${r.solicitadoPor}</td>
+                  <td style="padding:7px 10px;color:var(--text3)">${r.autorizadoPor}</td>
+                  <td style="padding:7px 10px"><span style="background:${col}18;color:${col};font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px">${r.medioPago}</span></td>
+                  <td style="padding:7px 10px;text-align:right;font-family:monospace;color:${col};font-weight:600">${fmtMoney(r.monto)}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function tcFiltrar(tipo, valor) {
+  const pg = document.getElementById('page-tarjetas');
+  if (!pg) return;
+  if (tipo === 'medio')  pg._fMedio  = valor;
+  if (tipo === 'sector') pg._fSector = valor;
+  if (tipo === 'apies')  pg._fApies  = valor;
+  if (tipo === 'buscar') pg._fBuscar = valor;
+  renderTarjetas();
+}
+
+function exportTarjetasExcel() {
+  const data = appState.tarjetas || [];
+  if (!data.length) { showToast('Sin datos para exportar'); return; }
+  const ws = XLSX.utils.json_to_sheet(data.map(r=>({
+    'Fecha Compra':    r.fechaCompra,
+    'Fecha Resumen':   r.fechaResumen,
+    'APIES':           r.apies,
+    'Sector':          r.sector,
+    'Solicitado Por':  r.solicitadoPor,
+    'Autorizado Por':  r.autorizadoPor,
+    'Monto':           r.monto,
+    'Medio de Pago':   r.medioPago,
+  })));
+  const wb2 = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2, ws, 'Tarjetas');
+  XLSX.writeFile(wb2, 'tarjetas_credito_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 // ── FIN PANEL GUARDIA ─────────────────────────────────────────
 </script>
