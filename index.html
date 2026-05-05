@@ -1707,7 +1707,7 @@ let _supaUser=null,_supaRol=null;
   </div>
   <div class="grid-4 mb" id="preop-kpis"></div>
   <!-- Filtros -->
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
     <div>
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Buscar proveedor / Nro</div>
       <input type="text" id="preop-search" placeholder="Ej: Fermabras, 6547..." oninput="renderPreOp()"
@@ -1739,12 +1739,20 @@ let _supaUser=null,_supaRol=null;
     </div>
     <div style="display:flex;gap:6px">
       <div style="flex:1">
-        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Desde</div>
-        <input type="date" id="preop-desde" onchange="renderPreOp()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
+        <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Fecha Pre-OP</div>
       </div>
       <div style="flex:1">
-        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Hasta</div>
-        <input type="date" id="preop-hasta" onchange="renderPreOp()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
+        <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Hasta</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <div style="flex:1">
+        <div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Fecha Pago</div>
+        <input type="date" id="preop-desde2" onchange="renderPreOp()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
+      </div>
+      <div style="flex:1">
+        <div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Hasta</div>
+        <input type="date" id="preop-hasta2" onchange="renderPreOp()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
       </div>
     </div>
   </div>
@@ -12981,6 +12989,8 @@ function renderLimiteCredito() {
   let filtered = data
     .filter(r => !desde  || r.fecha >= desde)
     .filter(r => !hasta  || r.fecha <= hasta)
+    .filter(r => !desde2 || (r.fechaPago||'') >= desde2)
+    .filter(r => !hasta2 || (r.fechaPago||'') <= hasta2)
     .filter(r => !div    || r.division === div)
     .filter(r => !search || r.division.toLowerCase().includes(search) || r.fecha.includes(search));
 
@@ -13452,7 +13462,7 @@ function preOpSetTab(tab, btn) {
 }
 
 function preOpLimpiar() {
-  ['preop-search','preop-desde','preop-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['preop-search','preop-desde','preop-hasta','preop-desde2','preop-hasta2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['preop-estado','preop-uunn','preop-forma'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   renderPreOp();
 }
@@ -13480,6 +13490,8 @@ function renderPreOp() {
   const forma   = document.getElementById('preop-forma')?.value||'';
   const desde   = document.getElementById('preop-desde')?.value||'';
   const hasta   = document.getElementById('preop-hasta')?.value||'';
+  const desde2  = document.getElementById('preop-desde2')?.value||'';
+  const hasta2  = document.getElementById('preop-hasta2')?.value||'';
 
   const tab = (typeof _preOpTab !== 'undefined') ? _preOpTab : 'TRF';
   let filtered = data
