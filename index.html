@@ -1371,6 +1371,8 @@ let _supaUser=null,_supaRol=null;
     <button onclick="exportRechazadosExcel()" style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.4);color:var(--green);padding:6px 14px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font)">📥 Excel</button>
   </div>
   <div class="grid-4 mb" id="rech-stats"></div>
+  <!-- Panel de alertas WhatsApp -->
+  <div id="rech-alertas-panel" style="margin-bottom:14px"></div>
   <div class="card mb" style="padding:10px 14px">
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:8px">
       <div><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Banco</div><select id="rech-f-banco" onchange="renderRechazados()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);outline:none"><option value="">Todos</option></select></div>
@@ -7257,6 +7259,7 @@ function parseRechazadosXls(wb) {
 }
 
 function renderRechazados() {
+  renderRechAlertasPanel();
   const data = appState.rechazadosData || [];
   const fBanco=document.getElementById('rech-f-banco')?.value||'';
   const fApies=document.getElementById('rech-f-apies')?.value||'';
@@ -15915,6 +15918,114 @@ function exportTarjetasExcel() {
   const wb2 = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb2, ws, 'Tarjetas');
   XLSX.writeFile(wb2, 'tarjetas_credito_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// ── PANEL ALERTAS RECHAZADOS ─────────────────────────────
+function renderRechAlertasPanel() {
+  const el = document.getElementById('rech-alertas-panel');
+  if (!el) return;
+  const data = appState.rechazadosData || [];
+  if (!data.length) { el.innerHTML = ''; return; }
+
+  const hoy = new Date();
+
+  // Agrupar por cliente/CUIT
+  const porCliente = {};
+  data.forEach(r => {
+    const key = (r.cuit||r.cliente||'').trim();
+    if (!key) return;
+    if (!porCliente[key]) porCliente[key] = { cliente: r.cliente||r.razonSocial||key, cuit: r.cuit||'', cheques: [], noRecuperados: 0, monto: 0 };
+    porCliente[key].cheques.push(r);
+    porCliente[key].monto += parseFloat(r.importe||0);
+    if ((r.estado||'').toUpperCase().includes('NO RECUP')) porCliente[key].noRecuperados++;
+  });
+
+  // Filtrar clientes con 2+ rechazos
+  const alertas = Object.values(porCliente)
+    .filter(c => c.cheques.length >= 2)
+    .sort((a,b) => b.noRecuperados - a.noRecuperados || b.monto - a.monto);
+
+  if (!alertas.length) { el.innerHTML = ''; return; }
+
+  const colorAlerta = c => c.noRecuperados > 0 ? '#f87171' : '#fbbf24';
+  const iconAlerta  = c => c.noRecuperados > 0 ? '🚨' : '⚠️';
+  const tagAlerta   = c => c.noRecuperados > 0
+    ? '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,0.2);color:#f87171;border:1px solid rgba(248,113,113,0.4)">NO RECUPERADO</span>'
+    : '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)">PENDIENTE</span>';
+
+  const totalExpuesto = alertas.reduce((s,c)=>s+c.monto,0);
+
+  el.innerHTML = `
+    <div style="background:#252b3d;border:1px solid rgba(248,113,113,0.25);border-radius:12px;padding:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:11px;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:1px">🚨 Alertas automáticas — ${alertas.length} clientes críticos</div>
+        <div style="font-size:10px;color:#7a8399">Total expuesto: <strong style="color:#f87171">${fmtMoney(totalExpuesto)}</strong></div>
+      </div>
+      ${alertas.slice(0,5).map(c => {
+        const col = colorAlerta(c);
+        const msg = generarMsgWhatsApp(c);
+        return `<div style="background:${c.noRecuperados>0?'rgba(248,113,113,0.07)':'rgba(251,191,36,0.06)'};border:1px solid ${col}44;border-radius:10px;padding:12px;margin-bottom:8px">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <span style="font-size:20px">${iconAlerta(c)}</span>
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+                <span style="font-size:13px;font-weight:800;color:${col}">${c.cliente}</span>
+                ${tagAlerta(c)}
+              </div>
+              <div style="font-size:11px;color:#c8cede;line-height:1.6;margin-bottom:8px">
+                ${c.cuit?'CUIT: '+c.cuit+' &nbsp;·&nbsp; ':''}<strong style="color:${col}">${c.cheques.length} cheques rechazados</strong> &nbsp;·&nbsp; Monto: <strong>${fmtMoney(c.monto)}</strong>
+                ${c.noRecuperados>0?'<br><span style="color:#f87171;font-weight:700">⚠️ '+c.noRecuperados+' cheque(s) en estado NO RECUPERADO</span>':''}
+              </div>
+              <div style="background:#161c2a;border-radius:7px;padding:9px;font-size:10px;color:#c8cede;font-family:monospace;line-height:1.7;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05);white-space:pre-wrap">${msg}</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button onclick="copiarAlertaWsp(this,'${encodeURIComponent(msg)}')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(37,211,102,0.3);background:rgba(37,211,102,0.1);color:#25d366;font-family:inherit">📱 Copiar para WhatsApp</button>
+                <button onclick="verClienteRiesgo('${encodeURIComponent(c.cliente)}')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(74,159,212,0.3);background:rgba(74,159,212,0.1);color:#4a9fd4;font-family:inherit">📋 Ver en Riesgo Crediticio</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+      ${alertas.length > 5 ? `<div style="text-align:center;font-size:10px;color:#7a8399;padding-top:4px">y ${alertas.length-5} clientes más con alertas</div>` : ''}
+    </div>
+  `;
+}
+
+function generarMsgWhatsApp(c) {
+  const cantRech = c.cheques.length;
+  const noRec = c.noRecuperados;
+  let msg = `🚨 ALERTA NO TOMAR VALORES DE ${c.cliente}`;
+  if (c.cuit) msg += ` ${c.cuit}`;
+  msg += `\nCheques Rechazados: Tienen ${cantRech} cheque${cantRech>1?'s':''} rechazado${cantRech>1?'s':''} por falta de fondos.`;
+  if (noRec > 0) {
+    msg += `\nLo más grave es que están en estado NO RECUPERADOS.`;
+    msg += `\nEs decir, no levantaron esos cheques ni cubrieron la deuda.`;
+  }
+  msg += `\nMonto Adeudado es de $${c.monto.toLocaleString('es-AR', {minimumFractionDigits:2})}.`;
+  return msg;
+}
+
+function copiarAlertaWsp(btn, encodedMsg) {
+  const msg = decodeURIComponent(encodedMsg);
+  navigator.clipboard.writeText(msg).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copiado!';
+    btn.style.background = 'rgba(37,211,102,0.2)';
+    setTimeout(() => { btn.textContent = orig; btn.style.background = 'rgba(37,211,102,0.1)'; }, 2000);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = msg; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    showToast('✅ Mensaje copiado para WhatsApp');
+  });
+}
+
+function verClienteRiesgo(encodedNombre) {
+  const nombre = decodeURIComponent(encodedNombre);
+  navGo('riesgo');
+  setTimeout(() => {
+    const search = document.getElementById('riesgo-search');
+    if (search) { search.value = nombre; search.dispatchEvent(new Event('input')); }
+  }, 300);
 }
 // ── FIN PANEL GUARDIA ─────────────────────────────────────────
 </script>
