@@ -8068,6 +8068,9 @@ function efLimpiar(){
 }
 
 function renderEfectivoPage() {
+  try { _renderEfectivoPageInternal(); } catch(e) { console.error("renderEfectivoPage:", e); }
+}
+function _renderEfectivoPageInternal() {
   const allEmp = appState.vistaConsolidada ? appState.empresas : [empresa()];
   const empEl  = document.getElementById('efectivo-empresa-name');
   if (empEl) empEl.textContent = appState.vistaConsolidada ? 'Consolidado' : empresa().name;
