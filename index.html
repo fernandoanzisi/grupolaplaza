@@ -4736,11 +4736,11 @@ function importCarteraDeValores(wb) {
 
   // ── Procesar cada hoja ─────────────────────────────────────
   const sheetConfig = [
-    { name:'RS E-Cheqs',          empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ' },
-    { name:'SC E-Cheqs',          empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ' },
-    { name:'Cartera Fisico RS',   empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:9 },
-    { name:'Cartera Fisico SC',   empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:9 },
-    { name:'Cartera Fisico AGRO', empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO',   importeCol:8 },
+    { name:'Cartera E-Cheqs RS',      empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ', importeCol:7 },
+    { name:'Cartera E-Cheqs SC',      empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ', importeCol:7 },
+    { name:'Cartera Ch. Fisico RS',   empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:9 },
+    { name:'Cartera Ch. Fisico SC',   empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:9 },
+    { name:'Cartera Ch. Fisico AGRO', empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO',   importeCol:8 },
   ];
 
   sheetConfig.forEach(cfg => {
@@ -5675,10 +5675,11 @@ function handleFile(input) {
       // ¿Es Cartera de Valores?
       // Detectar por hojas clave: RS E-Cheqs, SC E-Cheqs, Cartera Fisico RS, etc.
       const isCartera = wb.SheetNames.some(s =>
-        /^(rs e-cheq|sc e-cheq|cartera fisico|resumen cartera)/i.test(s.trim()));
+        /^(cartera e-cheq|cartera ch\.? fisico|rs e-cheq|sc e-cheq|cartera fisico|resumen cartera)/i.test(s.trim()));
       if (isCartera) {
         const result = importCarteraDeValores(wb);
         saveState();
+        cacheGuardar('minuta', { empresas: appState.empresas, lastMinutaDate: appState.lastMinutaDate, hoyData: appState.hoyData || null });
         statusEl.innerHTML = result.html;
         showToast('📋 Cartera de valores importada — ' + result.total + ' cheques');
         if (typeof renderCheques === 'function') renderCheques();
