@@ -13470,6 +13470,7 @@ function preOpSetTab(tab, btn) {
   // Limpiar filtros al cambiar tab
   window._preOpUunnSel = [];
   ['preop-desde','preop-hasta','preop-desde2','preop-hasta2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderPreOp();
 }
 
 function preOpLimpiar() {
@@ -13525,13 +13526,15 @@ function renderPreOp() {
     .filter(r => !forma  || (r.formaPago||'').toUpperCase().includes(forma.toUpperCase().trim()))
     .filter(r => !desde  || r.fecha >= desde)
     .filter(r => !hasta  || r.fecha <= hasta)
+    .filter(r => !desde2 || (r.fechaPago && r.fechaPago >= desde2))
+    .filter(r => !hasta2 || (r.fechaPago && r.fechaPago <= hasta2))
     .filter(r => !search || String(r.nro||'').toLowerCase().includes(search) ||
                             (r.proveedor||'').toLowerCase().includes(search) ||
                             (r.uunn||'').toLowerCase().includes(search) ||
                             (r.cliente||'').toLowerCase().includes(search) ||
                             (r.comprobante||'').toLowerCase().includes(search));
 
-  filtered.sort((a,b) => b.fecha.localeCompare(a.fecha));
+  filtered.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
 
   const count = document.getElementById('preop-count');
   if (count) count.textContent = filtered.length.toLocaleString() + ' pre-órdenes';
