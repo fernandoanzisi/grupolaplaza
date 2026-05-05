@@ -13000,8 +13000,8 @@ function renderLimiteCredito() {
   let filtered = data
     .filter(r => !desde  || r.fecha >= desde)
     .filter(r => !hasta  || r.fecha <= hasta)
-    .filter(r => !desde2 || (r.fechaPago||'') >= desde2)
-    .filter(r => !hasta2 || (r.fechaPago||'') <= hasta2)
+    .filter(r => !desde2 || (r.fechaPago && r.fechaPago >= desde2))
+    .filter(r => !hasta2 || (r.fechaPago && r.fechaPago <= hasta2))
     .filter(r => !div    || r.division === div)
     .filter(r => !search || r.division.toLowerCase().includes(search) || r.fecha.includes(search));
 
@@ -13467,9 +13467,9 @@ function preOpSetTab(tab, btn) {
     }
   }
   // Reset UUNN filter on tab change so it repopulates correctly
-  const uunnEl = document.getElementById('preop-uunn');
-  if (uunnEl) uunnEl.value = '';
-  renderPreOp();
+  // Limpiar filtros al cambiar tab
+  window._preOpUunnSel = [];
+  ['preop-desde','preop-hasta','preop-desde2','preop-hasta2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
 }
 
 function preOpLimpiar() {
