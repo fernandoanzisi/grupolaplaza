@@ -4716,7 +4716,15 @@ function importCarteraDeValores(wb) {
     e.cheques = (e.cheques||[]).filter(c => c.estado !== 'EN CARTERA' || !c._fromCarteraXls);
   });
 
-  const getEmp = name => appState.empresas.find(e => e.name === name);
+  const getEmp = name => {
+    let emp = appState.empresas ? appState.empresas.find(e => e.name === name) : null;
+    if (!emp) {
+      if (!appState.empresas) appState.empresas = [];
+      emp = { name, transactions:[], accounts:[], investments:[], cheques:[] };
+      appState.empresas.push(emp);
+    }
+    return emp;
+  };
   const fmtD = v => {
     if (!v) return '';
     if (v instanceof Date) return v.toISOString().slice(0,10);
