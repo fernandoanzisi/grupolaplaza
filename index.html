@@ -1723,10 +1723,10 @@ let _supaUser=null,_supaRol=null;
       </select>
     </div>
     <div>
-      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">UUNN</div>
-      <select id="preop-uunn" onchange="renderPreOp()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
-        <option value="">Todas</option>
-      </select>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px" id="preop-fecha1-label2">UUNN</div>
+      <div id="preop-uunn-toggles" style="display:flex;gap:4px;flex-wrap:wrap;min-height:34px;align-items:center">
+        <button onclick="preOpToggleUunn('__todas__')" style="padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--accent);background:rgba(74,159,212,0.15);color:var(--accent);font-family:inherit">Todas</button>
+      </div>
     </div>
     <div>
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Forma de pago</div>
@@ -1739,10 +1739,12 @@ let _supaUser=null,_supaRol=null;
     </div>
     <div style="display:flex;gap:6px">
       <div style="flex:1">
-        <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Fecha Pre-OP</div>
+        <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px" id="preop-fecha1-label">Fecha Pre-OP</div>
+        <input type="date" id="preop-desde" onchange="renderPreOp()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
       </div>
       <div style="flex:1">
         <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Hasta</div>
+        <input type="date" id="preop-hasta" onchange="renderPreOp()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:12px;color:var(--text);outline:none">
       </div>
     </div>
     <div style="display:flex;gap:6px">
@@ -13471,6 +13473,7 @@ function preOpSetTab(tab, btn) {
 }
 
 function preOpLimpiar() {
+  window._preOpUunnSel = [];
   ['preop-search','preop-desde','preop-hasta','preop-desde2','preop-hasta2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['preop-estado','preop-uunn','preop-forma'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   renderPreOp();
@@ -13491,11 +13494,23 @@ function preOpExcel() {
   showToast('✅ Excel exportado');
 }
 
+// UUNN toggle state
+if (typeof window._preOpUunnSel === 'undefined') window._preOpUunnSel = [];
+function preOpToggleUunn(uunn) {
+  if (uunn === '__todas__') { window._preOpUunnSel = []; }
+  else {
+    const idx = window._preOpUunnSel.indexOf(uunn);
+    if (idx >= 0) window._preOpUunnSel.splice(idx, 1);
+    else window._preOpUunnSel.push(uunn);
+  }
+  renderPreOp();
+}
+
 function renderPreOp() {
   const data = appState.preopData || [];
   const search  = (document.getElementById('preop-search')?.value||'').toLowerCase();
   const estado  = document.getElementById('preop-estado')?.value||'';
-  const uunn    = document.getElementById('preop-uunn')?.value||'';
+  const uunnSel = window._preOpUunnSel || [];
   const forma   = document.getElementById('preop-forma')?.value||'';
   const desde   = document.getElementById('preop-desde')?.value||'';
   const hasta   = document.getElementById('preop-hasta')?.value||'';
@@ -13506,7 +13521,7 @@ function renderPreOp() {
   let filtered = data
     .filter(r => r.hoja === tab)
     .filter(r => !estado || (r.estado||'').toUpperCase().includes(estado.toUpperCase()))
-    .filter(r => !uunn   || String(r.uunn||'').trim() === String(uunn).trim())
+    .filter(r => uunnSel.length===0 || uunnSel.includes(String(r.uunn||'').trim()))
     .filter(r => !forma  || (r.formaPago||'').toUpperCase().includes(forma.toUpperCase().trim()))
     .filter(r => !desde  || r.fecha >= desde)
     .filter(r => !hasta  || r.fecha <= hasta)
@@ -13587,15 +13602,18 @@ function renderPreOp() {
   if (fcount) fcount.textContent = filtered.length.toLocaleString() + ' registros';
   if (ftotal) ftotal.textContent = 'Total: $ ' + fmtARS(total);
 
-  // Populate UUNN select — filtered by current tab
-  const uunnSel = document.getElementById('preop-uunn');
-  if (uunnSel) {
+  // Poblar toggles UUNN
+  const togglesEl = document.getElementById('preop-uunn-toggles');
+  if (togglesEl) {
     const tabData = data.filter(r => r.hoja === tab);
-    const uunns = [...new Set(tabData.map(r=>String(r.uunn||'').trim()).filter(Boolean))].sort();
-    const curUunn = uunnSel.value;
-    uunnSel.innerHTML = '<option value="">Todas</option>' +
-      uunns.map(u=>`<option value="${u}">${u}</option>`).join('');
-    if (uunns.includes(curUunn)) uunnSel.value = curUunn;
+    const uunns = [...new Set(tabData.map(r=>String(r.uunn||''). trim()).filter(Boolean))].sort();
+    const sel = window._preOpUunnSel || [];
+    const base = 'padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid;font-family:inherit;';
+    const onSt  = base+'background:rgba(74,159,212,0.15);border-color:#4a9fd4;color:#4a9fd4;';
+    const offSt = base+'background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.12);color:#7a8399;';
+    togglesEl.innerHTML =
+      '<button onclick="preOpToggleUunn(\'__todas__\')" style="' + (sel.length===0?onSt:offSt) + '">Todas</button> ' +
+      uunns.map(u => '<button onclick="preOpToggleUunn(\''+ u.replace(/'/g,'\\\'')+'\')" style="' + (sel.includes(u)?onSt:offSt) + '">' + u + '</button>').join(' ');
   }
 }
 
