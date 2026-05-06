@@ -13316,8 +13316,6 @@ function renderLimiteCredito() {
   let filtered = data
     .filter(r => !desde  || r.fecha >= desde)
     .filter(r => !hasta  || r.fecha <= hasta)
-    .filter(r => !desde2 || (r.fechaPago && r.fechaPago >= desde2))
-    .filter(r => !hasta2 || (r.fechaPago && r.fechaPago <= hasta2))
     .filter(r => !div    || r.division === div)
     .filter(r => !search || r.division.toLowerCase().includes(search) || r.fecha.includes(search));
 
