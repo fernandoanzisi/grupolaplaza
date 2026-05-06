@@ -7381,14 +7381,108 @@ function renderRechazados() {
   if(!vis.length){
     tbody.innerHTML='<tr><td colspan="13" style="text-align:center;color:var(--text3);padding:24px">Sin registros</td></tr>';
   } else {
-    tbody.innerHTML=vis.map(r=>{
-      const eB=r.estado==='COBRADO'?'<span style="font-size:9px;font-weight:700;color:var(--green);background:rgba(74,222,128,0.12);padding:2px 6px;border-radius:3px">Cobrado</span>':'<span style="font-size:9px;font-weight:700;color:var(--yellow);background:rgba(251,191,36,0.12);padding:2px 6px;border-radius:3px">Pendiente</span>';
-      const dc=r.dias>180?'var(--red)':r.dias>90?'var(--yellow)':'var(--text3)';
-      return '<tr style="border-bottom:0.5px solid var(--border)"><td style="padding:5px 8px;font-size:10px">'+(r.banco||'—')+'</td><td style="padding:5px 8px;font-size:10px;font-family:var(--mono)">'+(r.nro||'—')+'</td><td style="padding:5px 8px;font-size:10px;color:var(--text3)">'+(r.fEmi||'—')+'</td><td style="padding:5px 8px;font-size:10px;color:var(--text3)">'+(r.fCobro||'—')+'</td><td style="padding:5px 8px;font-size:10px;color:var(--red);font-weight:500">'+(r.fRech||'—')+'</td><td style="padding:5px 8px;font-size:10px;color:var(--green)">'+(r.fRecup||'—')+'</td><td style="padding:5px 8px;font-size:10px;font-family:var(--mono);text-align:right;font-weight:500">'+fmtMoney(r.importe)+'</td><td style="padding:5px 8px;font-size:10px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(r.cliente)+'">'+(r.cliente||r.librador||'—')+'</td><td style="padding:5px 8px;font-size:10px">'+(r.motivo||'—')+'</td><td style="padding:5px 8px;font-size:10px;font-weight:700;color:'+dc+'">'+(r.dias||0)+'d</td><td style="padding:5px 8px">'+eB+'</td><td style="padding:5px 8px;font-size:10px;color:var(--text3)">'+(r.apies||'—')+'</td><td style="padding:5px 8px;font-size:10px;font-family:var(--mono);text-align:right;color:var(--accent)">'+(r.intNoPer?fmtMoney(r.intNoPer):'—')+'</td></tr>';
+    // Pre-build cliente groups for expand panels
+    const clienteGrupos = {};
+    vis.forEach(r => {
+      const k = (r.cliente||r.librador||'').trim();
+      if (!k) return;
+      if (!clienteGrupos[k]) clienteGrupos[k] = { cliente:k, cuit:r.cuit||'', cheques:[], monto:0, noRec:0 };
+      clienteGrupos[k].cheques.push(r);
+      clienteGrupos[k].monto += r.importe||0;
+      if ((r.estado||'').toUpperCase().includes('PENDIENTE')) clienteGrupos[k].noRec++;
+    });
+
+    tbody.innerHTML = vis.map((r, idx) => {
+      const eB = r.estado==='COBRADO'
+        ? '<span style="font-size:9px;font-weight:700;color:var(--green);background:rgba(74,222,128,0.12);padding:2px 6px;border-radius:3px">Cobrado</span>'
+        : '<span style="font-size:9px;font-weight:700;color:var(--yellow);background:rgba(251,191,36,0.12);padding:2px 6px;border-radius:3px">Pendiente</span>';
+      const dc = r.dias>180?'var(--red)':r.dias>90?'var(--yellow)':'var(--text3)';
+      const expandId = 'rech-expand-'+idx;
+      const clienteKey = encodeURIComponent((r.cliente||r.librador||'').trim());
+      const rowHtml = '<tr style="border-bottom:0.5px solid var(--border);cursor:pointer" onclick="rechToggleExpand(\''+expandId+'\',\''+clienteKey+'\')">'+
+        '<td style="padding:5px 8px;font-size:10px">'+(r.banco||'—')+'</td>'+
+        '<td style="padding:5px 8px;font-size:10px;font-family:var(--mono)">'+(r.nro||'—')+'</td>'+
+        '<td style="padding:5px 8px;font-size:10px;color:var(--text3)">'+(r.fEmi||'—')+'</td>'+
+        '<td style="padding:5px 8px;font-size:10px;color:var(--text3)">'+(r.fCobro||'—')+'</td>'+
+        '<td style="padding:5px 8px;font-size:10px;color:var(--red);font-weight:500">'+(r.fRech||'—')+'</td>'+
+        '<td style="padding:5px 8px;font-size:10px;color:var(--green)">'+(r.fRecup||'—')+'</td>'+
+        '<td style="padding:5px 8px;font-size:10px;font-family:var(--mono);text-align:right;font-weight:500">'+fmtMoney(r.importe)+'</td>'+
+        '<td style="padding:5px 8px;font-size:10px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(r.cliente)+'">'+(r.cliente||r.librador||'—')+'</td>'+
+        '<td style="padding:5px 8px;font-size:10px">'+(r.motivo||'—')+'</td>'+
+        '<td style="padding:5px 8px;font-size:10px;font-weight:700;color:'+dc+'">'+(r.dias||0)+'d</td>'+
+        '<td style="padding:5px 8px">'+eB+'</td>'+
+        '<td style="padding:5px 8px;font-size:10px;color:var(--text3)">'+(r.apies||'—')+'</td>'+
+        '<td style="padding:5px 8px;font-size:10px;font-family:var(--mono);text-align:right;color:var(--accent)">'+(r.intNoPer?fmtMoney(r.intNoPer):'—')+'</td>'+
+      '</tr>';
+      const expandHtml = '<tr id="'+expandId+'" style="display:none"><td colspan="13" style="padding:0;border-bottom:1px solid var(--border)">'+
+        '<div id="'+expandId+'-inner" style="padding:0"></div>'+
+      '</td></tr>';
+      return rowHtml + expandHtml;
     }).join('');
   }
   const totFil=filtered.reduce((s,r)=>s+r.importe,0);
   if(footer) footer.innerHTML='<span>'+filtered.length.toLocaleString('es-AR')+' registros'+(filtered.length>1000?' (mostrando 1000)':'')+'</span><span style="font-family:var(--mono);font-weight:700;color:var(--red)">Total: '+fmtMoney(totFil)+'</span>';
+}
+
+function rechToggleExpand(expandId, clienteKey) {
+  const row = document.getElementById(expandId);
+  if (!row) return;
+  const inner = document.getElementById(expandId+'-inner');
+  if (!inner) return;
+  const isOpen = row.style.display !== 'none';
+  row.style.display = isOpen ? 'none' : 'table-row';
+  if (isOpen) return;
+
+  // Build panel content from cliente data
+  const cliente = decodeURIComponent(clienteKey);
+  const data = appState.rechazadosData || [];
+  const cheques = data.filter(r => (r.cliente||r.librador||'').trim() === cliente);
+  const monto = cheques.reduce((s,r)=>s+(r.importe||0),0);
+  const noRec = cheques.filter(r=>(r.estado||'').toUpperCase().includes('PENDIENTE')).length;
+  const cuit = cheques.find(r=>r.cuit)?.cuit || '';
+  const isRojo = noRec > 0;
+  const col = isRojo ? '#f87171' : '#fbbf24';
+  const icon = isRojo ? '🚨' : '⚠️';
+  const tag = isRojo
+    ? '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,0.2);color:#f87171;border:1px solid rgba(248,113,113,0.4)">PENDIENTE</span>'
+    : '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)">PENDIENTE</span>';
+
+  let msg = icon+' ALERTA NO TOMAR VALORES DE '+cliente;
+  if (cuit) msg += ' '+cuit;
+  msg += '\nCheques Rechazados: Tienen '+cheques.length+' cheque'+(cheques.length>1?'s':'')+' rechazado'+(cheques.length>1?'s':'')+' por falta de fondos.';
+  if (noRec > 0) msg += '\nLo más grave es que están en estado NO RECUPERADOS.\nEs decir, no levantaron esos cheques ni cubrieron la deuda.';
+  msg += '\nMonto Adeudado es de $'+monto.toLocaleString('es-AR',{minimumFractionDigits:2})+'.';
+
+  const encodedMsg = encodeURIComponent(msg);
+  inner.innerHTML =
+    '<div style="background:'+col+'11;border-left:3px solid '+col+';padding:12px 14px">'+
+    '<div style="display:flex;align-items:flex-start;gap:10px">'+
+    '<span style="font-size:18px">'+icon+'</span>'+
+    '<div style="flex:1">'+
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">'+
+    '<span style="font-size:13px;font-weight:800;color:'+col+'">'+cliente+'</span>'+tag+
+    '<span style="font-size:9px;color:#7a8399">'+cheques.length+' cheques · '+fmtMoney(monto)+'</span>'+
+    '</div>'+
+    '<div style="background:#161c2a;border-radius:7px;padding:9px;font-size:10px;color:#c8cede;font-family:monospace;line-height:1.7;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05);white-space:pre-wrap">'+msg+'</div>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+    '<button onclick="rechCopiarWsp(this,\''+encodedMsg+'\')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(37,211,102,0.3);background:rgba(37,211,102,0.1);color:#25d366;font-family:inherit">📱 Copiar para WhatsApp</button>'+
+    '<button onclick="verClienteRiesgo(\''+encodeURIComponent(cliente)+'\')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(74,159,212,0.3);background:rgba(74,159,212,0.1);color:#4a9fd4;font-family:inherit">📋 Ver en Riesgo Crediticio</button>'+
+    '</div>'+
+    '</div></div></div>';
+}
+
+function rechCopiarWsp(btn, encodedMsg) {
+  const msg = decodeURIComponent(encodedMsg);
+  navigator.clipboard.writeText(msg).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = msg; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    showToast('✅ Copiado para WhatsApp');
+  });
 }
 
 function limpiarFiltrosRech(){
@@ -13206,6 +13300,8 @@ function renderLimiteCredito() {
   let filtered = data
     .filter(r => !desde  || r.fecha >= desde)
     .filter(r => !hasta  || r.fecha <= hasta)
+    .filter(r => !desde2 || (r.fechaPago && r.fechaPago >= desde2))
+    .filter(r => !hasta2 || (r.fechaPago && r.fechaPago <= hasta2))
     .filter(r => !div    || r.division === div)
     .filter(r => !search || r.division.toLowerCase().includes(search) || r.fecha.includes(search));
 
