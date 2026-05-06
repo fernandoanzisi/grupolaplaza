@@ -13363,12 +13363,12 @@ function renderLimiteCredito() {
 function isLimiteCredito(wb) {
   // Hojas con formato fecha DD-MM-YYYY o DD-MM-YY
   const dateSheets = wb.SheetNames.filter(s => /^\d{1,2}[-\/]\d{2}[-\/]\d{2,4}/.test(s.trim()));
-  if (dateSheets.length < 5) return false;
-  // Verificar que primera hoja tenga "Divisiones" o "Riesgo"
+  if (dateSheets.length < 2) return false;
+  // Verificar que primera hoja tenga "Riesgo" o "Capital" en alguna de las primeras filas
   try {
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
-    const flat = (rows[0]||[]).concat(rows[1]||[]).map(c=>String(c||'').toLowerCase());
+    const flat = (rows[0]||[]).concat(rows[1]||[]).concat(rows[2]||[]).map(c=>String(c||'').toLowerCase());
     return flat.some(c=>c.includes('riesgo')||c.includes('divisiones')||c.includes('capital'));
   } catch(e){ return false; }
 }
@@ -13377,17 +13377,11 @@ function parseLimiteCredito(wb) {
   const log = []; let total = 0;
   appState.lcData = [];
 
-  // Cols usadas: B(1)=concepto, C(2)=EESS, E(4)=Dist.Diesel, G(6)=LU/DE-EESS, H(7)=LU/DE-Agro, I(8)=FE-Agro, J(9)=TOTAL
-  const COL_DIVS = [
-    {ci:2, nombre:'EESS'},
-    {ci:4, nombre:'Dist. Diesel'},
-    {ci:6, nombre:'LU/DE-EESS'},
-    {ci:7, nombre:'LU/DE-Agro'},
-    {ci:8, nombre:'FE-Agro'},
-    {ci:9, nombre:'TOTAL'},
-  ];
-
-  function pn(v){ return v!=null ? parseFloat(String(v).replace(/[^0-9.-]/g,''))||0 : 0; }
+  function pn(v){
+    if (v == null) return 0;
+    const s = String(v).replace(/[^0-9.-]/g,'');
+    return parseFloat(s) || 0;
+  }
 
   function parseFechaSheet(sn) {
     const m = sn.trim().match(/(\d{1,2})[-\/](\d{2})[-\/](\d{2,4})/);
@@ -13397,8 +13391,12 @@ function parseLimiteCredito(wb) {
     return `${y}-${mo}-${d}`;
   }
 
-  // Only process date-named sheets (skip 'Hoja5' etc)
-  const dateSheets = wb.SheetNames.filter(s => /^\d{1,2}[-\/]\d{2}[-\/]\d{2,4}/.test(s.trim()) && !s.includes('(') && !s.includes('T'));
+  // Solo hojas con nombre de fecha, sin sufijo T ni paréntesis
+  const dateSheets = wb.SheetNames.filter(s =>
+    /^\d{1,2}[-\/]\d{2}[-\/]\d{2,4}/.test(s.trim()) &&
+    !/ T$/.test(s.trim()) &&
+    !s.includes('(')
+  );
 
   dateSheets.forEach(sn => {
     const fecha = parseFechaSheet(sn);
@@ -13408,29 +13406,50 @@ function parseLimiteCredito(wb) {
       const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
       if (!rows || rows.length < 2) return;
 
-      // F1 = division headers, F2 = Riesgo Otorgado, F4 = Capital Trabajo, F6 = OP Abiertas
-      // F33 = TOTAL, F35 = SALDOS
-      const r1  = rows[0]  || [];  // headers
-      const r2  = rows[1]  || [];  // Riesgo Otorgado
-      const r4  = rows[3]  || [];  // Capital de Trabajo
-      const r6  = rows[5]  || [];  // OP abiertas
-      const r33 = rows[32] || [];  // TOTAL
-      const r35 = rows[34] || [];  // SALDOS
+      // --- Detectar divisiones desde la fila de headers (row 0) ---
+      const headerRow = rows[0] || [];
+      const divCols = [];
+      headerRow.forEach((cell, ci) => {
+        const txt = String(cell||'').trim();
+        if (ci > 0 && txt && !txt.match(/^\s*$/)) divCols.push({ci, nombre: txt});
+      });
+      if (!divCols.length) return;
 
-      COL_DIVS.forEach(({ci, nombre}) => {
-        const riesgo       = pn(r2[ci]);
-        const capitalTrab  = pn(r4[ci]);
-        const opAbiertas   = pn(r6[ci]);
-        const total_col    = pn(r33[ci]);
-        const saldo        = pn(r35[ci]);
-        if (riesgo === 0 && total_col === 0) return;
+      // --- Detectar filas clave buscando texto en col 0 ---
+      let rowRiesgo=-1, rowCapital=-1, rowOpAb=-1, rowTotal=-1, rowSaldo=-1;
+      rows.forEach((row, ri) => {
+        const c0 = String(row[0]||'').toLowerCase().trim();
+        if (rowRiesgo  === -1 && c0.includes('riesgo otorgado'))   rowRiesgo  = ri;
+        if (rowCapital === -1 && c0.includes('capital de trabajo')) rowCapital = ri;
+        if (rowOpAb    === -1 && (c0.startsWith('op abiertas') || c0.includes('op abiertas para'))) rowOpAb = ri;
+        if (rowTotal   === -1 && c0 === 'total')                    rowTotal   = ri;
+        if (rowSaldo   === -1 && c0 === 'saldos')                   rowSaldo   = ri;
+      });
+
+      // Para OP abiertas: sumar todas las filas "op abiertas..." si hay varias
+      const opAbiertasRows = [];
+      rows.forEach((row, ri) => {
+        const c0 = String(row[0]||'').toLowerCase().trim();
+        if (c0.startsWith('op abiertas')) opAbiertasRows.push(ri);
+      });
+
+      if (rowRiesgo === -1 || rowTotal === -1) return; // hoja sin estructura válida
+
+      divCols.forEach(({ci, nombre}) => {
+        const riesgo      = pn((rows[rowRiesgo]  ||[])[ci]);
+        const capitalTrab = rowCapital >= 0 ? pn((rows[rowCapital]||[])[ci]) : 0;
+        const opAbiertas  = opAbiertasRows.reduce((s,ri) => s + pn((rows[ri]||[])[ci]), 0);
+        const totalConsumo= pn((rows[rowTotal]   ||[])[ci]);
+        const saldo       = rowSaldo >= 0 ? pn((rows[rowSaldo]||[])[ci]) : riesgo - totalConsumo;
+
+        if (riesgo === 0 && totalConsumo === 0) return;
 
         appState.lcData.push({
           fecha, division: nombre,
           riesgoOtorgado: riesgo,
           capitalTrabajo: capitalTrab,
           opAbiertas,
-          totalConsumo: total_col,
+          totalConsumo,
           saldo,
         });
         total++;
