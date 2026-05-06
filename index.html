@@ -5842,7 +5842,9 @@ function handleFile(input) {
       }
       // 4a. Límite de Crédito
       if (typeof isLimiteCredito === 'function' && isLimiteCredito(wb)) {
-        const result = parseLimiteCredito(wb);
+        // Re-leer sin raw:true para obtener valores cacheados de fórmulas
+        const wbLC = XLSX.read(e.target.result, { type: 'binary', cellDates: true, raw: false, cellFormula: false });
+        const result = parseLimiteCredito(wbLC);
         statusEl.innerHTML = '<div class="alert green">✅ Límite de Crédito — ' + result.total.toLocaleString() + ' registros</div>';
         const logDiv = document.getElementById('import-log');
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
@@ -13404,7 +13406,7 @@ function parseLimiteCredito(wb) {
     try {
       const ws = wb.Sheets[sn];
       // raw:false para que XLSX.js use valores cacheados en lugar de fórmulas string
-      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
       if (!rows || rows.length < 2) return;
 
       // --- Detectar divisiones desde la fila de headers (row 0) ---
