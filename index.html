@@ -1454,18 +1454,16 @@ let _supaUser=null,_supaRol=null;
 
 <!-- ═══════════════ EFECTIVO ═══════════════ -->
 <div class="page" id="page-efectivo">
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
     <div>
       <h2 style="font-size:20px;font-weight:800;margin:0">💵 Efectivo — <span id="efectivo-empresa-name" style="color:var(--accent)"></span></h2>
       <div id="ef-result-count" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
     </div>
     <button onclick="exportEfectivoExcel()" style="padding:7px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);cursor:pointer">📥 Excel</button>
   </div>
-  <div class="grid-4 mb" id="efectivo-stats"></div>
-  <!-- Desglose por estación -->
-  <div id="efectivo-by-sub" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px"></div>
-  <!-- Filtros -->
-  <div class="card mb" style="padding:14px 16px">
+
+  <!-- FILTROS ARRIBA -->
+  <div class="card mb" style="padding:12px 14px">
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;align-items:end">
       <div style="grid-column:1/-1">
         <input type="text" id="ef-search" placeholder="🔍 Buscar descripción, subempresa..." oninput="renderEfectivoPage()"
@@ -1491,12 +1489,12 @@ let _supaUser=null,_supaRol=null;
         </select>
       </div>
       <div>
-        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Desde</div>
+        <div style="font-size:9px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Desde</div>
         <input type="date" id="ef-f-desde" oninput="renderEfectivoPage()"
           style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
       </div>
       <div>
-        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Hasta</div>
+        <div style="font-size:9px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Hasta</div>
         <input type="date" id="ef-f-hasta" oninput="renderEfectivoPage()"
           style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
       </div>
@@ -1515,7 +1513,64 @@ let _supaUser=null,_supaRol=null;
       </div>
     </div>
   </div>
-  <!-- Tabla -->
+
+  <!-- KPIs -->
+  <div class="grid-4 mb" id="efectivo-stats"></div>
+
+  <!-- MAPA -->
+  <div class="card mb" style="border:1px solid rgba(74,159,212,0.2);padding:14px">
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📍 Efectivo por estación — Alto Valle RN</div>
+    <div style="background:linear-gradient(180deg,#1a2535 0%,#1a2535 65%,#1e3a5f 65%,#2a5080 100%);border-radius:10px;padding:14px 10px 8px;position:relative;height:120px;overflow:hidden">
+      <div style="position:absolute;top:66%;left:0;right:0;height:2px;background:rgba(255,255,255,0.12)"></div>
+      <div style="position:absolute;bottom:7px;left:0;right:0;text-align:center;font-size:9px;color:rgba(100,160,220,0.5);letter-spacing:2px;font-style:italic">Río Negro</div>
+      <div style="position:absolute;left:6%;top:55%">
+        <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;border:1.5px solid rgba(255,255,255,0.4)"></div>
+        <div style="position:absolute;bottom:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Chichinales<br><span id="ef-map-chichinales" style="color:#4ade80">—</span></div>
+      </div>
+      <div style="position:absolute;left:13%;top:35%">
+        <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 6px rgba(251,191,36,0.5)"></div>
+        <div style="position:absolute;top:13px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;border:1px solid rgba(251,191,36,0.4);text-align:center">Agro Choele<br><span id="ef-map-agrochoele">—</span></div>
+      </div>
+      <div style="position:absolute;left:25%;top:50%">
+        <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;border:1.5px solid rgba(255,255,255,0.4)"></div>
+        <div style="position:absolute;bottom:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;text-align:center;color:white">V.Regina<br><span id="ef-map-vregina" style="color:#4ade80">—</span></div>
+      </div>
+      <div style="position:absolute;left:33%;top:58%">
+        <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;border:1.5px solid rgba(255,255,255,0.4)"></div>
+        <div style="position:absolute;top:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;text-align:center;color:white">V.Regina 2016<br><span id="ef-map-vregina2016" style="color:#4ade80">—</span></div>
+      </div>
+      <div style="position:absolute;left:46%;top:40%">
+        <div style="width:12px;height:12px;border-radius:50%;background:#4ade80;box-shadow:0 0 12px #4ade80;border:2px solid rgba(255,255,255,0.6)"></div>
+        <div style="position:absolute;bottom:15px;left:50%;transform:translateX(-50%);background:rgba(74,222,128,0.15);color:#4ade80;font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;border:1px solid #4ade80;text-align:center">Roca 11902 ⭐<br><span id="ef-map-roca">—</span></div>
+      </div>
+      <div style="position:absolute;left:52%;top:55%">
+        <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 6px rgba(251,191,36,0.5)"></div>
+        <div style="position:absolute;top:13px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;border:1px solid rgba(251,191,36,0.4);text-align:center">Agro Roca<br><span id="ef-map-agroroca">—</span></div>
+      </div>
+      <div style="position:absolute;left:65%;top:38%">
+        <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;box-shadow:0 0 8px #4a9fd4;border:1.5px solid rgba(255,255,255,0.4)"></div>
+        <div style="position:absolute;bottom:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Cip 15431<br><span id="ef-map-cip15431" style="color:#4a9fd4">—</span></div>
+      </div>
+      <div style="position:absolute;left:72%;top:50%">
+        <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;box-shadow:0 0 8px #4a9fd4;border:1.5px solid rgba(255,255,255,0.4)"></div>
+        <div style="position:absolute;top:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Cip 1539<br><span id="ef-map-cip1539" style="color:#4a9fd4">—</span></div>
+      </div>
+      <div style="position:absolute;left:85%;top:32%">
+        <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;box-shadow:0 0 8px #4a9fd4;border:1.5px solid rgba(255,255,255,0.4)"></div>
+        <div style="position:absolute;bottom:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;text-align:center;color:white">C.Saltos<br><span id="ef-map-csaltos" style="color:#4a9fd4">—</span></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:14px;margin-top:6px;font-size:10px;color:var(--text3)">
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4ade80;margin-right:4px"></span>Rio Salado</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4a9fd4;margin-right:4px"></span>Serv. Cipolletti</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;margin-right:4px"></span>Agro</span>
+    </div>
+  </div>
+
+  <!-- CARDS POR ESTACIÓN -->
+  <div id="efectivo-by-sub" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px"></div>
+
+  <!-- TABLA sin cambios -->
   <div class="card" style="padding:0;overflow:hidden">
     <div style="overflow-x:auto;max-height:65vh;overflow-y:auto">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -1537,8 +1592,6 @@ let _supaUser=null,_supaRol=null;
   </div>
 </div>
 
-
-<!-- EXTRACTOS BANCARIOS -->
 <div class="page" id="page-extractos">
   <div class="section-header mb" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
     <h2>🏦 Extractos Bancarios — <span id="extractos-emp-name" style="color:var(--accent)"></span></h2>
