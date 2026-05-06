@@ -13403,7 +13403,8 @@ function parseLimiteCredito(wb) {
     if (!fecha) return;
     try {
       const ws = wb.Sheets[sn];
-      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
+      // raw:false para que XLSX.js use valores cacheados en lugar de fórmulas string
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
       if (!rows || rows.length < 2) return;
 
       // --- Detectar divisiones desde la fila de headers (row 0) ---
@@ -13411,36 +13412,48 @@ function parseLimiteCredito(wb) {
       const divCols = [];
       headerRow.forEach((cell, ci) => {
         const txt = String(cell||'').trim();
-        if (ci > 0 && txt && !txt.match(/^\s*$/)) divCols.push({ci, nombre: txt});
+        if (ci > 0 && txt && txt !== 'null' && !txt.match(/^\s*$/)) divCols.push({ci, nombre: txt});
       });
       if (!divCols.length) return;
 
       // --- Detectar filas clave buscando texto en col 0 ---
-      let rowRiesgo=-1, rowCapital=-1, rowOpAb=-1, rowTotal=-1, rowSaldo=-1;
+      let rowRiesgo=-1, rowCapital=-1, rowTotal=-1, rowSaldo=-1;
+      const opAbiertasRows = [];
+      // filas de consumo: entre rowRiesgo+1 y rowTotal-1 (para fallback sum)
       rows.forEach((row, ri) => {
         const c0 = String(row[0]||'').toLowerCase().trim();
         if (rowRiesgo  === -1 && c0.includes('riesgo otorgado'))   rowRiesgo  = ri;
         if (rowCapital === -1 && c0.includes('capital de trabajo')) rowCapital = ri;
-        if (rowOpAb    === -1 && (c0.startsWith('op abiertas') || c0.includes('op abiertas para'))) rowOpAb = ri;
         if (rowTotal   === -1 && c0 === 'total')                    rowTotal   = ri;
         if (rowSaldo   === -1 && c0 === 'saldos')                   rowSaldo   = ri;
-      });
-
-      // Para OP abiertas: sumar todas las filas "op abiertas..." si hay varias
-      const opAbiertasRows = [];
-      rows.forEach((row, ri) => {
-        const c0 = String(row[0]||'').toLowerCase().trim();
         if (c0.startsWith('op abiertas')) opAbiertasRows.push(ri);
       });
 
-      if (rowRiesgo === -1 || rowTotal === -1) return; // hoja sin estructura válida
+      if (rowRiesgo === -1) return; // hoja sin estructura válida
+
+      // Si no encontró rowTotal, calculamos sumando filas intermedias
+      const getValOrSum = (ri, ci) => {
+        if (ri < 0) return 0;
+        const v = pn((rows[ri]||[])[ci]);
+        if (v !== 0) return v;
+        // fallback: sumar filas entre rowRiesgo+1 y ri-1
+        let s = 0;
+        for (let r = rowRiesgo+1; r < ri; r++) s += pn((rows[r]||[])[ci]);
+        return s;
+      };
 
       divCols.forEach(({ci, nombre}) => {
-        const riesgo      = pn((rows[rowRiesgo]  ||[])[ci]);
+        const riesgo      = pn((rows[rowRiesgo]||[])[ci]);
         const capitalTrab = rowCapital >= 0 ? pn((rows[rowCapital]||[])[ci]) : 0;
         const opAbiertas  = opAbiertasRows.reduce((s,ri) => s + pn((rows[ri]||[])[ci]), 0);
-        const totalConsumo= pn((rows[rowTotal]   ||[])[ci]);
-        const saldo       = rowSaldo >= 0 ? pn((rows[rowSaldo]||[])[ci]) : riesgo - totalConsumo;
+        // totalConsumo: leer celda TOTAL; si es 0 o fórmula, sumar filas intermedias
+        let totalConsumo = rowTotal >= 0 ? pn((rows[rowTotal]||[])[ci]) : 0;
+        if (totalConsumo === 0 && rowTotal >= 0) {
+          for (let r = rowRiesgo+1; r < rowTotal; r++) totalConsumo += pn((rows[r]||[])[ci]);
+        }
+        // saldo: leer celda SALDOS; si es 0, calcular como riesgo - totalConsumo
+        let saldo = rowSaldo >= 0 ? pn((rows[rowSaldo]||[])[ci]) : 0;
+        if (saldo === 0) saldo = riesgo - totalConsumo;
 
         if (riesgo === 0 && totalConsumo === 0) return;
 
