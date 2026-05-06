@@ -5754,8 +5754,9 @@ function handleFile(input) {
       // ¿Es Cheques Rechazados?
       if (typeof isRechazadosXls === 'function' && isRechazadosXls(wb)) {
         const result = parseRechazadosXls(wb);
-        showToast('🔴 Rechazados importados — ' + result.total.toLocaleString() + ' registros');
+        saveState();
         cacheGuardar('rechazados', appState.rechazadosData);
+        showToast('🔴 Rechazados importados — ' + result.total.toLocaleString() + ' registros');
         if (typeof renderRechazados === 'function') renderRechazados();
         if (typeof navGo === 'function') navGo('cheques_rech', null);
         return;
@@ -5813,7 +5814,8 @@ function handleFile(input) {
         const logDiv = document.getElementById('import-log');
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
         showToast('✅ Riesgo crediticio — ' + result.total + ' registros importados');
-        cacheGuardar('riesgo', appState.riesgoData);
+        saveState();
+  cacheGuardar('riesgo', appState.riesgoData);
         if (typeof renderRiesgo === 'function') renderRiesgo();
         if (typeof navGo === 'function') navGo('riesgo', null);
         return;
