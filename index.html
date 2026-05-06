@@ -8068,7 +8068,155 @@ function efLimpiar(){
 }
 
 function renderEfectivoPage() {
-  try { _renderEfectivoPageInternal(); } catch(e) { console.error("renderEfectivoPage:", e); }
+  const allEmp = appState.vistaConsolidada ? appState.empresas : [empresa()];
+  const empEl  = document.getElementById('efectivo-empresa-name');
+  if (empEl) empEl.textContent = appState.vistaConsolidada ? 'Consolidado' : (empresa()||{}).name||'';
+
+  const search  = (document.getElementById('ef-search')?.value||'').toLowerCase();
+  const fEmp    = document.getElementById('ef-f-empresa')?.value||'';
+  const fTipo   = document.getElementById('ef-f-tipo')?.value||'';
+  const fDesde  = document.getElementById('ef-f-desde')?.value||'';
+  const fHasta  = document.getElementById('ef-f-hasta')?.value||'';
+  const sortVal = document.getElementById('ef-sort')?.value||'imp_desc';
+
+  // ── KPIs desde estaciones (datos Minuta) ──────────────────
+  try {
+    let estaciones = [];
+    allEmp.forEach(e => {
+      if (!e) return;
+      if (fEmp && !e.name.includes(fEmp)) return;
+      (e.estaciones||[]).forEach(est => {
+        if (fDesde && est.fecha < fDesde) return;
+        if (fHasta && est.fecha > fHasta) return;
+        estaciones.push(est);
+      });
+    });
+    const totEf  = estaciones.reduce((s,e)=>s+(e.efectivo||0),0);
+    const totCaj = estaciones.reduce((s,e)=>s+(e.cajero||0),0);
+    const totEr  = estaciones.reduce((s,e)=>s+(e.erogaciones||0),0);
+    const totFon = estaciones.reduce((s,e)=>s+(e.fondosNoDep||0),0);
+    const sk = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=fmtMoney(v); };
+    sk('ef-kpi-efectivo', totEf);
+    sk('ef-kpi-cajero',   totCaj);
+    sk('ef-kpi-erog',     totEr);
+    sk('ef-kpi-fondos',   totFon);
+    // Actualizar mapa
+    const mapaMap = {
+      'RS CHICHINALES':  'ef-map-chichinales', 'CHICHINALES': 'ef-map-chichinales',
+      'RS REGINA CENTRO':'ef-map-vregina', 'RS REGINA': 'ef-map-vregina', 'V.REGINA': 'ef-map-vregina',
+      'RS REGINA RUTA 2016':'ef-map-vregina2016', 'V.REGINA 2016':'ef-map-vregina2016',
+      'RS ROCA':'ef-map-roca', 'RS ROCA 11902':'ef-map-roca',
+      'AGRO ROCA':'ef-map-agroroca','AGRO ROCA-PAL':'ef-map-agroroca',
+      'AGRO PAL':'ef-map-agrochoele','AGRO CHOELE':'ef-map-agrochoele',
+      'SC CINCO SALTOS  1535':'ef-map-csaltos','SC CINCO SALTOS':'ef-map-csaltos',
+      'SC ESMERALDA 15431':'ef-map-cip15431','SC ESMERALDA':'ef-map-cip15431',
+      'SC PACHECO 1539':'ef-map-cip1539','SC PACHECO':'ef-map-cip1539',
+    };
+    Object.values(mapaMap).forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
+    const porEst={};
+    estaciones.forEach(est=>{
+      const k=est.nombre; if(!k) return;
+      if(!porEst[k]) porEst[k]={nombre:k,empresa:est.empresa,efectivo:0,cajero:0,fondosNoDep:0,erogaciones:0};
+      porEst[k].efectivo+=est.efectivo||0; porEst[k].cajero+=est.cajero||0;
+      porEst[k].fondosNoDep+=est.fondosNoDep||0; porEst[k].erogaciones+=est.erogaciones||0;
+    });
+    Object.values(porEst).forEach(est=>{
+      const mapId=mapaMap[est.nombre.toUpperCase().trim()];
+      if(mapId){const el=document.getElementById(mapId);if(el)el.textContent=fmtARS(est.efectivo);}
+    });
+    // Cards por estación
+    const bySubEl=document.getElementById('efectivo-by-sub');
+    if(bySubEl){
+      const ests=Object.values(porEst).sort((a,b)=>b.efectivo-a.efectivo);
+      if(!ests.length){
+        bySubEl.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:16px;font-size:12px">Sin datos — importá la Minuta</div>';
+      } else {
+        const ec=n=>n&&n.includes('Cipolletti')?'#4a9fd4':n&&(n.includes('AGRO')||n.includes('Agro'))?'#fbbf24':'#4ade80';
+        bySubEl.innerHTML=ests.map(est=>{
+          const col=ec(est.empresa||est.nombre);
+          return '<div style="background:var(--card);border:1px solid '+col+'22;border-radius:10px;padding:11px">'+
+            '<div style="font-size:11px;font-weight:700;color:'+col+';margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+est.nombre+'">'+est.nombre+'</div>'+
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">'+
+            '<div style="font-size:9px;color:var(--text3)">Efectivo<br><span style="font-size:12px;font-weight:700;color:var(--green);font-family:var(--mono)">'+fmtARS(est.efectivo)+'</span></div>'+
+            '<div style="font-size:9px;color:var(--text3)">Cajero<br><span style="font-size:12px;font-weight:700;color:var(--yellow);font-family:var(--mono)">'+fmtARS(est.cajero)+'</span></div>'+
+            '<div style="font-size:9px;color:var(--text3)">Erogaciones<br><span style="font-size:12px;font-weight:700;color:var(--red);font-family:var(--mono)">'+fmtARS(est.erogaciones)+'</span></div>'+
+            '<div style="font-size:9px;color:var(--text3)">Fondos no dep.<br><span style="font-size:12px;font-weight:700;color:#a78bfa;font-family:var(--mono)">'+fmtARS(est.fondosNoDep)+'</span></div>'+
+            '</div></div>';
+        }).join('');
+      }
+    }
+  } catch(e) { console.warn('ef-kpis:', e); }
+
+  // ── Tabla de movimientos (original) ───────────────────────
+  let all = [];
+  allEmp.forEach(e => {
+    if (!e) return;
+    (e.transactions||[]).filter(t=>t.cat==='Efectivo').forEach(t => {
+      const fRef = t.date||'';
+      if (fDesde && fRef < fDesde) return;
+      if (fHasta && fRef > fHasta) return;
+      if (!fDesde && !fHasta && dateFilterFrom && fRef < dateFilterFrom) return;
+      if (!fDesde && !fHasta && dateFilterTo   && fRef > dateFilterTo)   return;
+      if (fEmp && !e.name.includes(fEmp)) return;
+      if (fTipo && t.type !== fTipo) return;
+      if (search && !(t.desc||'').toLowerCase().includes(search) && !(t.account||'').toLowerCase().includes(search) && !e.name.toLowerCase().includes(search)) return;
+      all.push({...t, empName:e.name, empColor:e.color||'#6c8fff'});
+    });
+  });
+
+  const efBalDate = activeDateFilter||appState.lastMinutaDate||'';
+  if (efBalDate && !fDesde && !fHasta) {
+    all = all.filter(t => t.date === efBalDate);
+  }
+
+  all.sort((a,b)=>{
+    if(sortVal==='imp_desc') return (b.amount||0)-(a.amount||0);
+    if(sortVal==='imp_asc')  return (a.amount||0)-(b.amount||0);
+    if(sortVal==='fecha_desc') return (b.date||'').localeCompare(a.date||'');
+    if(sortVal==='fecha_asc')  return (a.date||'').localeCompare(b.date||'');
+    return 0;
+  });
+
+  const countEl = document.getElementById('ef-result-count');
+  if (countEl) countEl.textContent = all.length.toLocaleString()+' movimientos';
+
+  const bySubEl2 = document.getElementById('efectivo-by-sub-legacy');
+  if (bySubEl2) {
+    const byEmp = {};
+    allEmp.forEach(e => {
+      if (!e) return;
+      (e.estaciones||[]).forEach(est => {
+        const k = e.name;
+        if (!byEmp[k]) byEmp[k] = { name:k, color:e.color||'#6c8fff', efectivo:0 };
+        byEmp[k].efectivo += est.efectivo || 0;
+      });
+    });
+  }
+
+  const tbody = document.getElementById('efectivo-table');
+  if (!tbody) return;
+  if (!all.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">Sin movimientos de efectivo para el período</td></tr>';
+  } else {
+    tbody.innerHTML = all.map(t=>{
+      const isGasto = t.type==='gasto'||t.type==='egreso';
+      const col = isGasto ? 'var(--red)' : 'var(--green)';
+      return '<tr style="border-bottom:1px solid var(--border)">'+
+        '<td style="padding:9px 12px;white-space:nowrap;color:var(--text3)">'+(t.date||'—')+'</td>'+
+        '<td style="padding:9px 12px;color:var(--text)">'+(t.desc||'—')+'</td>'+
+        '<td style="padding:9px 12px;color:var(--text2)">'+(t.account||'—')+'</td>'+
+        '<td style="padding:9px 12px"><span style="font-size:10px;padding:2px 6px;border-radius:99px;background:'+t.empColor+'22;color:'+t.empColor+'">'+t.empName+'</span></td>'+
+        '<td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-weight:700;color:'+col+'">'+(isGasto?'-':'+')+' '+fmtMoney(Math.abs(t.amount||0))+'</td>'+
+        '<td style="padding:9px 12px;font-size:11px;color:var(--text3)">'+(t.type||'—')+'</td>'+
+      '</tr>';
+    }).join('');
+  }
+
+  const fcount = document.getElementById('ef-footer-count');
+  const ftotal = document.getElementById('ef-footer-total');
+  const total  = all.reduce((s,t)=>s+(t.type==='gasto'||t.type==='egreso'?-(t.amount||0):(t.amount||0)),0);
+  if (fcount) fcount.textContent = all.length.toLocaleString()+' registros';
+  if (ftotal) ftotal.textContent = 'Total: '+fmtMoney(total);
 }
 function _renderEfectivoPageInternal() {
   const allEmp = appState.vistaConsolidada ? appState.empresas : [empresa()];
