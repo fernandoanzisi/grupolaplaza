@@ -13206,8 +13206,6 @@ function renderLimiteCredito() {
   let filtered = data
     .filter(r => !desde  || r.fecha >= desde)
     .filter(r => !hasta  || r.fecha <= hasta)
-    .filter(r => !desde2 || (r.fechaPago && r.fechaPago >= desde2))
-    .filter(r => !hasta2 || (r.fechaPago && r.fechaPago <= hasta2))
     .filter(r => !div    || r.division === div)
     .filter(r => !search || r.division.toLowerCase().includes(search) || r.fecha.includes(search));
 
@@ -13260,8 +13258,8 @@ function isLimiteCredito(wb) {
   try {
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
-    const flat = (rows[0]||[]).concat(rows[1]||[]).concat(rows[2]||[]).map(c=>String(c||'').toLowerCase());
-    return flat.some(c=>c.includes('riesgo')||c.includes('divisiones')||c.includes('capital')||c.includes('otorgado'));
+    const flat = (rows[0]||[]).concat(rows[1]||[]).map(c=>String(c||'').toLowerCase());
+    return flat.some(c=>c.includes('riesgo')||c.includes('divisiones')||c.includes('capital'));
   } catch(e){ return false; }
 }
 
@@ -13290,9 +13288,7 @@ function parseLimiteCredito(wb) {
   }
 
   // Only process date-named sheets (skip 'Hoja5' etc)
-  // Take only last 200 sheets (most recent) to avoid timeout with large files
-  let dateSheets = wb.SheetNames.filter(s => /^\d{1,2}[-\/]\d{2}[-\/]\d{2,4}/.test(s.trim()) && !s.includes('(') && !s.trim().endsWith('T') && !/ T$/.test(s.trim()) && !/ RS/.test(s) && !/ SC/.test(s) && !/\(/.test(s));
-  if (dateSheets.length > 200) dateSheets = dateSheets.slice(-200);
+  const dateSheets = wb.SheetNames.filter(s => /^\d{1,2}[-\/]\d{2}[-\/]\d{2,4}/.test(s.trim()) && !s.includes('(') && !s.includes('T'));
 
   dateSheets.forEach(sn => {
     const fecha = parseFechaSheet(sn);
