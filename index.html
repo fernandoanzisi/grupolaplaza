@@ -12723,6 +12723,17 @@ function riesgoFichaCliente() {
 
     // Texto listo para copiar/pegar por mail
     const fechaHoy = new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const perfilComentario = {
+      'A': 'El cliente presenta un perfil crediticio óptimo. Cumple en tiempo y forma con todas sus obligaciones financieras, sin registros de atrasos ni incidentes en el sistema financiero. Se recomienda operar con normalidad.',
+      'B': 'El cliente presenta un perfil crediticio satisfactorio. Registra cumplimiento general de sus obligaciones, con irregularidades menores que no comprometen su capacidad de pago. Se recomienda operar dentro de los parámetros habituales.',
+      'C': 'El cliente presenta un perfil crediticio aceptable. Su comportamiento de pago es mayormente regular, aunque con algunos antecedentes a monitorear. Se recomienda operar con los recaudos habituales.',
+      'D': 'El cliente presenta un perfil crediticio moderado. Se registran ciertos atrasos o irregularidades que requieren seguimiento. Se recomienda operar con cautela y evaluar los límites de exposición.',
+      'E': 'El cliente presenta atrasos vigentes en el sistema financiero. Su situación crediticia requiere atención. Se recomienda exigir garantías adicionales o restringir la operatoria.',
+      'F': 'El cliente presenta un historial crediticio con limitaciones significativas. Se registran incumplimientos que condicionan su capacidad operativa. Se recomienda operar bajo condiciones estrictamente controladas.',
+      'G': 'El cliente presenta una situación crediticia crítica con deudas en estado irregular o irrecuperable. Se desaconseja operar sin respaldo total. Evaluar con criterio restrictivo.',
+      'I': 'El cliente no cuenta con información crediticia suficiente para emitir una evaluación completa. Se recomienda solicitar documentación respaldatoria adicional antes de operar.',
+    };
+    const comentarioPerfil = perfilComentario[r.perfil] || 'Sin evaluación disponible para este perfil.';
     const mailText = `CONSULTA CREDITICIA — ${fechaHoy}
 
 Cliente: ${r.nombre}
@@ -12734,6 +12745,9 @@ ${r.tipoEmp?'Tipo empresa: '+r.tipoEmp:''}
 
 SITUACIÓN CREDITICIA:
 ${r.verif||'Sin información disponible'}
+
+EVALUACIÓN:
+${comentarioPerfil}
 ${r.alertas.length?'\nALERTAS: '+r.alertas.map(a=>alertText[a]||a).join(', '):''}
 ${r.historial.length>1?'\nEVOLUCIÓN: '+r.historial.slice(0,6).reverse().map(h=>h.lote.replace('nosis_','')+'→'+h.perfil).join(' | '):''}
 
@@ -12761,7 +12775,7 @@ Este informe fue generado automáticamente por FinanzasApp Grupo La Plaza.`;
       (r.alertas.length?'<div style="background:rgba(248,113,113,0.1);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--red)">'+alertsHtml+'</div>':'') +
       '<div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px;background:var(--bg3);border-radius:8px;padding:12px">'+( r.verif||'Sin verificación disponible')+'</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-        '<button onclick="riesgoCopiaMail('+JSON.stringify(mailText.replace(/\n/g,'\\n'))+')" style="padding:8px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent)22;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer">📋 Copiar texto para mail</button>' +
+        '<button onclick="riesgoCopiaMail(\''+encodeURIComponent(mailText)+'\')" style="padding:8px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent)22;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer">📋 Copiar texto para mail</button>' +
         '<button onclick="document.getElementById(\'riesgo-ficha-container\').style.display=\'none\'" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text3);font-size:12px;cursor:pointer">✕ Cerrar</button>' +
       '</div>' +
     '</div>';
@@ -12769,7 +12783,7 @@ Este informe fue generado automáticamente por FinanzasApp Grupo La Plaza.`;
 }
 
 function riesgoCopiaMail(text) {
-  const decoded = text.replace(/\\n/g,'\n');
+  const decoded = decodeURIComponent(text);
   navigator.clipboard.writeText(decoded).then(()=>{
     showToast('✅ Texto copiado — podés pegarlo en tu mail');
   }).catch(()=>{
