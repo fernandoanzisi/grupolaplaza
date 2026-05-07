@@ -16726,19 +16726,10 @@ campos: incluí todos los datos relevantes (cuenta, CUIT, Nº factura, consumo k
 
   // Intentar proxy Vercel primero, luego directo con beta header
   let response;
-  try {
-    response = await fetch('/api/claude', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,system:systemPrompt,messages:[{role:'user',content:userContent}]})
-    });
-  } catch(e) {
-    // Fallback: llamada directa con header beta (funciona si el servidor lo permite)
-    response = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-ipc':'true'},
-      body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,system:systemPrompt,messages:[{role:'user',content:userContent}]})
-    });
-  }
+  response = await fetch('/api/claude', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,system:systemPrompt,messages:[{role:'user',content:userContent}]})
+  });
   if (!response.ok) {
     const errText = await response.text().catch(()=>'');
     throw new Error('API error '+response.status+': '+errText.slice(0,200));
