@@ -440,6 +440,7 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('conciliaciones',this)" data-page="conciliaciones">🔗 Conciliaciones Bancarias</button>
           <button class="nav-dd-item" onclick="navGo('petroleras',this)"      data-page="petroleras">⛽ Pago a Petroleras</button>
           <button class="nav-dd-item" onclick="navGo('pasivos',this)"          data-page="pasivos">📊 Pasivos Financieros</button>
+          <button class="nav-dd-item" onclick="navGo('lector_doc',this)"      data-page="lector_doc">🔍 Lector de Documentos</button>
           <button class="nav-dd-item" onclick="navGo('flota',this)"            data-page="flota">🚗 Flota Automotor</button>
           <button class="nav-dd-item" onclick="navGo('tarjetas',this)"         data-page="tarjetas">💳 Tarjetas de Crédito</button>
           <hr style="border:none;border-top:1px solid var(--border);margin:4px 0">
@@ -8799,6 +8800,7 @@ function navGo(page, triggerEl) {
     'fci':          ()=>renderFci(),
     'petroleras':   ()=>renderPetrolerasPage(),
     'pasivos':      ()=>pasivosRender(),
+    'lector_doc':   ()=>lectorRender(),
     'flota':        ()=>flotaRender(),
     'tarjetas':     ()=>renderTarjetas(),
     'guardia':      ()=>renderGuardia(),
@@ -16560,5 +16562,351 @@ function verClienteRiesgo(encodedNombre) {
 }
 // ── FIN PANEL GUARDIA ─────────────────────────────────────────
 </script>
+
+<div class="page" id="page-lector_doc">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:18px;font-weight:700;color:var(--text)">🔍 Lector de Documentos</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">PDF · Excel · Imágenes · CSV — extracción automática con IA</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="lectorExportarCSV()" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,159,212,0.4);background:rgba(74,159,212,0.1);color:#4a9fd4;cursor:pointer;font-family:var(--font)">📥 Exportar historial</button>
+      <label style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);cursor:pointer;font-family:var(--font)">
+        ＋ Subir documento <input type="file" id="lector-file-input" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.csv" multiple style="display:none" onchange="lectorHandleFiles(this.files)">
+      </label>
+    </div>
+  </div>
+
+  <div id="lector-drop-zone" ondragover="event.preventDefault();this.style.borderColor='#4a9fd4'" ondragleave="this.style.borderColor='rgba(74,159,212,0.3)'" ondrop="event.preventDefault();this.style.borderColor='rgba(74,159,212,0.3)';lectorHandleFiles(event.dataTransfer.files)"
+    style="border:2px dashed rgba(74,159,212,0.3);border-radius:12px;padding:24px;text-align:center;background:rgba(74,159,212,0.04);cursor:pointer;margin-bottom:14px;transition:border-color 0.2s"
+    onclick="document.getElementById('lector-file-input').click()">
+    <div style="font-size:32px;margin-bottom:8px">📂</div>
+    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Arrastrá archivos o hacé clic para seleccionar</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">La IA detecta el tipo automáticamente y extrae todos los datos relevantes</div>
+    <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:9px;font-weight:700;padding:3px 10px;border-radius:99px;background:rgba(248,113,113,0.12);color:#f87171;border:1px solid rgba(248,113,113,0.2)">📄 PDF</span>
+      <span style="font-size:9px;font-weight:700;padding:3px 10px;border-radius:99px;background:rgba(167,139,250,0.12);color:#a78bfa;border:1px solid rgba(167,139,250,0.2)">🖼️ JPG / PNG</span>
+      <span style="font-size:9px;font-weight:700;padding:3px 10px;border-radius:99px;background:rgba(74,222,128,0.12);color:#4ade80;border:1px solid rgba(74,222,128,0.2)">📊 Excel / XLSX</span>
+      <span style="font-size:9px;font-weight:700;padding:3px 10px;border-radius:99px;background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.2)">📋 CSV</span>
+    </div>
+  </div>
+
+  <div id="lector-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px"></div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:12px;align-items:center">
+    <select id="lector-f-cat" onchange="lectorRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%">
+      <option value="">Todas las categorías</option>
+      <option value="banco">🏦 Extracto bancario</option>
+      <option value="tarjeta">💳 Tarjeta crédito</option>
+      <option value="servicio">⚡ Servicio / Impuesto</option>
+      <option value="factura">🧾 Factura / Compra</option>
+      <option value="impuesto">🏛️ Impuesto / AFIP</option>
+      <option value="sueldo">📑 Recibo de sueldo</option>
+      <option value="otro">📄 Otro</option>
+    </select>
+    <select id="lector-f-emp" onchange="lectorRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%">
+      <option value="">Todas las empresas</option>
+      <option>Rio Salado SRL</option>
+      <option>Servicios Cipolletti SRL</option>
+      <option>La Plaza SA</option>
+      <option>Grupo</option>
+    </select>
+    <input id="lector-f-desde" type="date" onchange="lectorRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%">
+    <input id="lector-f-hasta" type="date" onchange="lectorRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%">
+    <input id="lector-f-q" type="text" placeholder="🔍 Buscar..." oninput="lectorRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%">
+    <button onclick="document.getElementById('lector-f-cat').value='';document.getElementById('lector-f-emp').value='';document.getElementById('lector-f-desde').value='';document.getElementById('lector-f-hasta').value='';document.getElementById('lector-f-q').value='';lectorRender()" style="padding:6px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:11px;cursor:pointer;font-family:var(--font);white-space:nowrap">✕ Limpiar</button>
+  </div>
+
+  <div id="lector-ia-panel" style="display:none;margin-bottom:14px"></div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px" id="lector-table-title">📋 Historial de documentos</div>
+      <button onclick="if(confirm('¿Borrar todo el historial de documentos?')){localStorage.removeItem('lector_docs_v1');lectorRender();showToast('🗑 Historial borrado');}" style="background:none;border:1px solid rgba(248,113,113,0.3);color:#f87171;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font)">🗑 Limpiar todo</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead>
+          <tr style="background:var(--bg2)">
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Archivo</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Categoría</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Empresa</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Ente / Banco</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Período</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Vencimiento</th>
+            <th style="padding:8px 12px;text-align:right;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Importe</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Estado</th>
+            <th style="padding:8px 12px"></th>
+          </tr>
+        </thead>
+        <tbody id="lector-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// LECTOR DE DOCUMENTOS — extracción IA (PDF, imagen, Excel, CSV)
+// Sección nueva independiente — no modifica ningún dato existente
+// ══════════════════════════════════════════════════════════════════
+const LECTOR_STORAGE_KEY = 'lector_docs_v1';
+function lectorGetDocs() { try { return JSON.parse(localStorage.getItem(LECTOR_STORAGE_KEY)||'[]'); } catch(e) { return []; } }
+function lectorSaveDocs(docs) { try { localStorage.setItem(LECTOR_STORAGE_KEY, JSON.stringify(docs)); } catch(e) { showToast('⚠️ Error al guardar en historial'); } }
+
+const LECTOR_CAT_STYLES = {
+  banco:    { label:'🏦 Extracto bancario',  bg:'rgba(74,159,212,0.15)',   color:'#4a9fd4' },
+  tarjeta:  { label:'💳 Tarjeta crédito',    bg:'rgba(167,139,250,0.15)',  color:'#a78bfa' },
+  servicio: { label:'⚡ Servicio/Impuesto',  bg:'rgba(251,191,36,0.12)',   color:'#fbbf24' },
+  factura:  { label:'🧾 Factura/Compra',     bg:'rgba(74,222,128,0.12)',   color:'#4ade80' },
+  impuesto: { label:'🏛️ Impuesto/AFIP',     bg:'rgba(248,113,113,0.12)',  color:'#f87171' },
+  sueldo:   { label:'📑 Recibo de sueldo',   bg:'rgba(74,159,212,0.12)',   color:'#4a9fd4' },
+  otro:     { label:'📄 Otro',               bg:'rgba(120,130,160,0.12)',  color:'#7a8399' },
+};
+function lectorCatTag(cat) {
+  const s = LECTOR_CAT_STYLES[cat] || LECTOR_CAT_STYLES['otro'];
+  return `<span style="font-size:9px;padding:2px 8px;border-radius:99px;font-weight:700;background:${s.bg};color:${s.color}">${s.label}</span>`;
+}
+function lectorFmtMoney(n) { if (!n && n!==0) return '—'; return '$ '+Math.round(n).toLocaleString('es-AR'); }
+
+function lectorReadFile(file) {
+  return new Promise((resolve, reject) => {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (['csv','txt'].includes(ext)) {
+      const r = new FileReader(); r.onload = e => resolve({type:'text',data:e.target.result,ext}); r.onerror=reject; r.readAsText(file);
+    } else {
+      const r = new FileReader(); r.onload = e => resolve({type:'base64',data:e.target.result.split(',')[1],ext,mime:file.type||'application/octet-stream'}); r.onerror=reject; r.readAsDataURL(file);
+    }
+  });
+}
+
+async function lectorExcelToText(file) {
+  return new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, {type:'binary'});
+        let text = '';
+        wb.SheetNames.slice(0,3).forEach(sn => {
+          const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:''});
+          text += `[Hoja: ${sn}]\n`;
+          rows.slice(0,40).forEach(row => { text += row.join('\t')+'\n'; });
+          text += '\n';
+        });
+        resolve(text.slice(0,5000));
+      } catch(ex) { resolve(''); }
+    };
+    r.readAsBinaryString(file);
+  });
+}
+
+async function lectorCallIA(file, fileData) {
+  const ext = fileData.ext;
+  const isImage = ['jpg','jpeg','png','gif','webp'].includes(ext);
+  const isPdf   = ext==='pdf';
+  const isCsv   = ['csv','txt'].includes(ext);
+
+  const systemPrompt = `Sos un asistente experto en análisis de documentos financieros argentinos.
+Analizás extractos bancarios, facturas, resúmenes de tarjeta, servicios (EDERSA, CAMUZZI, AySA, etc.), impuestos (AFIP, ARCA, Rentas, municipal), recibos de sueldo y cualquier documento financiero.
+Respondé SOLO con un objeto JSON válido, sin texto adicional, sin markdown, sin backticks.
+El JSON debe tener exactamente esta estructura:
+{"categoria":"banco|tarjeta|servicio|factura|impuesto|sueldo|otro","ente":"nombre del banco o ente emisor","empresa":"empresa destinataria si la detectás","periodo":"período del documento","fecha_doc":"YYYY-MM-DD o vacío","vencimiento":"YYYY-MM-DD o vacío","importe_total":0,"moneda":"ARS|USD","resumen":"descripción breve en 1 línea","campos":[{"label":"nombre","valor":"valor"}],"movimientos":[{"fecha":"YYYY-MM-DD","descripcion":"texto","importe":0,"tipo":"debito|credito"}]}
+campos: incluí todos los datos relevantes (cuenta, CUIT, Nº factura, consumo kWh, etc.). movimientos: hasta 20 ítems de detalle. Si no hay, dejá array vacío.`;
+
+  let userContent = [];
+  if (isImage) {
+    userContent = [{type:'image',source:{type:'base64',media_type:fileData.mime,data:fileData.data}},{type:'text',text:`Analizá esta imagen del documento "${file.name}" y extraé todos los datos financieros.`}];
+  } else if (isPdf) {
+    userContent = [{type:'document',source:{type:'base64',media_type:'application/pdf',data:fileData.data}},{type:'text',text:`Analizá este PDF "${file.name}" y extraé todos los datos financieros relevantes.`}];
+  } else {
+    userContent = [{type:'text',text:`Analizá este archivo "${file.name}":\n\n${fileData.data.slice(0,4000)}\n\nExtraé todos los datos financieros relevantes.`}];
+  }
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,system:systemPrompt,messages:[{role:'user',content:userContent}]})
+  });
+  if (!response.ok) throw new Error('API error '+response.status);
+  const data = await response.json();
+  const raw = data.content?.find(b=>b.type==='text')?.text||'{}';
+  return JSON.parse(raw.replace(/```json|```/g,'').trim());
+}
+
+async function lectorHandleFiles(files) {
+  if (!files||!files.length) return;
+  const panel = document.getElementById('lector-ia-panel');
+  for (const file of Array.from(files)) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['pdf','jpg','jpeg','png','xlsx','xls','csv','txt'].includes(ext)) { showToast('⚠️ Formato no soportado: '+ext); continue; }
+    if (panel) { panel.style.display='block'; panel.innerHTML=lectorPanelLoading(file.name); }
+    try {
+      let fileData;
+      if (['xlsx','xls'].includes(ext)) {
+        const excelText = await lectorExcelToText(file);
+        fileData = {type:'text',data:excelText,ext};
+      } else {
+        fileData = await lectorReadFile(file);
+      }
+      const result = await lectorCallIA(file, fileData);
+      const doc = {
+        id: Date.now()+'_'+Math.random().toString(36).slice(2,7),
+        nombre:file.name, ext, fecha_carga:new Date().toISOString().slice(0,10),
+        hora_carga:new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}),
+        size:(file.size/1024).toFixed(0)+' KB',
+        categoria:result.categoria||'otro', ente:result.ente||'', empresa:result.empresa||'',
+        periodo:result.periodo||'', fecha_doc:result.fecha_doc||'', vencimiento:result.vencimiento||'',
+        importe_total:result.importe_total||0, moneda:result.moneda||'ARS',
+        resumen:result.resumen||'', campos:result.campos||[], movimientos:result.movimientos||[],
+      };
+      const docs = lectorGetDocs(); docs.unshift(doc);
+      if (docs.length>200) docs.splice(200);
+      lectorSaveDocs(docs);
+      if (panel) { panel.style.display='block'; panel.innerHTML=lectorPanelResult(doc); }
+      lectorRender();
+      showToast('✅ "'+file.name+'" analizado correctamente');
+    } catch(err) {
+      console.error('lectorHandleFiles:',err);
+      if (panel) { panel.style.display='block'; panel.innerHTML=`<div style="background:var(--card);border:1px solid rgba(248,113,113,0.3);border-radius:10px;padding:14px;color:#f87171;font-size:12px">⚠️ Error al analizar "${file.name}": ${err.message}</div>`; }
+      showToast('⚠️ Error al procesar '+file.name);
+    }
+  }
+  const inp = document.getElementById('lector-file-input');
+  if (inp) inp.value='';
+}
+
+function lectorPanelLoading(nombre) {
+  return `<div style="background:var(--card);border:1.5px solid rgba(167,139,250,0.22);border-radius:12px;padding:20px;text-align:center">
+    <div style="font-size:24px;margin-bottom:8px">🤖</div>
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">Analizando "${nombre}"...</div>
+    <div style="font-size:11px;color:var(--text3)">La IA está leyendo y extrayendo los datos del documento</div>
+    <div style="margin-top:12px;height:3px;background:var(--bg3);border-radius:99px;overflow:hidden">
+      <div id="lector-progress-bar" style="height:100%;width:30%;background:#a78bfa;border-radius:99px;transition:width 0.5s"></div>
+    </div>
+  </div>`;
+}
+
+function lectorPanelResult(doc) {
+  const camposHtml = (doc.campos||[]).map(c =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+      <span style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px">${c.label}</span>
+      <span style="font-size:11px;font-weight:600;color:var(--text);font-family:var(--mono)">${c.valor}</span>
+    </div>`).join('');
+  const movsHtml = (doc.movimientos||[]).slice(0,15).map(m =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px">
+      <span style="color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.descripcion||''}</span>
+      <span style="color:var(--text3);font-size:9px;margin:0 8px">${m.fecha||''}</span>
+      <span style="font-family:var(--mono);font-weight:700;color:${m.tipo==='credito'?'#4ade80':'#f87171'}">${m.tipo==='credito'?'+':'-'} ${lectorFmtMoney(Math.abs(m.importe||0))}</span>
+    </div>`).join('');
+  return `<div style="background:var(--card);border:1.5px solid rgba(167,139,250,0.22);border-radius:12px;overflow:hidden">
+    <div style="background:var(--bg2);padding:11px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:1px">🤖 Análisis IA — ${doc.nombre}</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:9px;color:#4ade80;font-weight:700">✓ Procesado</span>
+        ${lectorCatTag(doc.categoria)}
+        <button onclick="document.getElementById('lector-ia-panel').style.display='none'" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 6px">✕</button>
+      </div>
+    </div>
+    <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="background:var(--bg2);border-radius:8px;padding:12px">
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;font-weight:700">Datos extraídos</div>
+        ${camposHtml||'<div style="font-size:11px;color:var(--text3)">Sin campos adicionales</div>'}
+        ${doc.importe_total?`<div style="display:flex;justify-content:space-between;padding:8px 0 0;margin-top:4px;border-top:1px solid rgba(255,255,255,0.08)"><span style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;font-weight:700">TOTAL DETECTADO</span><span style="font-size:15px;font-weight:700;color:#f87171;font-family:var(--mono)">${lectorFmtMoney(doc.importe_total)}</span></div>`:''}
+      </div>
+      <div style="background:var(--bg2);border-radius:8px;padding:12px">
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;font-weight:700">Movimientos / Detalle (${(doc.movimientos||[]).length})</div>
+        ${movsHtml||'<div style="font-size:11px;color:var(--text3)">Sin movimientos detallados</div>'}
+      </div>
+    </div>
+    ${doc.resumen?`<div style="padding:8px 14px 10px;font-size:10px;color:var(--text3);border-top:1px solid var(--border)">📝 ${doc.resumen}</div>`:''}
+  </div>`;
+}
+
+function lectorRender() {
+  let docs = lectorGetDocs();
+  const fCat   = document.getElementById('lector-f-cat')?.value||'';
+  const fEmp   = document.getElementById('lector-f-emp')?.value||'';
+  const fDesde = document.getElementById('lector-f-desde')?.value||'';
+  const fHasta = document.getElementById('lector-f-hasta')?.value||'';
+  const fQ     = (document.getElementById('lector-f-q')?.value||'').toLowerCase();
+  let filtered = docs.filter(d => {
+    if (fCat && d.categoria!==fCat) return false;
+    if (fEmp && !d.empresa.includes(fEmp)) return false;
+    if (fDesde && d.fecha_carga<fDesde) return false;
+    if (fHasta && d.fecha_carga>fHasta) return false;
+    if (fQ && !d.nombre.toLowerCase().includes(fQ) && !d.ente.toLowerCase().includes(fQ) && !(d.resumen||'').toLowerCase().includes(fQ)) return false;
+    return true;
+  });
+
+  const kpiEl = document.getElementById('lector-kpis');
+  if (kpiEl) {
+    const totalImp  = docs.reduce((s,d)=>s+(d.importe_total||0),0);
+    const servicios = docs.filter(d=>d.categoria==='servicio'||d.categoria==='impuesto').reduce((s,d)=>s+(d.importe_total||0),0);
+    const bancos    = docs.filter(d=>d.categoria==='banco').length;
+    const catCount  = {};
+    docs.forEach(d=>{ catCount[d.categoria]=(catCount[d.categoria]||0)+1; });
+    const topCat = Object.entries(catCount).sort((a,b)=>b[1]-a[1])[0];
+    const s = n=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px">`;
+    kpiEl.innerHTML =
+      `${s()}  <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">📄 Documentos totales</div><div style="font-size:16px;font-weight:700;font-family:var(--mono);color:#4a9fd4">${docs.length}</div></div>`+
+      `${s()}  <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">💸 Total detectado</div><div style="font-size:16px;font-weight:700;font-family:var(--mono);color:#f87171">${lectorFmtMoney(totalImp)}</div></div>`+
+      `${s()}  <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">⚡ Servicios/Impuestos</div><div style="font-size:16px;font-weight:700;font-family:var(--mono);color:#fbbf24">${lectorFmtMoney(servicios)}</div></div>`+
+      `${s()}  <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">🏦 Extractos bancarios</div><div style="font-size:16px;font-weight:700;font-family:var(--mono);color:#4ade80">${bancos}</div></div>`+
+      `${s()}  <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">📂 Categoría principal</div><div style="font-size:12px;font-weight:700;color:#a78bfa">${topCat?(LECTOR_CAT_STYLES[topCat[0]]?.label||topCat[0]):'—'}</div></div>`;
+  }
+
+  const titleEl = document.getElementById('lector-table-title');
+  if (titleEl) titleEl.textContent = `📋 Historial de documentos (${filtered.length}${filtered.length!==docs.length?' de '+docs.length:''})`;
+
+  const tbody = document.getElementById('lector-tbody');
+  if (!tbody) return;
+  if (!filtered.length) {
+    tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3)"><div style="font-size:28px;margin-bottom:8px">📂</div><div style="font-weight:700;margin-bottom:4px">${docs.length?'Sin resultados con estos filtros':'Todavía no hay documentos analizados'}</div><div style="font-size:11px">${docs.length?'Probá limpiar los filtros':'Subí un PDF, imagen o Excel para empezar'}</div></td></tr>`;
+    return;
+  }
+  const extIcon = e=>({'pdf':'📄','jpg':'🖼️','jpeg':'🖼️','png':'🖼️','xlsx':'📊','xls':'📊','csv':'📋','txt':'📝'}[e]||'📄');
+  const today = new Date().toISOString().slice(0,10);
+  tbody.innerHTML = filtered.map(d => {
+    const vCol = d.vencimiento?(d.vencimiento<today?'color:#f87171;font-weight:700':d.vencimiento<=today.slice(0,7)+'-31'?'color:#fbbf24;font-weight:700':'color:var(--text)'):'';
+    return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer" onclick="lectorVerDoc('${d.id}')">
+      <td style="padding:9px 12px"><div style="font-weight:600;color:var(--text)">${extIcon(d.ext)} ${d.nombre}</div><div style="font-size:9px;color:var(--text3);margin-top:2px">${d.fecha_carga} ${d.hora_carga||''} · ${d.size||''}</div></td>
+      <td style="padding:9px 12px">${lectorCatTag(d.categoria)}</td>
+      <td style="padding:9px 12px;font-size:11px;color:var(--text3)">${d.empresa||'—'}</td>
+      <td style="padding:9px 12px;font-size:11px;font-weight:600;color:var(--text)">${d.ente||'—'}</td>
+      <td style="padding:9px 12px;font-size:11px;font-family:var(--mono)">${d.periodo||'—'}</td>
+      <td style="padding:9px 12px;font-size:11px;${vCol}">${d.vencimiento||'—'}</td>
+      <td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-weight:700;color:${d.importe_total?'#f87171':'var(--text3)'}">${d.importe_total?lectorFmtMoney(d.importe_total):'—'}</td>
+      <td style="padding:9px 12px"><span style="font-size:9px;color:#4ade80;font-weight:700">✓ Analizado</span></td>
+      <td style="padding:9px 12px"><div style="display:flex;gap:5px">
+        <button onclick="event.stopPropagation();lectorVerDoc('${d.id}')" style="background:rgba(74,159,212,0.1);border:1px solid rgba(74,159,212,0.3);color:#4a9fd4;padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font)">👁 Ver</button>
+        <button onclick="event.stopPropagation();lectorBorrarDoc('${d.id}')" style="background:none;border:1px solid rgba(248,113,113,0.25);color:#f87171;padding:3px 8px;border-radius:6px;font-size:10px;cursor:pointer;font-family:var(--font)">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function lectorVerDoc(id) {
+  const doc = lectorGetDocs().find(d=>d.id===id);
+  if (!doc) return;
+  const panel = document.getElementById('lector-ia-panel');
+  if (panel) { panel.style.display='block'; panel.innerHTML=lectorPanelResult(doc); panel.scrollIntoView({behavior:'smooth',block:'start'}); }
+}
+function lectorBorrarDoc(id) {
+  if (!confirm('¿Eliminar este documento del historial?')) return;
+  lectorSaveDocs(lectorGetDocs().filter(d=>d.id!==id));
+  lectorRender(); showToast('🗑 Documento eliminado del historial');
+}
+function lectorExportarCSV() {
+  const docs = lectorGetDocs();
+  if (!docs.length) { showToast('⚠️ No hay documentos para exportar'); return; }
+  const headers = ['Archivo','Categoría','Empresa','Ente','Período','Fecha doc','Vencimiento','Importe','Moneda','Resumen','Fecha carga'];
+  const rows = docs.map(d=>[d.nombre,d.categoria,d.empresa,d.ente,d.periodo,d.fecha_doc,d.vencimiento,d.importe_total||0,d.moneda||'ARS',d.resumen,d.fecha_carga]);
+  const csv = [headers,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='lector_documentos_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  showToast('📥 CSV exportado');
+}
+</script>
+
 </body>
 </html>
