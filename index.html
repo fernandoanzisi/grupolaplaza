@@ -3542,7 +3542,7 @@ function renderDashboard() {
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span id="dash-noticias-badge-surt" onclick="filtrarNoticias('surt')" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer;background:rgba(74,222,128,0.12);color:#4ade80;border:1px solid rgba(74,222,128,0.25)">Surtidores</span>
-        <span id="dash-noticias-badge-inf" onclick="filtrarNoticias('inf')" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer;background:rgba(74,159,212,0.12);color:var(--accent);border:1px solid rgba(74,159,212,0.25)">Infobae</span>
+        <span id="dash-noticias-badge-inf" onclick="filtrarNoticias('inf')" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer;background:rgba(74,159,212,0.12);color:var(--accent);border:1px solid rgba(74,159,212,0.25)">Río Negro</span>
         <span id="dash-noticias-badge-amb" onclick="filtrarNoticias('amb')" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer;background:rgba(167,139,250,0.12);color:var(--purple);border:1px solid rgba(167,139,250,0.25)">Ámbito</span>
         <span id="dash-noticias-badge-cro" onclick="filtrarNoticias('cro')" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer;background:rgba(251,191,36,0.12);color:var(--yellow);border:1px solid rgba(251,191,36,0.25)">Cronista</span>
         <span id="dash-noticias-badge-all" onclick="filtrarNoticias('all')" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer;background:rgba(255,255,255,0.08);color:var(--text2);border:1px solid var(--border2)">Todos ✓</span>
@@ -3555,7 +3555,7 @@ function renderDashboard() {
     <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <span style="font-size:9px;color:#4ade80">✓ surtidores.com.ar</span>
-        <span style="font-size:9px;color:var(--accent)">✓ infobae.com</span>
+        <span style="font-size:9px;color:var(--accent)">✓ rionegro.com.ar</span>
         <span style="font-size:9px;color:var(--purple)">✓ ambito.com</span>
         <span style="font-size:9px;color:var(--yellow)">✓ cronista.com</span>
       </div>
@@ -11253,6 +11253,9 @@ async function cacheCargarTodo() {
       } catch(e) { console.warn('cacheCargarTodo parse ['+row.clave+']:', e); }
     }
     console.log('✅ Cache cargado desde Supabase:', data.map(r=>r.clave).join(', '));
+    // Renderizar rechazados con datos recién cargados
+    if (typeof renderRechazados       === 'function') renderRechazados();
+    if (typeof renderRechAlertasPanel === 'function') renderRechAlertasPanel();
   } catch(e) { console.warn('cacheCargarTodo error:', e); }
 }
 // ── FIN APP_CACHE ────────────────────────────────────────────────────────
@@ -15617,8 +15620,8 @@ window._noticiasTimer = null;
 const NOTICIAS_FUENTES = [
   { key:'surt', label:'Surtidores', color:'#4ade80', bg:'rgba(74,222,128,0.12)', border:'rgba(74,222,128,0.25)',
     urls:['https://www.surtidores.com.ar/feed/','https://surtidores.com.ar/feed/'] },
-  { key:'inf',  label:'Infobae',    color:'#4a9fd4', bg:'rgba(74,159,212,0.12)', border:'rgba(74,159,212,0.25)',
-    urls:['https://www.infobae.com/economia/feed/','https://www.infobae.com/feeds/rss/economia.xml'] },
+  { key:'inf',  label:'Río Negro',   color:'#4a9fd4', bg:'rgba(74,159,212,0.12)', border:'rgba(74,159,212,0.25)',
+    urls:['https://www.rionegro.com.ar/feed/','https://www.rionegro.com.ar/economia/feed/'] },
   { key:'amb',  label:'Ámbito',     color:'#a78bfa', bg:'rgba(167,139,250,0.12)', border:'rgba(167,139,250,0.25)',
     urls:['https://www.ambito.com/rss/pages/economia.xml','https://www.ambito.com/rss/economia.xml'] },
   { key:'cro',  label:'Cronista',   color:'#fbbf24', bg:'rgba(251,191,36,0.12)', border:'rgba(251,191,36,0.25)',
