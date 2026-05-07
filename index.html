@@ -1120,6 +1120,7 @@ let _supaUser=null,_supaRol=null;
       <div id="chq-result-count" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="(function(){const w=document.getElementById('chq-historial-wrap');if(!w)return;const show=w.style.display==='none'||!w.style.display;w.style.display=show?'block':'none';if(show)chequesHistorialRender();})()" style="padding:7px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,159,212,0.35);background:rgba(74,159,212,0.1);color:#4a9fd4;cursor:pointer">📜 Historial</button>
       <button onclick="openAddCheque()" style="padding:7px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);cursor:pointer">＋ Nuevo cheque</button>
       <button onclick="exportChequesExcel()" style="padding:7px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);cursor:pointer">📥 Excel</button>
     </div>
@@ -1271,6 +1272,20 @@ let _supaUser=null,_supaRol=null;
 
   <!-- GRÁFICOS -->
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px" id="chq-graficos"></div>
+
+  <!-- HISTORIAL CARTERA -->
+  <div id="chq-historial-wrap" style="display:none;margin-bottom:14px">
+    <div style="background:var(--card);border:1.5px solid rgba(74,159,212,0.22);border-radius:12px;overflow:hidden">
+      <div style="background:var(--bg2);padding:11px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.07)">
+        <div style="font-size:10px;font-weight:700;color:#4a9fd4;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:6px">
+          📜 Historial de cartera
+          <span style="background:rgba(74,222,128,0.15);color:#4ade80;border:1px solid rgba(74,222,128,0.3);border-radius:99px;font-size:8px;font-weight:700;padding:1px 6px">NUEVO</span>
+        </div>
+        <span style="font-size:9px;color:var(--text3)">● Se guarda automáticamente al importar el Excel</span>
+      </div>
+      <div style="padding:12px 14px" id="chq-historial-panel"></div>
+    </div>
+  </div>
 
   <!-- TABLA -->
   <div class="card" style="padding:0;overflow:hidden">
@@ -5748,6 +5763,7 @@ function handleFile(input) {
         statusEl.innerHTML = result.html;
         showToast('📋 Cartera de valores importada — ' + result.total + ' cheques');
         if (typeof renderCheques === 'function') renderCheques();
+        if (typeof chequesHistorialGuardar === 'function') chequesHistorialGuardar();
         return;
       }
 
@@ -5837,6 +5853,7 @@ function handleFile(input) {
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
         showToast('✅ Cartera DEBO — ' + result.total.toLocaleString() + ' cheques');
         if (typeof renderCarteraDebo === 'function') renderCarteraDebo();
+        if (typeof chequesHistorialGuardar === 'function') chequesHistorialGuardar();
         if (typeof navGo === 'function') navGo('cartera', null);
         return;
       }
@@ -6909,6 +6926,94 @@ function chqLimpiarFiltros() {
   renderCheques();
 }
 
+
+// ── HISTORIAL DE CARTERA — snapshot automatico al importar ──────────
+function chequesHistorialGuardar() {
+  try {
+    const all = [];
+    (appState.empresas||[]).forEach(e => {
+      (e.cheques||[]).forEach(c => { if((c.estado||'').toUpperCase()==='EN CARTERA') all.push(c); });
+    });
+    const total   = all.length;
+    const monto   = all.reduce((s,c)=>s+(c.importe||0),0);
+    const hoy     = new Date().toISOString().slice(0,10);
+    const hora    = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    const venc    = all.filter(c=>{const f=c.fCobro||c.fVto||c.fPres||'';return f&&f<hoy;}).reduce((s,c)=>s+(c.importe||0),0);
+    const cliMap  = {};
+    all.forEach(c=>{ const k=c.cliente||c.librador||''; if(k) cliMap[k]=(cliMap[k]||0)+(c.importe||0); });
+    const topCli  = Object.entries(cliMap).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
+    const snap    = { fecha: hoy, hora, total, monto, vencidos: venc, topCliente: topCli };
+    let hist      = JSON.parse(localStorage.getItem('chq_historial_v1')||'[]');
+    hist = hist.filter(h=>h.fecha !== hoy); // reemplaza si ya hay uno de hoy
+    hist.unshift(snap);
+    if (hist.length > 90) hist = hist.slice(0, 90); // max 90 dias
+    localStorage.setItem('chq_historial_v1', JSON.stringify(hist));
+    console.log('✅ Historial cartera guardado:', snap);
+  } catch(e) { console.warn('chequesHistorialGuardar error:', e); }
+}
+
+function chequesHistorialRender() {
+  const el = document.getElementById('chq-historial-panel');
+  if (!el) return;
+  let hist = [];
+  try { hist = JSON.parse(localStorage.getItem('chq_historial_v1')||'[]'); } catch(e){}
+  if (!hist.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:10px 0">Todavía no hay snapshots. Se guardan automáticamente cada vez que importás el Excel de cartera.</div>';
+    return;
+  }
+  const fmt = n => '$ ' + Math.round(n).toLocaleString('es-AR');
+  const rows = hist.map((h, i) => {
+    const prev = hist[i+1];
+    let varHtml = '<span style="font-size:9px;color:var(--text3)">—</span>';
+    if (prev && prev.monto > 0) {
+      const pct = ((h.monto - prev.monto) / prev.monto * 100).toFixed(1);
+      const col = pct >= 0 ? '#4ade80' : '#f87171';
+      const arrow = pct >= 0 ? '▲' : '▼';
+      varHtml = '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px;background:'+(pct>=0?'rgba(74,222,128,0.12)':'rgba(248,113,113,0.12)')+';color:'+col+'">'+arrow+' '+Math.abs(pct)+'%</span>';
+    } else if (i === hist.length-1) {
+      varHtml = '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px;background:rgba(251,191,36,0.1);color:#fbbf24">— base</span>';
+    }
+    const esHoy = h.fecha === new Date().toISOString().slice(0,10);
+    return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'+
+      '<td style="padding:8px 10px;font-size:10px;color:'+(esHoy?'#4ade80':'#c8cede')+';font-weight:'+(esHoy?'700':'400')+'">'+(esHoy?'Hoy — ':'')+h.fecha+(h.hora?' '+h.hora:'')+'</td>'+
+      '<td style="padding:8px 10px;font-size:10px;font-family:var(--mono);color:var(--text)">'+h.total.toLocaleString('es-AR')+'</td>'+
+      '<td style="padding:8px 10px;font-size:10px;font-family:var(--mono);color:#4a9fd4">'+fmt(h.monto)+'</td>'+
+      '<td style="padding:8px 10px;font-size:10px;font-family:var(--mono);color:#f87171">'+fmt(h.vencidos)+'</td>'+
+      '<td style="padding:8px 10px;font-size:10px;color:var(--text2);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+h.topCliente+'</td>'+
+      '<td style="padding:8px 10px">'+varHtml+'</td>'+
+    '</tr>';
+  }).join('');
+
+  // KPIs resumen
+  const ultimo = hist[0], primero = hist[hist.length-1];
+  const varTotal = primero && primero.monto > 0 ? ((ultimo.monto - primero.monto)/primero.monto*100).toFixed(1) : null;
+  const kpiCol = varTotal > 0 ? '#4ade80' : varTotal < 0 ? '#f87171' : '#fbbf24';
+
+  el.innerHTML =
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:12px">'+
+      '<div style="background:var(--bg2);border-radius:8px;padding:9px 10px"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Snapshots</div><div style="font-size:13px;font-weight:700;font-family:var(--mono);color:#4a9fd4">'+hist.length+'</div></div>'+
+      '<div style="background:var(--bg2);border-radius:8px;padding:9px 10px"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Primer registro</div><div style="font-size:12px;font-weight:700;font-family:var(--mono);color:var(--text)">'+primero.fecha+'</div></div>'+
+      '<div style="background:var(--bg2);border-radius:8px;padding:9px 10px"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Último registro</div><div style="font-size:12px;font-weight:700;font-family:var(--mono);color:#4ade80">'+ultimo.fecha+'</div></div>'+
+      '<div style="background:var(--bg2);border-radius:8px;padding:9px 10px"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">Variación período</div><div style="font-size:13px;font-weight:700;font-family:var(--mono);color:'+kpiCol+'">'+(varTotal!==null?(varTotal>0?'▲ +':'▼ ')+varTotal+'%':'—')+'</div></div>'+
+    '</div>'+
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'+
+      '<thead><tr style="background:var(--bg2)">'+
+        '<th style="padding:7px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Fecha importación</th>'+
+        '<th style="padding:7px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Cheques en cartera</th>'+
+        '<th style="padding:7px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Total cartera</th>'+
+        '<th style="padding:7px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Vencidos</th>'+
+        '<th style="padding:7px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Top cliente</th>'+
+        '<th style="padding:7px 10px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Vs. anterior</th>'+
+      '</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table></div>'+
+    '<div style="font-size:9px;color:var(--text3);margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07)">'+
+      'Los snapshots se guardan en el navegador (localStorage). Persisten aunque cierres la pestaña. '+
+      '<button onclick="if(confirm(\'¿Borrar todo el historial?\')){{localStorage.removeItem(\'chq_historial_v1\');chequesHistorialRender();}}" style="background:none;border:none;color:#f87171;font-size:9px;cursor:pointer;font-family:var(--font);margin-left:6px">🗑 Limpiar historial</button>'+
+    '</div>';
+}
+// ── FIN HISTORIAL CARTERA ────────────────────────────────────────────
+
 function renderCheques() {
   ensureNewArrays();
 
@@ -7067,9 +7172,9 @@ function renderCheques() {
       '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Por tipo</div>'+
       [['E-Cheq',tipoMap.ECheq,'var(--accent)'],['Físico',tipoMap.Fisico,'var(--text3)'],['Agro',tipoMap.Agro,'var(--yellow)']].map(([l,n,c])=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div style="width:45px;font-size:10px;color:'+c+'">'+l+'</div><div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="height:100%;background:'+c+';width:'+Math.round((n/Math.max(filtered.length,1))*100)+'%"></div></div><div style="font-size:9px;color:var(--text3);width:30px;text-align:right">'+n+'</div></div>').join('')+
       '</div>';
-    // Top 5 clientes
+    // Top 5 clientes — solo EN CARTERA activa (excluye históricos Galicia/cobrados)
     const cliMap = {};
-    filtered.forEach(c=>{ const k=c.cliente||c.librador||''; if(k) cliMap[k]=(cliMap[k]||0)+(c.importe||0); });
+    filtered.filter(c=>(c.estadoActual||c.estado||'').toUpperCase()==='EN CARTERA').forEach(c=>{ const k=c.cliente||c.librador||''; if(k) cliMap[k]=(cliMap[k]||0)+(c.importe||0); });
     const top5 = Object.entries(cliMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
     const promedio = filtered.length ? filtered.reduce((s,c)=>s+(c.importe||0),0)/filtered.length : 0;
     const topHtml = '<div class="card" style="padding:12px"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🏆 Top 5 clientes</div>'+
