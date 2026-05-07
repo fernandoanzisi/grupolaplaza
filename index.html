@@ -2604,7 +2604,7 @@ let _supaUser=null,_supaRol=null;
             <th style="text-align:right">Capital orig.</th>
             <th style="text-align:right">Saldo deuda</th>
             <th style="text-align:right">Cuota / Pago</th>
-            <th>TNA</th><th>Próx. venc.</th><th>Progreso</th><th>Estado</th><th></th>
+            <th>TNA</th><th>Sistema</th><th>Próx. venc.</th><th>Progreso</th><th>Estado</th><th></th>
           </tr>
         </thead>
         <tbody id="pasivos-tbody">
@@ -14970,6 +14970,7 @@ function pasivosRender() {
           '<td style="text-align:right;font-family:var(--mono);font-weight:700;color:var(--red)">$'+fmtARS(p.saldo||0)+'</td>' +
           '<td style="text-align:right;font-family:var(--mono);font-weight:700">$'+fmtARS(p.cuota||0)+'</td>' +
           '<td style="color:#a78bfa">'+(p.tna?p.tna+'%':'—')+'</td>' +
+          '<td>'+(p.sistema?'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(74,159,212,0.12);color:#4a9fd4">'+(p.sistema==='frances'?'Francés':p.sistema==='aleman'?'Alemán':p.sistema==='plano'?'Plano':'—')+'</span>':'<span style="font-size:10px;color:var(--text3)">—</span>')+'</td>' +
           '<td style="color:'+vencColor+';font-size:10px;white-space:nowrap">'+(diasVenc!==null?(diasVenc<=7?'🚨 ':diasVenc<=30?'⏰ ':'')+p.proxVenc:'—')+'</td>' +
           '<td><div style="width:70px;height:5px;background:var(--bg3);border-radius:99px;overflow:hidden"><div style="height:100%;background:'+col+';width:'+pct.toFixed(0)+'%;border-radius:99px"></div></div><div style="font-size:9px;color:var(--text3);margin-top:2px">'+pct.toFixed(0)+'%</div></td>' +
           '<td><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:'+estadoColor+'22;color:'+estadoColor+'">'+(p.estado||'Vigente')+'</span></td>' +
@@ -15055,6 +15056,42 @@ function abrirModalPasivo(id) {
     '<div id="pas-extra-bien" style="display:'+(o.tipo==='leasing'?'grid':'none')+';grid-template-columns:1fr;gap:12px;margin-bottom:14px">' +
       pasivoField('Bien / Vehículo','pas-bien','text',o.bien||'','Ej: Toyota Hilux 2024 — Pat. AB123') +
     '</div>' +
+    '<div style="background:rgba(74,159,212,0.07);border:1.5px solid rgba(74,159,212,0.22);border-radius:10px;padding:12px 14px;margin-bottom:14px">' +
+      '<div style="font-size:9px;font-weight:700;color:#4a9fd4;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px">⚙️ Sistema de amortización <span style="background:rgba(74,222,128,0.15);color:#4ade80;border:1px solid rgba(74,222,128,0.3);border-radius:99px;font-size:8px;font-weight:700;padding:1px 6px">NUEVO</span></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">' +
+        '<div><div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Sistema</div>' +
+          '<select id="pas-sistema" onchange="pasivosRecalcAmort()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;font-family:var(--font)">' +
+            '<option value="frances"'+((!o.sistema||o.sistema==="frances")?" selected":"")+'>Francés — cuota fija</option>' +
+            '<option value="aleman"'+(o.sistema==="aleman"?" selected":"")+'>Alemán — capital fijo</option>' +
+            '<option value="plano"'+(o.sistema==="plano"?" selected":"")+'>Plano (sólo interés)</option>' +
+          '</select>' +
+          '<div style="font-size:9px;color:var(--text3);margin-top:4px">BNA PYME usa <strong style="color:#4a9fd4">Francés</strong></div>' +
+        '</div>' +
+        '<div><div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Capital original $</div>' +
+          '<input type="number" id="pas-amort-capital" value="'+(o.capitalOrig||0)+'" oninput="pasivosRecalcAmort()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box;font-family:var(--font)">' +
+        '</div>' +
+        '<div><div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">TNA %</div>' +
+          '<input type="number" id="pas-amort-tna" value="'+(o.tna||0)+'" step="0.01" oninput="pasivosRecalcAmort()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box;font-family:var(--font)">' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">' +
+        '<div><div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Cuotas totales</div>' +
+          '<input type="number" id="pas-amort-plazo" value="'+(o.cuotasPend||0)+'" oninput="pasivosRecalcAmort()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box;font-family:var(--font)">' +
+        '</div>' +
+        '<div><div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Cuotas ya pagadas</div>' +
+          '<input type="number" id="pas-amort-pagadas" value="0" oninput="pasivosRecalcAmort()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box;font-family:var(--font)">' +
+        '</div>' +
+        '<div><div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Primer vencimiento</div>' +
+          '<input type="date" id="pas-amort-fecini" value="'+(o.proxVenc||'')+'" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box;font-family:var(--font)">' +
+        '</div>' +
+      '</div>' +
+      '<div style="background:var(--bg2);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">' +
+        '<div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px">Cuota calculada</div><div id="pas-amort-r-cuota" style="font-size:13px;font-weight:700;font-family:var(--mono);color:#fbbf24">—</div></div>' +
+        '<div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px">Saldo actual</div><div id="pas-amort-r-saldo" style="font-size:13px;font-weight:700;font-family:var(--mono);color:#f87171">—</div></div>' +
+        '<div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px">Cuotas pendientes</div><div id="pas-amort-r-pend" style="font-size:13px;font-weight:700;font-family:var(--mono);color:#4a9fd4">—</div></div>' +
+      '</div>' +
+      '<div style="font-size:9px;color:var(--text3);margin-top:6px">↑ Calculado automáticamente — los campos de abajo se completan solos, podés ajustarlos si necesitás.</div>' +
+    '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">' +
       pasivoField('Capital original $','pas-capital','number',o.capitalOrig||0,'') +
       pasivoField('Saldo deuda $','pas-saldo','number',o.saldo||0,'') +
@@ -15095,6 +15132,48 @@ function pasivoField(label, id, type, val, placeholder, opts, selVal, extra) {
   '</div>';
 }
 
+function pasivosRecalcAmort() {
+  const cap    = parseFloat(document.getElementById('pas-amort-capital')?.value) || 0;
+  const tna    = parseFloat(document.getElementById('pas-amort-tna')?.value)     || 0;
+  const plazo  = parseInt(document.getElementById('pas-amort-plazo')?.value)     || 0;
+  const pagadas= parseInt(document.getElementById('pas-amort-pagadas')?.value)   || 0;
+  const sis    = document.getElementById('pas-sistema')?.value || 'frances';
+  if (!cap || !tna || !plazo) return;
+  const tem = tna / 100 / 12;
+  let cuota = 0, saldo = cap;
+  if (sis === 'frances') {
+    cuota = cap * (tem * Math.pow(1+tem, plazo)) / (Math.pow(1+tem, plazo) - 1);
+    let s = cap;
+    for (let i = 0; i < pagadas; i++) { const int = s * tem; s -= (cuota - int); }
+    saldo = Math.max(0, s);
+  } else if (sis === 'aleman') {
+    const amort = cap / plazo;
+    cuota = amort + (cap - pagadas * amort) * tem;
+    saldo = Math.max(0, cap - pagadas * amort);
+  } else {
+    cuota = cap * tem;
+    saldo = cap;
+  }
+  const pend = Math.max(0, plazo - pagadas);
+  const fmt = n => '$ ' + Math.round(n).toLocaleString('es-AR');
+  const rCuota = document.getElementById('pas-amort-r-cuota');
+  const rSaldo = document.getElementById('pas-amort-r-saldo');
+  const rPend  = document.getElementById('pas-amort-r-pend');
+  if (rCuota) rCuota.textContent = fmt(cuota);
+  if (rSaldo) rSaldo.textContent = fmt(saldo);
+  if (rPend)  rPend.textContent  = pend;
+  const fCap   = document.getElementById('pas-capital');
+  const fSaldo = document.getElementById('pas-saldo');
+  const fCuota = document.getElementById('pas-cuota');
+  const fTna   = document.getElementById('pas-tna');
+  const fPend  = document.getElementById('pas-cuotas-pend');
+  if (fCap)   fCap.value   = Math.round(cap);
+  if (fSaldo) fSaldo.value = Math.round(saldo);
+  if (fCuota) fCuota.value = Math.round(cuota);
+  if (fTna)   fTna.value   = tna;
+  if (fPend)  fPend.value  = pend;
+}
+
 function pasivosModalTipoChange() {
   const tipo = document.getElementById('pas-tipo')?.value;
   const tc = document.getElementById('pas-extra-tarjeta');
@@ -15122,6 +15201,7 @@ function guardarPasivo() {
     limiteTC:    getN('pas-limite-tc'),
     cuit:        get('pas-cuit'),
     bien:        get('pas-bien'),
+    sistema:     get('pas-sistema'),
     capitalOrig: getN('pas-capital'),
     saldo:       getN('pas-saldo'),
     cuota:       getN('pas-cuota'),
