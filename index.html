@@ -440,6 +440,7 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('conciliaciones',this)" data-page="conciliaciones">🔗 Conciliaciones Bancarias</button>
           <button class="nav-dd-item" onclick="navGo('petroleras',this)"      data-page="petroleras">⛽ Pago a Petroleras</button>
           <button class="nav-dd-item" onclick="navGo('pasivos',this)"          data-page="pasivos">📊 Pasivos Financieros</button>
+          <button class="nav-dd-item" onclick="navGo('gastos',this)"           data-page="gastos">📊 Análisis de Gastos</button>
           <button class="nav-dd-item" onclick="navGo('lector_doc',this)"      data-page="lector_doc">🔍 Lector de Documentos</button>
           <button class="nav-dd-item" onclick="navGo('flota',this)"            data-page="flota">🚗 Flota Automotor</button>
           <button class="nav-dd-item" onclick="navGo('tarjetas',this)"         data-page="tarjetas">💳 Tarjetas de Crédito</button>
@@ -697,6 +698,19 @@ let _supaUser=null,_supaRol=null;
       <button class="btn-sm" onclick="exportExcel('metas')">📊 Metas</button>
       <button class="btn-sm" onclick="exportExcel('todas')">📊 Todas las empresas</button>
       <button class="btn-sm" onclick="exportExcelCompleto()" style="background:var(--green)22;color:var(--green);border-color:var(--green)">📥 Exportar completo (6 hojas)</button>
+    </div>
+  </div>
+  <div class="card mt">
+    <div class="card-title">📊 Análisis de Gastos — Importar hoja BASE</div>
+    <div class="alert blue" style="margin-bottom:12px">📌 Importá el Excel de gastos con la hoja <strong>BASE</strong> (Hoja1). Columnas requeridas: <strong>Descripción · Cuenta · Debe · Haber · Saldo · Unidad de negocio · Mes</strong></div>
+    <div class="import-zone" id="gastos-import-zone" onclick="document.getElementById('gastos-file-input').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="event.preventDefault();gastosHandleFile(event.dataTransfer.files[0])" style="cursor:pointer">
+      <div class="icon">📊</div>
+      <p><strong>Arrastrá el Excel de Gastos aquí</strong></p>
+      <p style="margin-top:6px">o hacé clic para buscar</p>
+      <p style="font-size:11px;margin-top:8px;color:var(--text3)">Lee la hoja <strong>BASE</strong> (Hoja1) automáticamente</p>
+    </div>
+    <input type="file" id="gastos-file-input" accept=".xlsx,.xls" style="display:none" onchange="gastosHandleFile(this.files[0])">
+    <div id="gastos-import-status" style="margin-top:10px;font-size:12px"></div>
     </div>
   </div>
   <div class="card mt">
@@ -8882,6 +8896,7 @@ function navGo(page, triggerEl) {
     'fci':          ()=>renderFci(),
     'petroleras':   ()=>renderPetrolerasPage(),
     'pasivos':      ()=>pasivosRender(),
+    'gastos':       ()=>gastosRender(),
     'lector_doc':   ()=>lectorRender(),
     'flota':        ()=>flotaRender(),
     'tarjetas':     ()=>renderTarjetas(),
@@ -11437,6 +11452,9 @@ async function cacheCargarTodo() {
             break;
           case 'rechazados':
             if (Array.isArray(val)) appState.rechazadosData = val;
+            break;
+          case 'gastos':
+            if (Array.isArray(val)) { try { localStorage.setItem('gastos_base_v1', JSON.stringify(val)); } catch(e) {} }
             break;
           case 'petroData':
             if (val && typeof val === 'object') appState.petroData = val;
@@ -16913,6 +16931,281 @@ function lectorExportarCSV() {
   const csv = [headers,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download='lector_documentos_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  showToast('📥 CSV exportado');
+}
+</script>
+
+
+<div class="page" id="page-gastos">
+  <div class="section-header mb" style="flex-direction:column;align-items:flex-start;gap:4px">
+    <h2 style="margin:0">📊 Análisis de Gastos</h2>
+    <div style="font-size:12px;color:var(--text3)">Base contable · por Unidad de Negocio · por Cuenta contable</div>
+  </div>
+
+  <div id="gastos-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px"></div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:12px;align-items:center">
+    <select id="gastos-f-mes" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%"><option value="">Todos los meses</option></select>
+    <select id="gastos-f-uunn" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%"><option value="">Todas las unidades</option></select>
+    <select id="gastos-f-cuenta" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%"><option value="">Todas las cuentas</option></select>
+    <select id="gastos-f-tipo" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%">
+      <option value="">Debe · Haber · Saldo</option>
+      <option value="debe">Solo Debe</option>
+      <option value="haber">Solo Haber</option>
+      <option value="saldo">Solo Saldo</option>
+    </select>
+    <input id="gastos-f-q" type="text" placeholder="🔍 Buscar cuenta..." oninput="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%">
+    <button onclick="document.getElementById('gastos-f-mes').value='';document.getElementById('gastos-f-uunn').value='';document.getElementById('gastos-f-cuenta').value='';document.getElementById('gastos-f-tipo').value='';document.getElementById('gastos-f-q').value='';gastosRender()" style="padding:6px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:11px;cursor:pointer;font-family:var(--font);white-space:nowrap">✕ Limpiar</button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+    <div class="card" style="padding:12px">
+      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px">Top cuentas por Debe</div>
+      <div id="gastos-chart-cuentas"></div>
+    </div>
+    <div class="card" style="padding:12px">
+      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px">Debe por Unidad de Negocio</div>
+      <div id="gastos-chart-uunn"></div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px" id="gastos-table-title">📋 Movimientos</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="gastos-sort" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:3px 7px;font-size:10px;color:var(--text);outline:none;font-family:var(--font)">
+          <option value="debe_desc">Debe ↓</option>
+          <option value="haber_desc">Haber ↓</option>
+          <option value="saldo_desc">Saldo ↓</option>
+          <option value="mes_asc">Mes ↑</option>
+          <option value="cuenta_asc">Cuenta A-Z</option>
+          <option value="uunn_asc">Unidad A-Z</option>
+        </select>
+        <button onclick="gastosExportCSV()" style="background:rgba(74,159,212,0.1);border:1px solid rgba(74,159,212,0.3);color:#4a9fd4;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font)">📥 CSV</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;max-height:65vh;overflow-y:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead style="position:sticky;top:0;background:var(--bg2);z-index:1">
+          <tr>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Mes</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Unidad de negocio</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Cuenta contable</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Descripción</th>
+            <th style="padding:8px 12px;text-align:right;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Debe</th>
+            <th style="padding:8px 12px;text-align:right;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Haber</th>
+            <th style="padding:8px 12px;text-align:right;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Saldo</th>
+          </tr>
+        </thead>
+        <tbody id="gastos-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// ANÁLISIS DE GASTOS — leer hoja BASE del Excel contable
+// Sección independiente — no toca datos existentes
+// ══════════════════════════════════════════════════════════════
+const GASTOS_KEY = 'gastos_base_v1';
+
+function gastosGetData() { try { return JSON.parse(localStorage.getItem(GASTOS_KEY)||'[]'); } catch(e) { return []; } }
+function gastosSaveData(rows) { try { localStorage.setItem(GASTOS_KEY, JSON.stringify(rows)); cacheGuardar('gastos', rows); } catch(e) { showToast('⚠️ Error guardando gastos'); } }
+
+function gastosHandleFile(file) {
+  if (!file) return;
+  const statusEl = document.getElementById('gastos-import-status');
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--accent)">⏳ Leyendo archivo...</span>';
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'binary', cellDates:true});
+      // Buscar hoja BASE o Hoja1
+      const sheetName = wb.SheetNames.find(s => s.toLowerCase().includes('base') || s.toLowerCase() === 'hoja1') || wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:null});
+      
+      const parsed = [];
+      rows.forEach(row => {
+        // Mapear columnas flexiblemente
+        const desc  = row['Descripción'] || row['Descripcion'] || row['descripción'] || row['descripcion'] || '';
+        const cuenta= row['Cuenta'] || row['cuenta'] || row['CUENTA'] || '';
+        const debe  = parseFloat(row['Debe'] || row['debe'] || row['DEBE'] || 0) || 0;
+        const haber = parseFloat(row['Haber'] || row['haber'] || row['HABER'] || 0) || 0;
+        const saldo = parseFloat(row['Saldo'] || row['saldo'] || row['SALDO'] || 0) || 0;
+        const uunn  = String(row['Unidad de negocio'] || row['Unidad de Negocio'] || row['unidad_de_negocio'] || row['UUNN'] || '').trim();
+        let mes = row['Mes'] || row['mes'] || row['MES'] || '';
+        if (mes instanceof Date) {
+          mes = mes.toISOString().slice(0,7);
+        } else if (mes) {
+          mes = String(mes).slice(0,7);
+        }
+        if (cuenta || uunn) {
+          parsed.push({ desc: String(desc).trim(), cuenta: String(cuenta).trim(), debe, haber, saldo, uunn, mes: String(mes) });
+        }
+      });
+
+      gastosSaveData(parsed);
+      if (statusEl) statusEl.innerHTML = `<span style="color:var(--green)">✅ ${parsed.length.toLocaleString('es-AR')} filas importadas desde hoja "${sheetName}"</span>`;
+      showToast('✅ Gastos importados — ' + parsed.length.toLocaleString('es-AR') + ' filas');
+      gastosRender();
+      const inp = document.getElementById('gastos-file-input');
+      if (inp) inp.value = '';
+    } catch(err) {
+      console.error('gastosHandleFile:', err);
+      if (statusEl) statusEl.innerHTML = `<span style="color:#f87171">❌ Error: ${err.message}</span>`;
+      showToast('⚠️ Error al leer el archivo');
+    }
+  };
+  r.readAsBinaryString(file);
+}
+
+function gastosRender() {
+  let data = gastosGetData();
+  if (!data.length) {
+    // Intentar cargar desde cache
+    const cached = appState._gastosCache;
+    if (cached && cached.length) { data = cached; }
+  }
+
+  const fMes    = document.getElementById('gastos-f-mes')?.value    || '';
+  const fUunn   = document.getElementById('gastos-f-uunn')?.value   || '';
+  const fCuenta = document.getElementById('gastos-f-cuenta')?.value || '';
+  const fTipo   = document.getElementById('gastos-f-tipo')?.value   || '';
+  const fQ      = (document.getElementById('gastos-f-q')?.value     || '').toLowerCase();
+  const sort    = document.getElementById('gastos-sort')?.value      || 'debe_desc';
+
+  // Poblar selectores con valores únicos
+  const selMes    = document.getElementById('gastos-f-mes');
+  const selUunn   = document.getElementById('gastos-f-uunn');
+  const selCuenta = document.getElementById('gastos-f-cuenta');
+  if (selMes && selMes.options.length <= 1) {
+    const meses = [...new Set(data.map(r=>r.mes).filter(Boolean))].sort();
+    meses.forEach(m => { const o = document.createElement('option'); o.value=m; o.textContent=m; selMes.appendChild(o); });
+  }
+  if (selUunn && selUunn.options.length <= 1) {
+    const uunns = [...new Set(data.map(r=>r.uunn).filter(Boolean))].sort();
+    uunns.forEach(u => { const o = document.createElement('option'); o.value=u; o.textContent=u; selUunn.appendChild(o); });
+  }
+  if (selCuenta && selCuenta.options.length <= 1) {
+    const cuentas = [...new Set(data.map(r=>r.cuenta).filter(Boolean))].sort();
+    cuentas.forEach(c => { const o = document.createElement('option'); o.value=c; o.textContent=c; selCuenta.appendChild(o); });
+  }
+
+  let filtered = data.filter(r => {
+    if (fMes    && r.mes    !== fMes)                             return false;
+    if (fUunn   && r.uunn   !== fUunn)                            return false;
+    if (fCuenta && r.cuenta !== fCuenta)                          return false;
+    if (fQ      && !r.cuenta.toLowerCase().includes(fQ) && !r.desc.toLowerCase().includes(fQ) && !r.uunn.toLowerCase().includes(fQ)) return false;
+    return true;
+  });
+
+  // Sort
+  const sortFns = {
+    debe_desc:   (a,b)=>b.debe-a.debe,
+    haber_desc:  (a,b)=>b.haber-a.haber,
+    saldo_desc:  (a,b)=>b.saldo-a.saldo,
+    mes_asc:     (a,b)=>a.mes.localeCompare(b.mes),
+    cuenta_asc:  (a,b)=>a.cuenta.localeCompare(b.cuenta),
+    uunn_asc:    (a,b)=>a.uunn.localeCompare(b.uunn),
+  };
+  filtered.sort(sortFns[sort] || sortFns.debe_desc);
+
+  const fmt = n => n ? '$ '+Math.round(n).toLocaleString('es-AR') : '—';
+
+  // KPIs
+  const kpiEl = document.getElementById('gastos-kpis');
+  if (kpiEl) {
+    const totalDebe  = filtered.reduce((s,r)=>s+(r.debe||0),0);
+    const totalHaber = filtered.reduce((s,r)=>s+(r.haber||0),0);
+    const totalSaldo = filtered.reduce((s,r)=>s+(r.saldo||0),0);
+    const uunns      = new Set(filtered.map(r=>r.uunn).filter(Boolean)).size;
+    const cuentas    = new Set(filtered.map(r=>r.cuenta).filter(Boolean)).size;
+    const mkKpi = (lbl,val,col,sub) => `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">${lbl}</div><div style="font-size:15px;font-weight:700;font-family:var(--mono);color:${col}">${val}</div>${sub?`<div style="font-size:9px;color:var(--text3);margin-top:3px">${sub}</div>`:''}</div>`;
+    kpiEl.innerHTML =
+      mkKpi('💸 Total Debe',  fmt(totalDebe),  '#f87171', filtered.length.toLocaleString('es-AR')+' movs') +
+      mkKpi('📥 Total Haber', fmt(Math.abs(totalHaber)), '#4ade80', '') +
+      mkKpi('⚖️ Saldo neto',  fmt(totalSaldo), '#fbbf24', '') +
+      mkKpi('🏢 Unidades',    uunns,           '#4a9fd4', 'de negocio') +
+      mkKpi('📋 Cuentas',     cuentas,         '#a78bfa', 'contables');
+  }
+
+  // Charts
+  const mkBar = (items, colorFn) => items.slice(0,7).map(([lbl,val],i,arr) => {
+    const pct = arr[0][1] ? Math.round(val/arr[0][1]*100) : 0;
+    return `<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+      <div style="font-size:9px;color:var(--text2);width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${lbl}">${lbl}</div>
+      <div style="flex:1;height:6px;background:var(--bg2);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${colorFn(i)};border-radius:3px"></div></div>
+      <div style="font-size:9px;color:var(--text2);width:70px;text-align:right;font-family:var(--mono)">$ ${Math.round(val/1000000*10)/10}M</div>
+    </div>`;
+  }).join('');
+
+  const colorsCuenta = ['#f87171','#f87171','#fbbf24','#fbbf24','#7a8399','#7a8399','#7a8399'];
+  const colorsUunn   = ['#4a9fd4','#4ade80','#a78bfa','#fbbf24','#f87171','#7a8399','#7a8399'];
+
+  const cuentaMap = {};
+  filtered.forEach(r=>{ if(r.cuenta) cuentaMap[r.cuenta]=(cuentaMap[r.cuenta]||0)+(r.debe||0); });
+  const topCuentas = Object.entries(cuentaMap).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0);
+
+  const uunnMap = {};
+  filtered.forEach(r=>{ if(r.uunn) uunnMap[r.uunn]=(uunnMap[r.uunn]||0)+(r.debe||0); });
+  const topUunn = Object.entries(uunnMap).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0);
+
+  const chartCuentas = document.getElementById('gastos-chart-cuentas');
+  const chartUunn    = document.getElementById('gastos-chart-uunn');
+  if (chartCuentas) chartCuentas.innerHTML = topCuentas.length ? mkBar(topCuentas, i=>colorsCuenta[i]) : '<div style="font-size:11px;color:var(--text3)">Sin datos</div>';
+  if (chartUunn)    chartUunn.innerHTML    = topUunn.length    ? mkBar(topUunn,    i=>colorsUunn[i])   : '<div style="font-size:11px;color:var(--text3)">Sin datos</div>';
+
+  // Tabla
+  const title = document.getElementById('gastos-table-title');
+  if (title) title.textContent = `📋 Movimientos (${filtered.length.toLocaleString('es-AR')}${filtered.length!==data.length?' de '+data.length.toLocaleString('es-AR'):''})`;
+
+  const tbody = document.getElementById('gastos-tbody');
+  if (!tbody) return;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text3)">
+      <div style="font-size:28px;margin-bottom:8px">📊</div>
+      <div style="font-weight:700;margin-bottom:4px">${data.length?'Sin resultados con estos filtros':'No hay datos importados'}</div>
+      <div style="font-size:11px">${data.length?'Probá limpiar los filtros':'Importá el Excel de Gastos desde la sección Excel'}</div>
+    </td></tr>`;
+    return;
+  }
+
+  // Mostrar max 500 filas para performance
+  const visible = filtered.slice(0, 500);
+  const uunnColor = u => {
+    if (u.includes('RS'))   return 'background:rgba(74,159,212,0.12);color:#4a9fd4';
+    if (u.includes('SC'))   return 'background:rgba(74,222,128,0.12);color:#4ade80';
+    if (u.includes('LP'))   return 'background:rgba(167,139,250,0.12);color:#a78bfa';
+    if (u.includes('BASE')) return 'background:rgba(251,191,36,0.12);color:#fbbf24';
+    return 'background:rgba(120,130,160,0.12);color:#7a8399';
+  };
+
+  tbody.innerHTML = visible.map(r => `
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+      <td style="padding:8px 12px"><span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(74,159,212,0.1);color:#4a9fd4">${r.mes||'—'}</span></td>
+      <td style="padding:8px 12px"><span style="font-size:9px;padding:2px 8px;border-radius:99px;font-weight:700;${uunnColor(r.uunn)}">${r.uunn||'—'}</span></td>
+      <td style="padding:8px 12px;font-size:10px;color:var(--text3)">${r.cuenta||'—'}</td>
+      <td style="padding:8px 12px;font-size:11px;color:var(--text2)">${r.desc||'—'}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-weight:700;color:${r.debe?'#f87171':'var(--text3)'}">${r.debe?fmt(r.debe):'—'}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-weight:700;color:${r.haber?'#4ade80':'var(--text3)'}">${r.haber?fmt(Math.abs(r.haber)):'—'}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-weight:700;color:${r.saldo>0?'#fbbf24':r.saldo<0?'#f87171':'var(--text3)'}">${r.saldo?fmt(r.saldo):'—'}</td>
+    </tr>`).join('') + (filtered.length > 500 ? `<tr><td colspan="7" style="text-align:center;padding:12px;font-size:10px;color:var(--text3)">Mostrando 500 de ${filtered.length.toLocaleString('es-AR')} filas — usá los filtros para acotar</td></tr>` : '');
+}
+
+function gastosExportCSV() {
+  const data = gastosGetData();
+  if (!data.length) { showToast('⚠️ No hay datos para exportar'); return; }
+  const headers = ['Mes','Unidad de negocio','Cuenta contable','Descripción','Debe','Haber','Saldo'];
+  const rows = data.map(r=>[r.mes,r.uunn,r.cuenta,r.desc,r.debe||0,r.haber||0,r.saldo||0]);
+  const csv = [headers,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = 'gastos_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
   showToast('📥 CSV exportado');
 }
 </script>
