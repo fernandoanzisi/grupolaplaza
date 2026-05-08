@@ -11375,7 +11375,7 @@ async function cacheCargarTodo() {
   if (!_supaUser) return;
   try {
     // Siempre cargar datos del admin — compartidos con todos los usuarios
-    const ADMIN_ID = '4f387fdc-bb52-486b-99ca-75bf699ccc4d';
+    const ADMIN_ID = '1da12809-0a1c-4057-887c-0c32dcebdd73';
     const userId = ADMIN_ID; // datos globales del admin
     const { data, error } = await supa.from('app_cache')
       .select('clave,datos')
