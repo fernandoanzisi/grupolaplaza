@@ -2754,6 +2754,73 @@ let _supaUser=null,_supaRol=null;
 <!-- PANEL GUARDIA -->
 <div class="page" id="page-guardia"></div>
 
+
+<div class="page" id="page-gastos">
+  <div class="section-header mb" style="flex-direction:column;align-items:flex-start;gap:4px">
+    <h2 style="margin:0">📊 Análisis de Gastos</h2>
+    <div style="font-size:12px;color:var(--text3)">Base contable · por Unidad de Negocio · por Cuenta contable</div>
+  </div>
+
+  <div id="gastos-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px"></div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:12px;align-items:center">
+    <select id="gastos-f-mes" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%"><option value="">Todos los meses</option></select>
+    <select id="gastos-f-uunn" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%"><option value="">Todas las unidades</option></select>
+    <select id="gastos-f-cuenta" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%"><option value="">Todas las cuentas</option></select>
+    <select id="gastos-f-tipo" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%">
+      <option value="">Debe · Haber · Saldo</option>
+      <option value="debe">Solo Debe</option>
+      <option value="haber">Solo Haber</option>
+      <option value="saldo">Solo Saldo</option>
+    </select>
+    <input id="gastos-f-q" type="text" placeholder="🔍 Buscar cuenta..." oninput="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%">
+    <button onclick="document.getElementById('gastos-f-mes').value='';document.getElementById('gastos-f-uunn').value='';document.getElementById('gastos-f-cuenta').value='';document.getElementById('gastos-f-tipo').value='';document.getElementById('gastos-f-q').value='';gastosRender()" style="padding:6px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:11px;cursor:pointer;font-family:var(--font);white-space:nowrap">✕ Limpiar</button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+    <div class="card" style="padding:12px">
+      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px">Top cuentas por Debe</div>
+      <div id="gastos-chart-cuentas"></div>
+    </div>
+    <div class="card" style="padding:12px">
+      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px">Debe por Unidad de Negocio</div>
+      <div id="gastos-chart-uunn"></div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px" id="gastos-table-title">📋 Movimientos</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="gastos-sort" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:3px 7px;font-size:10px;color:var(--text);outline:none;font-family:var(--font)">
+          <option value="debe_desc">Debe ↓</option>
+          <option value="haber_desc">Haber ↓</option>
+          <option value="saldo_desc">Saldo ↓</option>
+          <option value="mes_asc">Mes ↑</option>
+          <option value="cuenta_asc">Cuenta A-Z</option>
+          <option value="uunn_asc">Unidad A-Z</option>
+        </select>
+        <button onclick="gastosExportCSV()" style="background:rgba(74,159,212,0.1);border:1px solid rgba(74,159,212,0.3);color:#4a9fd4;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font)">📥 CSV</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;max-height:65vh;overflow-y:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead style="position:sticky;top:0;background:var(--bg2);z-index:1">
+          <tr>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Mes</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Unidad de negocio</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Cuenta contable</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Descripción</th>
+            <th style="padding:8px 12px;text-align:right;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Debe</th>
+            <th style="padding:8px 12px;text-align:right;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Haber</th>
+            <th style="padding:8px 12px;text-align:right;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Saldo</th>
+          </tr>
+        </thead>
+        <tbody id="gastos-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
 <div class="page" id="page-lector_doc">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
     <div>
@@ -16935,71 +17002,6 @@ function lectorExportarCSV() {
 </script>
 
 
-<div class="page" id="page-gastos">
-  <div class="section-header mb" style="flex-direction:column;align-items:flex-start;gap:4px">
-    <h2 style="margin:0">📊 Análisis de Gastos</h2>
-    <div style="font-size:12px;color:var(--text3)">Base contable · por Unidad de Negocio · por Cuenta contable</div>
-  </div>
-
-  <div id="gastos-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px"></div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:12px;align-items:center">
-    <select id="gastos-f-mes" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%"><option value="">Todos los meses</option></select>
-    <select id="gastos-f-uunn" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%"><option value="">Todas las unidades</option></select>
-    <select id="gastos-f-cuenta" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%"><option value="">Todas las cuentas</option></select>
-    <select id="gastos-f-tipo" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%">
-      <option value="">Debe · Haber · Saldo</option>
-      <option value="debe">Solo Debe</option>
-      <option value="haber">Solo Haber</option>
-      <option value="saldo">Solo Saldo</option>
-    </select>
-    <input id="gastos-f-q" type="text" placeholder="🔍 Buscar cuenta..." oninput="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--font);width:100%">
-    <button onclick="document.getElementById('gastos-f-mes').value='';document.getElementById('gastos-f-uunn').value='';document.getElementById('gastos-f-cuenta').value='';document.getElementById('gastos-f-tipo').value='';document.getElementById('gastos-f-q').value='';gastosRender()" style="padding:6px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:11px;cursor:pointer;font-family:var(--font);white-space:nowrap">✕ Limpiar</button>
-  </div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-    <div class="card" style="padding:12px">
-      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px">Top cuentas por Debe</div>
-      <div id="gastos-chart-cuentas"></div>
-    </div>
-    <div class="card" style="padding:12px">
-      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px">Debe por Unidad de Negocio</div>
-      <div id="gastos-chart-uunn"></div>
-    </div>
-  </div>
-
-  <div class="card" style="padding:0;overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border)">
-      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px" id="gastos-table-title">📋 Movimientos</div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <select id="gastos-sort" onchange="gastosRender()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:3px 7px;font-size:10px;color:var(--text);outline:none;font-family:var(--font)">
-          <option value="debe_desc">Debe ↓</option>
-          <option value="haber_desc">Haber ↓</option>
-          <option value="saldo_desc">Saldo ↓</option>
-          <option value="mes_asc">Mes ↑</option>
-          <option value="cuenta_asc">Cuenta A-Z</option>
-          <option value="uunn_asc">Unidad A-Z</option>
-        </select>
-        <button onclick="gastosExportCSV()" style="background:rgba(74,159,212,0.1);border:1px solid rgba(74,159,212,0.3);color:#4a9fd4;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font)">📥 CSV</button>
-      </div>
-    </div>
-    <div style="overflow-x:auto;max-height:65vh;overflow-y:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:11px">
-        <thead style="position:sticky;top:0;background:var(--bg2);z-index:1">
-          <tr>
-            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Mes</th>
-            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Unidad de negocio</th>
-            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Cuenta contable</th>
-            <th style="padding:8px 12px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Descripción</th>
-            <th style="padding:8px 12px;text-align:right;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Debe</th>
-            <th style="padding:8px 12px;text-align:right;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Haber</th>
-            <th style="padding:8px 12px;text-align:right;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Saldo</th>
-          </tr>
-        </thead>
-        <tbody id="gastos-tbody"></tbody>
-      </table>
-    </div>
-  </div>
 </div>
 
 
