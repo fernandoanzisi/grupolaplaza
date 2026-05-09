@@ -11226,16 +11226,29 @@ async function onLogin(user) {
   const mobileExcelBtn = document.getElementById('mobile-excel-btn');
   if (mobileExcelBtn) mobileExcelBtn.style.display = _supaRol === 'admin' ? '' : 'none';
 
-  // Mostrar la app PRIMERO — no esperar a que carguen todos los datos
+  // Mostrar la app con spinner mientras cargan los datos
   hideLoginScreen();
-  if (typeof renderDashboard === 'function') renderDashboard();
 
-  // Cargar datos desde Supabase en background (no bloquea la UI)
+  // Mostrar spinner en el dashboard mientras cargan los datos
+  const dashEl = document.getElementById('page-dashboard');
+  if (dashEl) {
+    dashEl.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:16px">' +
+      '<div style="width:48px;height:48px;border:3px solid rgba(56,189,248,0.2);border-top-color:#38BDF8;border-radius:50%;animation:spin-dash 0.8s linear infinite"></div>' +
+      '<div style="font-size:14px;color:var(--text3)">Cargando datos...</div>' +
+      '</div>' +
+      '<style>@keyframes spin-dash{to{transform:rotate(360deg)}}</style>';
+    dashEl.classList.add('active');
+  }
+
+  // Cargar datos desde Supabase y renderizar cuando terminan
   loadFromSupabase().then(() => {
+    if (dashEl) dashEl.innerHTML = '';
     if (typeof renderDashboard === 'function') renderDashboard();
     _logAcceso(_supaUser?.email || '');
-    // Extractos: se cargan bajo demanda cuando el usuario elige un mes
-  }).catch(e => console.warn('loadFromSupabase error:', e));
+  }).catch(e => {
+    console.warn('loadFromSupabase error:', e);
+    if (typeof renderDashboard === 'function') renderDashboard();
+  });
 }
 
 function onLogout() {
