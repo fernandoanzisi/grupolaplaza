@@ -16819,15 +16819,20 @@ campos: incluí todos los datos relevantes (cuenta, CUIT, Nº factura, consumo k
   let response;
   response = await fetch('/api/claude', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,system:systemPrompt,messages:[{role:'user',content:userContent}]})
+    body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,system:systemPrompt,messages:[{role:'user',content:userContent}]})
   });
   if (!response.ok) {
     const errText = await response.text().catch(()=>'');
+    if (errText.includes('100 PDF pages')) throw new Error('El PDF tiene más de 100 páginas. Dividilo en partes más chicas antes de subirlo.');
     throw new Error('API error '+response.status+': '+errText.slice(0,200));
   }
   const data = await response.json();
   const raw = data.content?.find(b=>b.type==='text')?.text||'{}';
-  return JSON.parse(raw.replace(/```json|```/g,'').trim());
+  try {
+    return JSON.parse(raw.replace(/```json|```/g,'').trim());
+  } catch(e) {
+    throw new Error('La IA no pudo completar el análisis. Intentá con un archivo más pequeño o menos páginas.');
+  }
 }
 
 async function lectorHandleFiles(files) {
