@@ -10607,7 +10607,7 @@ async function _saveCartDeboSupabase(data) {
       f_emi: c.fEmi||null, f_pres: c.fPres||null,
       cliente: c.cliente||'', librador: c.librador||'',
       importe: c.importe||0, elect: c.elect||'No',
-      dias: c.dias||null, uunn: c.uunn||'', apies: c.apies||'',
+      dias: c.dias != null ? c.dias : null, uunn: c.uunn||'', apies: c.apies||'',
       tipo: c.tipo||'FISICO', hoja: c.hoja||'',
       importado_by: _supaUser.id
     }));
@@ -11389,12 +11389,17 @@ async function loadFromSupabase() {
     // Cartera DEBO
     const { data: cartera } = await supa.from('cartera_debo').select('*').order('f_pres');
     if (cartera && cartera.length) {
-      appState.cartDebo = cartera.map(r => ({
-        banco:r.banco||'', numero:r.numero||'', fEmi:r.f_emi, fPres:r.f_pres,
-        cliente:r.cliente||'', librador:r.librador||'', importe:parseFloat(r.importe)||0,
-        elect:r.elect||'', uunn:r.uunn||'', apies:r.apies||'', emp:r.empresa||'RS',
-        dias:r.dias
-      }));
+      const _hoy = new Date().toISOString().slice(0,10);
+      appState.cartDebo = cartera.map(r => {
+        const fPres = r.f_pres||'';
+        const dias  = fPres ? Math.round((new Date(fPres)-new Date(_hoy))/86400000) : null;
+        return {
+          banco:r.banco||'', numero:r.numero||'', fEmi:r.f_emi, fPres,
+          cliente:r.cliente||'', librador:r.librador||'', importe:parseFloat(r.importe)||0,
+          elect:r.elect||'', uunn:r.uunn||'', apies:r.apies||'', emp:r.empresa||'RS',
+          dias, tipo:r.tipo||'', hoja:r.hoja||''
+        };
+      });
     }
 
     // Clientes DEBO
