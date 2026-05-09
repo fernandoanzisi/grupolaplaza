@@ -11032,7 +11032,7 @@ function exportClientesExcel(){
   <button id="um-admin-btn" onclick="abrirGestionUsuarios()" style="display:none;width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;border-radius:8px">👥 Gestionar usuarios</button>
   <button id="um-sync-btn" onclick="syncSupabase()" style="display:none;width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;border-radius:8px">☁️ Sincronizar datos</button>
   <button id="um-restore-btn" onclick="restaurarDesdeSupabase()" style="width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:#fbbf24;font-size:13px;cursor:pointer;border-radius:8px">🔄 Restaurar desde Supabase</button>
-  <button onclick="abrirCambiarPassword()" style="width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;border-radius:8px">🔑 Cambiar contraseña</button>
+  <button id="um-cambiar-pass-btn" onclick="abrirCambiarPassword()" style="width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;border-radius:8px">🔑 Cambiar contraseña</button>
   <button onclick="doLogout()" style="width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:#f87171;font-size:13px;cursor:pointer;border-radius:8px">🚪 Cerrar sesión</button>
 </div>
 
@@ -11052,7 +11052,7 @@ function exportClientesExcel(){
     </div>
     <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
       <button onclick="closeCambiarPassword()" style="padding:9px 18px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font)">Cancelar</button>
-      <button onclick="guardarNuevaPassword()" style="padding:9px 18px;border-radius:8px;border:none;background:var(--accent);color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font)">Guardar</button>
+      <button id="cp-submit-btn" onclick="guardarNuevaPassword()" style="padding:9px 18px;border-radius:8px;border:none;background:var(--accent);color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font)">Confirmar</button>
     </div>
   </div>
 </div>
@@ -11205,10 +11205,10 @@ async function guardarNuevaPassword() {
   errEl.style.display = 'none';
   if (nueva.length < 6) { errEl.textContent = 'La contraseña debe tener al menos 6 caracteres.'; errEl.style.display = 'block'; return; }
   if (nueva !== confirmar) { errEl.textContent = 'Las contraseñas no coinciden.'; errEl.style.display = 'block'; return; }
-  const btn = document.querySelector('#cambiar-password-modal button:last-child');
+  const btn = document.getElementById('cp-submit-btn');
   if (btn) { btn.textContent = 'Guardando...'; btn.disabled = true; }
   const { error } = await supa.auth.updateUser({ password: nueva });
-  if (btn) { btn.textContent = 'Guardar'; btn.disabled = false; }
+  if (btn) { btn.textContent = 'Confirmar'; btn.disabled = false; }
   if (error) { errEl.textContent = 'Error: ' + error.message; errEl.style.display = 'block'; return; }
   closeCambiarPassword();
   showToast('✅ Contraseña actualizada correctamente');
@@ -11271,6 +11271,8 @@ async function onLogin(user) {
   if (adminBtn)    adminBtn.style.display    = _supaRol === 'admin' ? '' : 'none';
   if (syncBtn)     syncBtn.style.display     = _supaRol === 'admin' ? '' : 'none';
   if (restoreBtn)  restoreBtn.style.display  = _supaRol === 'admin' ? '' : 'none';
+  const cpBtn = document.getElementById('um-cambiar-pass-btn');
+  if (cpBtn) cpBtn.style.display = '';
   // Excel button: solo visible para admins
   const excelBtn = document.getElementById('nav-excel-btn');
   if (excelBtn) excelBtn.style.display = _supaRol === 'admin' ? '' : 'none';
