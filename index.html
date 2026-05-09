@@ -2881,7 +2881,7 @@ let _supaUser=null,_supaRol=null;
   <div class="card" style="padding:0;overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border)">
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px" id="lector-table-title">📋 Historial de documentos</div>
-      <button onclick="if(confirm('¿Borrar todo el historial de documentos?')){localStorage.removeItem('lector_docs_v1');lectorRender();showToast('🗑 Historial borrado');}" style="background:none;border:1px solid rgba(248,113,113,0.3);color:#f87171;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font)">🗑 Limpiar todo</button>
+      <button onclick="if(confirm('¿Borrar todo el historial de documentos?')){_lectorDocs=[];localStorage.removeItem('lector_docs_v1');cacheGuardar('lector_docs',[]);lectorRender();showToast('🗑 Historial borrado');}" style="background:none;border:1px solid rgba(248,113,113,0.3);color:#f87171;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font)">🗑 Limpiar todo</button>
     </div>
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:11px">
@@ -11529,10 +11529,21 @@ async function cacheCargarTodo() {
           case 'petroData':
             if (val && typeof val === 'object') appState.petroData = val;
             break;
+          case 'lector_docs':
+            if (Array.isArray(val)) _lectorDocs = val;
+            break;
         }
       } catch(e) { console.warn('cacheCargarTodo parse ['+row.clave+']:', e); }
     }
     console.log('✅ Cache cargado desde Supabase:', data.map(r=>r.clave).join(', '));
+    // Migrar lector_docs de localStorage a Supabase si no estaban en cache
+    if (_lectorDocs === null) {
+      try {
+        const local = JSON.parse(localStorage.getItem('lector_docs_v1') || '[]');
+        if (local.length > 0) { _lectorDocs = local; cacheGuardar('lector_docs', local); }
+        else { _lectorDocs = []; }
+      } catch(e) { _lectorDocs = []; }
+    }
     // Renderizar rechazados con datos recién cargados
     if (typeof renderRechazados       === 'function') renderRechazados();
     if (typeof renderRechAlertasPanel === 'function') renderRechAlertasPanel();
@@ -16744,8 +16755,16 @@ function verClienteRiesgo(encodedNombre) {
 // Sección nueva independiente — no modifica ningún dato existente
 // ══════════════════════════════════════════════════════════════════
 const LECTOR_STORAGE_KEY = 'lector_docs_v1';
-function lectorGetDocs() { try { return JSON.parse(localStorage.getItem(LECTOR_STORAGE_KEY)||'[]'); } catch(e) { return []; } }
-function lectorSaveDocs(docs) { try { localStorage.setItem(LECTOR_STORAGE_KEY, JSON.stringify(docs)); } catch(e) { showToast('⚠️ Error al guardar en historial'); } }
+let _lectorDocs = null;
+function lectorGetDocs() {
+  if (_lectorDocs !== null) return _lectorDocs;
+  try { return JSON.parse(localStorage.getItem(LECTOR_STORAGE_KEY)||'[]'); } catch(e) { return []; }
+}
+function lectorSaveDocs(docs) {
+  _lectorDocs = docs;
+  try { localStorage.setItem(LECTOR_STORAGE_KEY, JSON.stringify(docs)); } catch(e) {}
+  cacheGuardar('lector_docs', docs);
+}
 
 const LECTOR_CAT_STYLES = {
   banco:    { label:'🏦 Extracto bancario',  bg:'rgba(74,159,212,0.15)',   color:'#4a9fd4' },
