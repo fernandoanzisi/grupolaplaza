@@ -3,37 +3,31 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
   try {
-    const { model, messages, system, max_tokens } = req.body;
-    
-    // Convertir formato Anthropic a Gemini
-    const contents = messages.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: Array.isArray(m.content) 
-        ? m.content.map(c => {
-            if (c.type === 'text') return { text: c.text };
-            if (c.type === 'image') return { inline_data: { mime_type: c.source.media_type, data: c.source.data }};
-            if (c.type === 'document') return { inline_data: { mime_type: 'application/pdf', data: c.source.data }};
-            return { text: '' };
-          })
-        : [{ text: m.content }]
-    }));
+    const { messages, system, max_tokens } = req.body;
 
-    if (system) contents.unshift({ role: 'user', parts: [{ text: system }] });
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-    
-    const response = await fetch(url, {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: max_tokens || 1500 } })
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'pdfs-2024-09-25',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        messages,
+        system,
+        max_tokens: max_tokens || 1500,
+      })
     });
 
     const data = await response.json();
-    if (!response.ok) return res.status(response.status).json(data);
-    
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    return res.status(200).json({ content: [{ type: 'text', text }] });
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data.error?.message || 'API error' });
+    }
+
+    return res.status(200).json(data);
 
   } catch (error) {
     return res.status(500).json({ error: error.message });
