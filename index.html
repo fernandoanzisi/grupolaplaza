@@ -11032,7 +11032,29 @@ function exportClientesExcel(){
   <button id="um-admin-btn" onclick="abrirGestionUsuarios()" style="display:none;width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;border-radius:8px">👥 Gestionar usuarios</button>
   <button id="um-sync-btn" onclick="syncSupabase()" style="display:none;width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;border-radius:8px">☁️ Sincronizar datos</button>
   <button id="um-restore-btn" onclick="restaurarDesdeSupabase()" style="width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:#fbbf24;font-size:13px;cursor:pointer;border-radius:8px">🔄 Restaurar desde Supabase</button>
+  <button onclick="abrirCambiarPassword()" style="width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;border-radius:8px">🔑 Cambiar contraseña</button>
   <button onclick="doLogout()" style="width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:#f87171;font-size:13px;cursor:pointer;border-radius:8px">🚪 Cerrar sesión</button>
+</div>
+
+<div class="modal-overlay" id="cambiar-password-modal" onclick="if(event.target===this)closeCambiarPassword()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:360px;margin:16px">
+    <h3 style="margin:0 0 18px;font-size:16px;font-weight:700">🔑 Cambiar contraseña</h3>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px">Nueva contraseña</label>
+        <input id="cp-nueva" type="password" placeholder="Mínimo 6 caracteres" class="conv-input" style="font-size:14px;padding:10px 12px;width:100%;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px">Confirmar contraseña</label>
+        <input id="cp-confirmar" type="password" placeholder="Repetí la contraseña" class="conv-input" style="font-size:14px;padding:10px 12px;width:100%;box-sizing:border-box">
+      </div>
+      <div id="cp-error" style="display:none;font-size:12px;color:#f87171;padding:8px 12px;background:rgba(248,113,113,0.1);border-radius:8px"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
+      <button onclick="closeCambiarPassword()" style="padding:9px 18px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font)">Cancelar</button>
+      <button onclick="guardarNuevaPassword()" style="padding:9px 18px;border-radius:8px;border:none;background:var(--accent);color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font)">Guardar</button>
+    </div>
+  </div>
 </div>
 
 
@@ -11162,6 +11184,34 @@ function _logAcceso(email) {
       email, accion: 'LOGIN', ts, ua: navigator.userAgent.slice(0,120)
     }).then(()=>{}).catch(()=>{}); // silencioso si la tabla no existe
   }
+}
+
+function abrirCambiarPassword() {
+  document.getElementById('user-menu').style.display = 'none';
+  const modal = document.getElementById('cambiar-password-modal');
+  modal.style.display = 'flex';
+  document.getElementById('cp-nueva').value = '';
+  document.getElementById('cp-confirmar').value = '';
+  document.getElementById('cp-error').style.display = 'none';
+  setTimeout(() => document.getElementById('cp-nueva').focus(), 100);
+}
+function closeCambiarPassword() {
+  document.getElementById('cambiar-password-modal').style.display = 'none';
+}
+async function guardarNuevaPassword() {
+  const nueva     = document.getElementById('cp-nueva').value.trim();
+  const confirmar = document.getElementById('cp-confirmar').value.trim();
+  const errEl     = document.getElementById('cp-error');
+  errEl.style.display = 'none';
+  if (nueva.length < 6) { errEl.textContent = 'La contraseña debe tener al menos 6 caracteres.'; errEl.style.display = 'block'; return; }
+  if (nueva !== confirmar) { errEl.textContent = 'Las contraseñas no coinciden.'; errEl.style.display = 'block'; return; }
+  const btn = document.querySelector('#cambiar-password-modal button:last-child');
+  if (btn) { btn.textContent = 'Guardando...'; btn.disabled = true; }
+  const { error } = await supa.auth.updateUser({ password: nueva });
+  if (btn) { btn.textContent = 'Guardar'; btn.disabled = false; }
+  if (error) { errEl.textContent = 'Error: ' + error.message; errEl.style.display = 'block'; return; }
+  closeCambiarPassword();
+  showToast('✅ Contraseña actualizada correctamente');
 }
 
 async function doLogout() {
