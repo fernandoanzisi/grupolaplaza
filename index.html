@@ -1509,6 +1509,13 @@ let _supaUser=null,_supaRol=null;
         </select>
       </div>
       <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">APIES</div>
+        <select id="ef-f-apies" onchange="renderEfectivoPage()"
+          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div>
         <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Tipo</div>
         <select id="ef-f-tipo" onchange="renderEfectivoPage()"
           style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
@@ -8401,37 +8408,51 @@ function renderBancosPage() {
 // ════════════════════════════════════════════════════════════════
 function efLimpiar(){
   ['ef-search','ef-f-desde','ef-f-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['ef-f-empresa','ef-f-tipo','ef-sort'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='ef-sort'?'imp_desc':'';});
+  ['ef-f-empresa','ef-f-apies','ef-f-tipo','ef-sort'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='ef-sort'?'imp_desc':'';});
   renderEfectivoPage();
 }
 
 function renderEfectivoPage() {
-  const allEmp = appState.vistaConsolidada ? appState.empresas : [empresa()];
+  const allEmp = appState.empresas || [];
+  const fEmp   = document.getElementById('ef-f-empresa')?.value||'';
   const empEl  = document.getElementById('efectivo-empresa-name');
-  if (empEl) empEl.textContent = appState.vistaConsolidada ? 'Consolidado' : empresa().name;
+  if (empEl) empEl.textContent = fEmp ? (fEmp==='Rio'?'Rio Salado':fEmp==='Cipolletti'?'Serv. Cipolletti':'La Plaza') : 'Todas las empresas';
 
   const search  = (document.getElementById('ef-search')?.value||'').toLowerCase();
-  const fEmp    = document.getElementById('ef-f-empresa')?.value||'';
+  const fApies  = document.getElementById('ef-f-apies')?.value||'';
   const fTipo   = document.getElementById('ef-f-tipo')?.value||'';
   const fDesde  = document.getElementById('ef-f-desde')?.value||'';
   const fHasta  = document.getElementById('ef-f-hasta')?.value||'';
   const sortVal = document.getElementById('ef-sort')?.value||'imp_desc';
-  const balDate = activeDateFilter||appState.lastMinutaDate||'';
 
   let all = [];
   allEmp.forEach(e => {
+    if (fEmp && !e.name.includes(fEmp)) return;
     (e.transactions||[]).filter(t=>t.cat==='Efectivo').forEach(t => {
       const fRef = t.date||'';
       if (fDesde && fRef < fDesde) return;
       if (fHasta && fRef > fHasta) return;
       if (!fDesde && !fHasta && dateFilterFrom && fRef < dateFilterFrom) return;
       if (!fDesde && !fHasta && dateFilterTo   && fRef > dateFilterTo)   return;
-      if (fEmp && !e.name.includes(fEmp)) return;
       if (fTipo && t.type !== fTipo) return;
+      if (fApies && (t.account||'') !== fApies) return;
       if (search && !(t.desc||'').toLowerCase().includes(search) && !(t.account||'').toLowerCase().includes(search) && !e.name.toLowerCase().includes(search)) return;
       all.push({...t, empName:e.name, empColor:e.color||'#6c8fff'});
     });
   });
+
+  // Poblar dropdown APIES dinámicamente
+  const apiesEl = document.getElementById('ef-f-apies');
+  if (apiesEl) {
+    const allForApies = [];
+    allEmp.forEach(e => {
+      if (fEmp && !e.name.includes(fEmp)) return;
+      (e.transactions||[]).filter(t=>t.cat==='Efectivo').forEach(t=>{ if(t.account) allForApies.push(t.account); });
+    });
+    const vals = [...new Set(allForApies)].sort();
+    const cur = apiesEl.value;
+    apiesEl.innerHTML = '<option value="">Todas</option>' + vals.map(v=>`<option value="${v}"${v===cur?' selected':''}>${v}</option>`).join('');
+  }
 
   // Filter by selected date if active (not date range)
   const efBalDate = activeDateFilter||appState.lastMinutaDate||'';
