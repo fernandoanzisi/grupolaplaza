@@ -4204,7 +4204,25 @@ function dashSetView(view) {
   const vEl=g('dash-view-empresa');
   if(!vEl)return;
 
+  // ── Preservar fechas entre re-renders ──
+  // Leer valores actuales ANTES de reconstruir el HTML
+  const _prevDesde = document.getElementById('dash-emp-desde')?.value || window._dashEmpDesde || '';
+  const _prevHasta = document.getElementById('dash-emp-hasta')?.value || window._dashEmpHasta || '';
+  // Guardar en variable global para persistir entre vistas
+  if (_prevDesde) window._dashEmpDesde = _prevDesde;
+  if (_prevHasta) window._dashEmpHasta = _prevHasta;
+  // Si hay fechas guardadas, actualizar activeDateFilter
+  const _desdeUsar = _prevDesde || window._dashEmpDesde || '';
+  const _hastaUsar = _prevHasta || window._dashEmpHasta || '';
+  if (_hastaUsar || _desdeUsar) {
+    activeDateFilter = _hastaUsar || _desdeUsar;
+    if (typeof dateFilterFrom !== 'undefined') dateFilterFrom = _desdeUsar || null;
+    if (typeof dateFilterTo   !== 'undefined') dateFilterTo   = _hastaUsar || null;
+  }
+
   // Cuadro helper
+  // Fecha a mostrar en el badge (usa la persistida o la activa)
+  const _fechaMostrarBadge = window._dashEmpHasta || window._dashEmpDesde || activeDateFilter || appState.lastMinutaDate || '';
   function C(lbl,val,c2,isUSD,sub){
     const neg=val<0, fc=neg?'var(--red)':c2;
     return '<div style="background:var(--bg3);border-radius:10px;padding:11px 13px;border-left:3px solid '+fc+'">'+
@@ -4228,7 +4246,7 @@ function dashSetView(view) {
           (totalUSDS>0?'<div style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);border-radius:6px;padding:3px 10px;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--yellow)">U$S '+fmtARS(totalUSDS)+'</div>':'') +
         '</div>' +
       '</div>' +
-      (balDate?'<div style="background:'+col+'22;color:'+col+';padding:5px 14px;border-radius:99px;font-size:11px;font-weight:700">📅 '+new Date(balDate+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})+'</div>':'') +
+      '<div id="dash-emp-fecha-badge" style="background:'+col+'22;color:'+col+';padding:5px 14px;border-radius:99px;font-size:11px;font-weight:700;display:'+(_fechaMostrarBadge?'flex':'none')+'">📅 '+(_fechaMostrarBadge?new Date(_fechaMostrarBadge+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'')+' </div>' +
     '</div>' +
 
     // Filtros análisis
@@ -4359,6 +4377,22 @@ function dashSetView(view) {
     }
   }
 
+  // ── Restaurar fechas en los inputs recién creados ──
+  const _dsd2 = document.getElementById('dash-emp-desde');
+  const _hst2 = document.getElementById('dash-emp-hasta');
+  if (_dsd2 && window._dashEmpDesde) _dsd2.value = window._dashEmpDesde;
+  if (_hst2 && window._dashEmpHasta) _hst2.value = window._dashEmpHasta;
+  // Actualizar badge de fecha si existe
+  const _badgeEl2 = document.getElementById('dash-emp-fecha-badge');
+  const _fMost = window._dashEmpHasta || window._dashEmpDesde || balDate || '';
+  if (_badgeEl2 && _fMost) {
+    try {
+      const _dObj2 = new Date(_fMost+'T12:00:00');
+      _badgeEl2.textContent = '📅 '+_dObj2.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+      _badgeEl2.style.display = '';
+    } catch(e){}
+  }
+
   // Render chart default
   setTimeout(()=>dashEmpBtn(document.querySelector('[data-emp="'+view+'"][data-k="ef"]')),50);
 
@@ -4387,10 +4421,13 @@ function dashEmpBtnActive(view) {
   // Update activeDateFilter from the dashboard date inputs
   const desde = document.getElementById('dash-emp-desde')?.value || '';
   const hasta = document.getElementById('dash-emp-hasta')?.value || '';
+  // Persistir en variables globales para sobrevivir al re-render
+  window._dashEmpDesde = desde || '';
+  window._dashEmpHasta = hasta || '';
   if (hasta || desde) {
     activeDateFilter = hasta || desde;
-    dateFilterFrom   = desde || null;
-    dateFilterTo     = hasta || null;
+    if (typeof dateFilterFrom !== 'undefined') dateFilterFrom = desde || null;
+    if (typeof dateFilterTo   !== 'undefined') dateFilterTo   = hasta || null;
   }
   // Re-render the whole view so all cuadros update with new date
   dashSetView(view);
