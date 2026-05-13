@@ -412,13 +412,7 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('cuentas',this)"   data-page="cuentas">🏦 Cuentas</button>
         </div>
       </div>
-      <div class="nav-group" id="grp-empresas">
-        <button class="nav-tab nav-group-trigger" onclick="toggleGroup('grp-empresas',event)"><span class="ni">🏢</span><span class="nl">Empresas</span><span class="nav-arrow">▾</span></button>
-        <div class="nav-dropdown">
-          <button class="nav-dd-item" onclick="navGo('empresas',this)"    data-page="empresas">🏢 Empresas</button>
-          <button class="nav-dd-item" onclick="navGo('subempresas',this)" data-page="subempresas">🏪 Subempresas</button>
-        </div>
-      </div>
+      <button class="nav-tab" onclick="navGo('subempresas',this)" data-page="subempresas"><span class="ni">🏢</span><span class="nl">Unidades de negocio</span></button>
       <div class="nav-group" id="grp-gestion">
         <button class="nav-tab nav-group-trigger" onclick="toggleGroup('grp-gestion',event)"><span class="ni">📋</span><span class="nl">Gestión</span><span class="nav-arrow">▾</span></button>
         <div class="nav-dropdown nav-dropdown-2col">
@@ -1118,10 +1112,9 @@ let _supaUser=null,_supaRol=null;
 <!-- ═══════════════ SUBEMPRESAS ═══════════════ -->
 <div class="page" id="page-subempresas">
   <div class="section-header mb">
-    <h2>🏪 Estaciones — <span id="sub-empresa-name" style="color:var(--accent)"></span></h2>
-    <button class="btn-sm" onclick="openAddSubempresa()">+ Nueva subempresa</button>
+    <h2>🏢 Unidades de negocio — <span id="sub-empresa-name" style="color:var(--accent)"></span></h2>
   </div>
-  <div class="alert blue mb">💡 Las subempresas son las estaciones o sucursales de cada razón social. Cada una muestra su efectivo disponible y cheques rechazados.</div>
+  <div class="alert blue mb">💡 Las unidades de negocio son las estaciones o sucursales de cada razón social. Cada una muestra su efectivo disponible y cheques rechazados.</div>
   <div id="subempresas-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;"></div>
 </div>
 
@@ -7291,8 +7284,16 @@ function renderSubempresas() {
     });
   });
 
+  // Deduplicar por nombre+fecha (evita duplicados si se importó varias veces)
+  const _seen = new Set();
+  cards = cards.filter(({s}) => {
+    const k = s.nombre + '|' + (s.fecha||'');
+    if (_seen.has(k)) return false;
+    _seen.add(k); return true;
+  });
+
   if (cards.length === 0) {
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3)">Sin datos de estaciones — importá la Minuta</div>';
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3)">Sin datos — importá la Minuta</div>';
     return;
   }
 
@@ -7311,18 +7312,18 @@ function renderSubempresas() {
         '</div>' +
       '</div>' +
       // Grid de 3 valores principales
-      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;min-width:0">' +
-        '<div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">' +
-          '<div style="font-size:10px;color:var(--text3);margin-bottom:3px">EFECTIVO</div>' +
-          '<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:' + efColor + ';word-break:break-all">' + fmtMoney(s.efectivo) + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">' +
+        '<div style="background:var(--bg3);border-radius:8px;padding:8px 6px;text-align:center;overflow:hidden">' +
+          '<div style="font-size:9px;color:var(--text3);margin-bottom:3px;letter-spacing:.5px">EFECTIVO</div>' +
+          '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:' + efColor + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + fmtMoney(s.efectivo) + '</div>' +
         '</div>' +
-        '<div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">' +
-          '<div style="font-size:10px;color:var(--text3);margin-bottom:3px">RECHAZADOS</div>' +
-          '<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:' + rechColor + ';word-break:break-all">' + fmtMoney(s.rechazados) + '</div>' +
+        '<div style="background:var(--bg3);border-radius:8px;padding:8px 6px;text-align:center;overflow:hidden">' +
+          '<div style="font-size:9px;color:var(--text3);margin-bottom:3px;letter-spacing:.5px">RECHAZADOS</div>' +
+          '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:' + rechColor + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + fmtMoney(s.rechazados) + '</div>' +
         '</div>' +
-        '<div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">' +
-          '<div style="font-size:10px;color:var(--text3);margin-bottom:3px">CARTERA</div>' +
-          '<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);word-break:break-all">' + fmtMoney(s.cartera) + '</div>' +
+        '<div style="background:var(--bg3);border-radius:8px;padding:8px 6px;text-align:center;overflow:hidden">' +
+          '<div style="font-size:9px;color:var(--text3);margin-bottom:3px;letter-spacing:.5px">CARTERA</div>' +
+          '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + fmtMoney(s.cartera) + '</div>' +
         '</div>' +
       '</div>' +
       // Fila secundaria: Disponible banco + Erogaciones
@@ -9198,8 +9199,7 @@ const _origSheetMap = null; // markerashSetView
   <button class="more-item" onclick="navGo('bancos',this);closeMoreMenu()">💳 Bancos</button>
   <button class="more-item" onclick="navGo('efectivo',this);closeMoreMenu()">💵 Efectivo</button>
   <button class="more-item" onclick="navGo('cheques',this);closeMoreMenu()">📋 Cheques</button>
-  <button class="more-item" onclick="navGo('empresas',this);closeMoreMenu()">🏢 Empresas</button>
-  <button class="more-item" onclick="navGo('subempresas',this);closeMoreMenu()">🏪 Subempresas</button>
+  <button class="more-item" onclick="navGo('subempresas',this);closeMoreMenu()">🏢 Unidades de negocio</button>
   <button class="more-item" onclick="navGo('cuentas',this);closeMoreMenu()">🏦 Cuentas</button>
   <button class="more-item" onclick="navGo('lc',this);closeMoreMenu()">💳 Límite de Crédito</button>
   <button class="more-item" onclick="navGo('pasivos',this);closeMoreMenu()">📊 Pasivos Financieros</button>
