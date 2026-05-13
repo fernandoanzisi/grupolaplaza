@@ -1443,65 +1443,29 @@ let _supaUser=null,_supaRol=null;
 
 <!-- ═══════════════ BANCOS ═══════════════ -->
 <div class="page" id="page-bancos">
-  <div class="section-header mb">
-    <h2>💳 Bancos — <span id="bancos-empresa-name" style="color:var(--accent)"></span></h2>
-  </div>
-  <!-- Stats: ARS + USD + Total combinado -->
-  <div class="grid-4 mb" id="bancos-stats"></div>
 
-  <!-- Tabla ARS -->
-  <div class="card mb">
-    <div class="card-title" style="display:flex;align-items:center;gap:8px">
-      <span style="background:rgba(108,143,255,0.15);color:var(--accent);padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700">$ PESOS ARS</span>
-      Movimientos en pesos
-    </div>
-    <div class="table-wrap">
-      <table><thead><tr>
-        <th>Fecha</th><th>Banco / Cuenta</th><th>Descripción</th><th>Empresa</th><th style="text-align:right">Importe ARS</th><th>Tipo</th>
-      </tr></thead>
-      <tbody id="bancos-table-ars"></tbody></table>
-    </div>
-  </div>
-
-  <!-- Tabla USD -->
-  <div class="card">
-    <div class="card-title" style="display:flex;align-items:center;gap:8px">
-      <span style="background:rgba(245,200,66,0.15);color:var(--yellow);padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700">U$D DÓLARES</span>
-      Movimientos en dólares con conversión
-    </div>
-    <div class="table-wrap">
-      <table><thead><tr>
-        <th>Fecha</th><th>Descripción</th><th>Empresa</th>
-        <th style="text-align:right;color:var(--yellow)">Importe USD</th>
-        <th style="text-align:right;color:var(--text2)">≈ en Pesos</th>
-        <th>TC Ref.</th>
-      </tr></thead>
-      <tbody id="bancos-table-usd"></tbody></table>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════ EFECTIVO ═══════════════ -->
-<div class="page" id="page-efectivo">
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+  <!-- HEADER -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
     <div>
-      <h2 style="font-size:20px;font-weight:800;margin:0">💵 Efectivo — <span id="efectivo-empresa-name" style="color:var(--accent)"></span></h2>
-      <div id="ef-result-count" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
+      <h2 style="font-size:20px;font-weight:800;margin:0">💳 Bancos — <span id="bancos-empresa-name" style="color:var(--accent)"></span></h2>
+      <div id="bancos-result-count" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
     </div>
-    <button onclick="exportEfectivoExcel()" style="padding:7px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);cursor:pointer">📥 Excel</button>
+    <div style="display:flex;gap:8px">
+      <button onclick="exportBancosExcel()" style="padding:7px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);cursor:pointer">📥 Excel</button>
+    </div>
   </div>
 
-  <!-- FILTROS ARRIBA -->
-  <div class="card mb" style="padding:12px 14px">
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;align-items:end">
+  <!-- FILTROS PROPIOS (independientes de la cinta global) -->
+  <div class="card mb" style="padding:12px 14px;border:1px solid rgba(74,159,212,0.2)">
+    <div style="font-size:9px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🔧 Filtros propios de Bancos</div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr;gap:9px;align-items:end;margin-bottom:9px">
       <div style="grid-column:1/-1">
-        <input type="text" id="ef-search" placeholder="🔍 Buscar descripción, subempresa..." oninput="renderEfectivoPage()"
+        <input type="text" id="bancos-search" placeholder="🔍 Buscar banco, cuenta, descripción..." oninput="renderBancosPage()"
           style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
       </div>
       <div>
         <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Empresa</div>
-        <select id="ef-f-empresa" onchange="renderEfectivoPage()"
-          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <select id="bancos-f-empresa" onchange="renderBancosPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
           <option value="">Todas</option>
           <option value="Rio">🔵 Rio Salado</option>
           <option value="Cipolletti">🟢 Serv. Cipolletti</option>
@@ -1509,16 +1473,22 @@ let _supaUser=null,_supaRol=null;
         </select>
       </div>
       <div>
-        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">APIES</div>
-        <select id="ef-f-apies" onchange="renderEfectivoPage()"
-          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
-          <option value="">Todas</option>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Moneda</div>
+        <select id="bancos-f-moneda" onchange="renderBancosPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+          <option value="">ARS + USD</option>
+          <option value="ars">$ ARS solamente</option>
+          <option value="usd">U$D solamente</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Banco</div>
+        <select id="bancos-f-banco" onchange="renderBancosPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+          <option value="">Todos</option>
         </select>
       </div>
       <div>
         <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Tipo</div>
-        <select id="ef-f-tipo" onchange="renderEfectivoPage()"
-          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <select id="bancos-f-tipo" onchange="renderBancosPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
           <option value="">Todos</option>
           <option value="ingreso">📥 Ingresos</option>
           <option value="gasto">📤 Egresos</option>
@@ -1526,23 +1496,235 @@ let _supaUser=null,_supaRol=null;
       </div>
       <div>
         <div style="font-size:9px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Desde</div>
-        <input type="date" id="ef-f-desde" oninput="renderEfectivoPage()"
+        <input type="date" id="bancos-f-desde" oninput="renderBancosPage()"
           style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
       </div>
       <div>
         <div style="font-size:9px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Hasta</div>
-        <input type="date" id="ef-f-hasta" oninput="renderEfectivoPage()"
+        <input type="date" id="bancos-f-hasta" oninput="renderBancosPage()"
           style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:9px;align-items:end">
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Cuenta</div>
+        <select id="bancos-f-cuenta" onchange="renderBancosPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+          <option value="">Todas las cuentas</option>
+        </select>
       </div>
       <div>
         <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Ordenar por</div>
-        <select id="ef-sort" onchange="renderEfectivoPage()"
-          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+        <select id="bancos-sort" onchange="renderBancosPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
           <option value="imp_desc">Importe ↓</option>
           <option value="imp_asc">Importe ↑</option>
           <option value="fecha_desc">Fecha ↓</option>
           <option value="fecha_asc">Fecha ↑</option>
+          <option value="banco_asc">Banco A→Z</option>
+          <option value="emp_asc">Empresa A→Z</option>
         </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Agrupar por</div>
+        <select id="bancos-group" onchange="renderBancosPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+          <option value="">Sin agrupar</option>
+          <option value="banco">Por banco</option>
+          <option value="empresa">Por empresa</option>
+          <option value="cuenta">Por cuenta</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Importe mínimo</div>
+        <input type="number" id="bancos-f-minimo" placeholder="Ej: 1000000" oninput="renderBancosPage()"
+          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">TC Ref. USD</div>
+        <select id="bancos-f-tc" onchange="renderBancosPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+          <option value="blue">TC Blue</option>
+          <option value="oficial">TC Oficial</option>
+          <option value="mep">TC MEP</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end">
+        <button onclick="bancosLimpiar()" style="width:100%;padding:7px 8px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text3);font-size:11px;cursor:pointer">✕ Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div id="bancos-stats" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px"></div>
+
+  <!-- GRÁFICOS -->
+  <div id="bancos-charts" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px"></div>
+
+  <!-- TABLA ARS -->
+  <div class="card mb" style="padding:0;overflow:hidden">
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="background:rgba(74,159,212,0.12);color:var(--accent);padding:3px 11px;border-radius:6px;font-size:11px;font-weight:700">$ PESOS ARS</span>
+        <span style="font-size:11px;color:var(--text2);font-weight:600">Movimientos en pesos</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center" id="bancos-ars-badges"></div>
+    </div>
+    <div class="table-wrap">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead style="position:sticky;top:0;background:var(--bg2);z-index:1"><tr>
+          <th style="padding:9px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap">Fecha</th>
+          <th style="padding:9px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">Banco / Cuenta</th>
+          <th style="padding:9px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">Descripción</th>
+          <th style="padding:9px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">Empresa</th>
+          <th style="padding:9px 12px;text-align:right;font-size:9px;font-weight:700;color:var(--green);text-transform:uppercase">Importe ARS</th>
+          <th style="padding:9px 12px;text-align:right;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">% total</th>
+          <th style="padding:9px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">Tipo</th>
+        </tr></thead>
+        <tbody id="bancos-table-ars"></tbody>
+        <tfoot id="bancos-tfoot-ars"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- TABLA USD -->
+  <div class="card mb" style="padding:0;overflow:hidden">
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="background:rgba(251,191,36,0.12);color:var(--yellow);padding:3px 11px;border-radius:6px;font-size:11px;font-weight:700">U$D DÓLARES</span>
+        <span style="font-size:11px;color:var(--text2);font-weight:600">Movimientos en dólares con conversión</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center" id="bancos-usd-badges"></div>
+    </div>
+    <div class="table-wrap">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead style="position:sticky;top:0;background:var(--bg2);z-index:1"><tr>
+          <th style="padding:9px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap">Fecha</th>
+          <th style="padding:9px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">Banco / Cuenta</th>
+          <th style="padding:9px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">Descripción</th>
+          <th style="padding:9px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">Empresa</th>
+          <th style="padding:9px 12px;text-align:right;font-size:9px;font-weight:700;color:var(--yellow);text-transform:uppercase">Importe USD</th>
+          <th style="padding:9px 12px;text-align:right;font-size:9px;font-weight:700;color:var(--text2);text-transform:uppercase">≈ en Pesos</th>
+          <th style="padding:9px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">TC Ref.</th>
+          <th style="padding:9px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase">Tipo</th>
+        </tr></thead>
+        <tbody id="bancos-table-usd"></tbody>
+        <tfoot id="bancos-tfoot-usd"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- RESUMEN POR EMPRESA -->
+  <div id="bancos-resumen-empresas" style="margin-bottom:12px"></div>
+
+</div>
+
+<!-- ═══════════════ EFECTIVO ═══════════════ -->
+<div class="page" id="page-efectivo">
+
+  <!-- HEADER -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+    <div>
+      <h2 style="font-size:20px;font-weight:800;margin:0">💵 Efectivo — <span id="efectivo-empresa-name" style="color:var(--accent)"></span></h2>
+      <div id="ef-result-count" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="exportEfectivoExcel()" style="padding:7px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);cursor:pointer">📥 Excel</button>
+    </div>
+  </div>
+
+  <!-- FILTROS FILA 1 -->
+  <div class="card mb" style="padding:12px 14px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;align-items:end;margin-bottom:9px">
+      <div style="grid-column:1/-1">
+        <input type="text" id="ef-search" placeholder="🔍 Buscar descripción, estación, empresa..." oninput="renderEfectivoPage()"
+          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Empresa</div>
+        <select id="ef-f-empresa" onchange="renderEfectivoPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+          <option value="">Todas</option>
+          <option value="Rio">🔵 Rio Salado</option>
+          <option value="Cipolletti">🟢 Serv. Cipolletti</option>
+          <option value="Plaza">🟡 La Plaza</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">APIES / Estación</div>
+        <select id="ef-f-apies" onchange="renderEfectivoPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+          <option value="">Todas</option>
+          <option value="11902">11902 — RS Roca</option>
+          <option value="1526">1526 — RS Chichinales</option>
+          <option value="15814">15814 — RS Regina Centro</option>
+          <option value="2016">2016 — RS Regina Ruta</option>
+          <option value="1535">1535 — SC Cinco Saltos</option>
+          <option value="15431">15431 — SC Esmeralda</option>
+          <option value="1539">1539 — SC Cipolletti/Pacheco</option>
+          <option value="50282">50282 — Agro Base Roca</option>
+          <option value="50309">50309 — Agro Pal</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Columna a analizar</div>
+        <select id="ef-f-col" onchange="renderEfectivoPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+          <option value="efectivo">Efectivo</option>
+          <option value="cajero">Cajero automático</option>
+          <option value="fondosNoDep">Fondos no depositados</option>
+          <option value="erogaciones">Erogaciones excepc.</option>
+          <option value="dispBanco">Disponible banco hoy</option>
+          <option value="rendAgro">Rendic. Efectivo Agro</option>
+          <option value="chqCartera">Cheques en cartera</option>
+          <option value="chqRechaz">Valores rechazados</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Tipo</div>
+        <select id="ef-f-tipo" onchange="renderEfectivoPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+          <option value="">Todos</option>
+          <option value="ingreso">📥 Ingresos</option>
+          <option value="gasto">📤 Egresos</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Desde</div>
+        <input type="date" id="ef-f-desde" oninput="renderEfectivoPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Hasta</div>
+        <input type="date" id="ef-f-hasta" oninput="renderEfectivoPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
+      </div>
+    </div>
+    <!-- FILTROS FILA 2 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:10px;align-items:end">
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Ordenar por</div>
+        <select id="ef-sort" onchange="renderEfectivoPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+          <option value="imp_desc">Efectivo ↓</option>
+          <option value="imp_asc">Efectivo ↑</option>
+          <option value="rech_desc">Rechazados ↓</option>
+          <option value="erog_desc">Erogaciones ↓</option>
+          <option value="banco_desc">Disponible banco ↓</option>
+          <option value="fecha_desc">Fecha ↓</option>
+          <option value="fecha_asc">Fecha ↑</option>
+          <option value="nombre_asc">Nombre A→Z</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Mostrar columnas</div>
+        <select id="ef-f-cols" onchange="renderEfectivoPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+          <option value="todas">Todas las columnas</option>
+          <option value="basico">Solo efectivo + cajero</option>
+          <option value="rechazados">Solo valores rechazados</option>
+          <option value="agro">Vista AGRO</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Agrupación</div>
+        <select id="ef-group" onchange="renderEfectivoPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
+          <option value="estacion">Por estación</option>
+          <option value="empresa">Por empresa</option>
+          <option value="tipo">Por tipo (RS/SC/Agro)</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Umbral alerta ($)</div>
+        <input type="number" id="ef-umbral" placeholder="Ej: 1000000" oninput="renderEfectivoPage()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
       </div>
       <div style="display:flex;align-items:flex-end">
         <button onclick="efLimpiar()" style="width:100%;padding:7px 8px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text3);font-size:11px;cursor:pointer">✕ Limpiar</button>
@@ -1550,65 +1732,96 @@ let _supaUser=null,_supaRol=null;
     </div>
   </div>
 
-  <!-- KPIs -->
-  <div class="grid-4 mb" id="efectivo-stats"></div>
+  <!-- KPIs 8 columnas -->
+  <div id="efectivo-stats" style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:12px"></div>
+
+  <!-- GRÁFICOS BARRAS -->
+  <div id="ef-charts" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px"></div>
 
   <!-- MAPA -->
   <div class="card mb" style="border:1px solid rgba(74,159,212,0.2);padding:14px">
     <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📍 Efectivo por estación — Alto Valle RN</div>
-    <div style="background:linear-gradient(180deg,#1a2535 0%,#1a2535 65%,#1e3a5f 65%,#2a5080 100%);border-radius:10px;padding:14px 10px 8px;position:relative;height:120px;overflow:hidden">
+    <div style="background:linear-gradient(180deg,#1a2535 0%,#1a2535 65%,#1e3a5f 65%,#2a5080 100%);border-radius:10px;padding:14px 10px 8px;position:relative;height:130px;overflow:hidden">
       <div style="position:absolute;top:66%;left:0;right:0;height:2px;background:rgba(255,255,255,0.12)"></div>
       <div style="position:absolute;bottom:7px;left:0;right:0;text-align:center;font-size:9px;color:rgba(100,160,220,0.5);letter-spacing:2px;font-style:italic">Río Negro</div>
-      <div style="position:absolute;left:6%;top:55%">
+      <div style="position:absolute;left:6%;top:52%">
         <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;border:1.5px solid rgba(255,255,255,0.4)"></div>
-        <div style="position:absolute;bottom:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Chichinales<br><span id="ef-map-chichinales" style="color:#4ade80">—</span></div>
+        <div style="position:absolute;bottom:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Chichinales<br><span id="ef-map-chichinales" style="color:#4ade80">—</span></div>
       </div>
-      <div style="position:absolute;left:13%;top:35%">
+      <div style="position:absolute;left:14%;top:30%">
         <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 6px rgba(251,191,36,0.5)"></div>
-        <div style="position:absolute;top:13px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;border:1px solid rgba(251,191,36,0.4);text-align:center">Agro Choele<br><span id="ef-map-agrochoele">—</span></div>
+        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;border:1px solid rgba(251,191,36,0.4);text-align:center">Agro Choele<br><span id="ef-map-agrochoele">—</span></div>
       </div>
-      <div style="position:absolute;left:25%;top:50%">
+      <div style="position:absolute;left:25%;top:48%">
         <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;border:1.5px solid rgba(255,255,255,0.4)"></div>
-        <div style="position:absolute;bottom:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;text-align:center;color:white">V.Regina<br><span id="ef-map-vregina" style="color:#4ade80">—</span></div>
+        <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">V.Regina<br><span id="ef-map-vregina" style="color:#4ade80">—</span></div>
       </div>
       <div style="position:absolute;left:33%;top:58%">
         <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;border:1.5px solid rgba(255,255,255,0.4)"></div>
-        <div style="position:absolute;top:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;text-align:center;color:white">V.Regina 2016<br><span id="ef-map-vregina2016" style="color:#4ade80">—</span></div>
+        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">V.Regina 2016<br><span id="ef-map-vregina2016" style="color:#4ade80">—</span></div>
       </div>
-      <div style="position:absolute;left:46%;top:40%">
-        <div style="width:12px;height:12px;border-radius:50%;background:#4ade80;box-shadow:0 0 12px #4ade80;border:2px solid rgba(255,255,255,0.6)"></div>
-        <div style="position:absolute;bottom:15px;left:50%;transform:translateX(-50%);background:rgba(74,222,128,0.15);color:#4ade80;font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;border:1px solid #4ade80;text-align:center">Roca 11902 ⭐<br><span id="ef-map-roca">—</span></div>
+      <div style="position:absolute;left:46%;top:36%">
+        <div style="width:13px;height:13px;border-radius:50%;background:#4ade80;box-shadow:0 0 12px #4ade80;border:2px solid rgba(255,255,255,0.6)"></div>
+        <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(74,222,128,0.15);color:#4ade80;font-size:7px;font-weight:700;padding:3px 7px;border-radius:3px;white-space:nowrap;border:1px solid #4ade80;text-align:center">Roca 11902 ⭐<br><span id="ef-map-roca">—</span></div>
       </div>
-      <div style="position:absolute;left:52%;top:55%">
+      <div style="position:absolute;left:53%;top:56%">
         <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 6px rgba(251,191,36,0.5)"></div>
-        <div style="position:absolute;top:13px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;border:1px solid rgba(251,191,36,0.4);text-align:center">Agro Roca<br><span id="ef-map-agroroca">—</span></div>
+        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;border:1px solid rgba(251,191,36,0.4);text-align:center">Agro Roca<br><span id="ef-map-agroroca">—</span></div>
       </div>
-      <div style="position:absolute;left:65%;top:38%">
+      <div style="position:absolute;left:65%;top:36%">
         <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;box-shadow:0 0 8px #4a9fd4;border:1.5px solid rgba(255,255,255,0.4)"></div>
-        <div style="position:absolute;bottom:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Cip 15431<br><span id="ef-map-cip15431" style="color:#4a9fd4">—</span></div>
+        <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Esmeralda 15431<br><span id="ef-map-cip15431" style="color:#4a9fd4">—</span></div>
       </div>
-      <div style="position:absolute;left:72%;top:50%">
+      <div style="position:absolute;left:73%;top:52%">
         <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;box-shadow:0 0 8px #4a9fd4;border:1.5px solid rgba(255,255,255,0.4)"></div>
-        <div style="position:absolute;top:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Cip 1539<br><span id="ef-map-cip1539" style="color:#4a9fd4">—</span></div>
+        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Pacheco 1539<br><span id="ef-map-cip1539" style="color:#4a9fd4">—</span></div>
       </div>
-      <div style="position:absolute;left:85%;top:32%">
+      <div style="position:absolute;left:86%;top:30%">
         <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;box-shadow:0 0 8px #4a9fd4;border:1.5px solid rgba(255,255,255,0.4)"></div>
-        <div style="position:absolute;bottom:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;text-align:center;color:white">C.Saltos<br><span id="ef-map-csaltos" style="color:#4a9fd4">—</span></div>
+        <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">C.Saltos 1535<br><span id="ef-map-csaltos" style="color:#4a9fd4">—</span></div>
       </div>
     </div>
-    <div style="display:flex;gap:14px;margin-top:6px;font-size:10px;color:var(--text3)">
+    <div style="display:flex;gap:14px;margin-top:7px;font-size:10px;color:var(--text3)">
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4ade80;margin-right:4px"></span>Rio Salado</span>
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4a9fd4;margin-right:4px"></span>Serv. Cipolletti</span>
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;margin-right:4px"></span>Agro</span>
     </div>
   </div>
 
-  <!-- CARDS POR ESTACIÓN -->
-  <div id="efectivo-by-sub" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px"></div>
+  <!-- CARDS POR ESTACIÓN (tabla detalle EESS) -->
+  <div id="efectivo-by-sub" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:12px"></div>
 
-  <!-- TABLA sin cambios -->
+  <!-- TABLA DETALLE EESS COMPLETA -->
+  <div class="card mb" style="padding:0;overflow:hidden">
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:11px;font-weight:700;color:var(--text2)">📋 Detalle EESS — todas las columnas</div>
+      <div id="ef-eess-badges" style="display:flex;gap:6px"></div>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px">
+        <thead style="position:sticky;top:0;background:var(--bg2);z-index:1"><tr>
+          <th style="padding:8px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap">Estación</th>
+          <th style="padding:8px 10px;text-align:right;font-size:9px;font-weight:700;color:#4ade80;text-transform:uppercase">💵 Efectivo</th>
+          <th style="padding:8px 10px;text-align:right;font-size:9px;font-weight:700;color:var(--yellow);text-transform:uppercase">🏧 Cajero</th>
+          <th style="padding:8px 10px;text-align:right;font-size:9px;font-weight:700;color:#a78bfa;text-transform:uppercase">📦 Fondos no dep.</th>
+          <th style="padding:8px 10px;text-align:right;font-size:9px;font-weight:700;color:var(--red);text-transform:uppercase">⚠️ Erogaciones</th>
+          <th style="padding:8px 10px;text-align:right;font-size:9px;font-weight:700;color:var(--accent);text-transform:uppercase">🏦 Disp. banco</th>
+          <th style="padding:8px 10px;text-align:right;font-size:9px;font-weight:700;color:var(--teal);text-transform:uppercase">🌿 Rendic. Agro</th>
+          <th style="padding:8px 10px;text-align:right;font-size:9px;font-weight:700;color:#6c8fff;text-transform:uppercase">📋 Cartera</th>
+          <th style="padding:8px 10px;text-align:right;font-size:9px;font-weight:700;color:var(--red);text-transform:uppercase">🚫 Rechazados</th>
+        </tr></thead>
+        <tbody id="ef-eess-tbody"></tbody>
+        <tfoot id="ef-eess-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECCIÓN AGRO -->
+  <div id="ef-agro-section" style="margin-bottom:12px"></div>
+
+  <!-- TABLA MOVIMIENTOS -->
   <div class="card" style="padding:0;overflow:hidden">
-    <div style="overflow-x:auto;max-height:65vh;overflow-y:auto">
+    <div style="overflow-x:auto;max-height:60vh;overflow-y:auto">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead style="position:sticky;top:0;background:var(--bg2);z-index:1"><tr>
           <th style="padding:9px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap">Fecha</th>
@@ -1627,7 +1840,6 @@ let _supaUser=null,_supaRol=null;
     </div>
   </div>
 </div>
-
 <div class="page" id="page-extractos">
   <div class="section-header mb" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
     <h2>🏦 Extractos Bancarios — <span id="extractos-emp-name" style="color:var(--accent)"></span></h2>
@@ -8298,117 +8510,264 @@ function renderClientesPage() {
 }
 
 function bancosLimpiar() {
-  ['bancos-search','bancos-f-desde','bancos-f-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['bancos-f-empresa','bancos-f-tipo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['bancos-search','bancos-f-desde','bancos-f-hasta','bancos-f-minimo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['bancos-f-empresa','bancos-f-moneda','bancos-f-banco','bancos-f-cuenta','bancos-f-tipo','bancos-sort','bancos-group'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    el.value=id==='bancos-sort'?'imp_desc':id==='bancos-f-tc'?'blue':'';
+  });
+  // Reset dynamic selects so they reload
+  const bd=document.getElementById('bancos-f-banco'); if(bd) delete bd.dataset.loaded;
+  const cd=document.getElementById('bancos-f-cuenta'); if(cd) delete cd.dataset.loaded;
   renderBancosPage();
 }
 
 function renderBancosPage() {
   const emp = empresa();
-  const el = document.getElementById('bancos-empresa-name');
-  if (el) el.textContent = appState.vistaConsolidada ? 'Consolidado' : emp.name;
+  const nameEl = document.getElementById('bancos-empresa-name');
+  if (nameEl) nameEl.textContent = appState.vistaConsolidada ? 'Consolidado' : emp.name;
 
   const allEmp = appState.vistaConsolidada ? appState.empresas : [emp];
-  let bancosTxARS = [], bancosTxUSD = [];
-  let totalARS = 0, totalUSD = 0;
-  const balDate = activeDateFilter || appState.lastMinutaDate || '';
 
+  const fEmp    = document.getElementById('bancos-f-empresa')?.value || '';
+  const fMoneda = document.getElementById('bancos-f-moneda')?.value || '';
+  const fTipo   = document.getElementById('bancos-f-tipo')?.value || '';
+  const fDesde  = document.getElementById('bancos-f-desde')?.value || '';
+  const fHasta  = document.getElementById('bancos-f-hasta')?.value || '';
+  const fMin    = parseFloat(document.getElementById('bancos-f-minimo')?.value || '0') || 0;
+  const sortVal = document.getElementById('bancos-sort')?.value || 'imp_desc';
+  const tcRef   = document.getElementById('bancos-f-tc')?.value || 'blue';
+  const search  = (document.getElementById('bancos-search')?.value || '').toLowerCase();
+  const fBancoV = (document.getElementById('bancos-f-banco')?.value || '').toLowerCase();
+  const fCuenta = (document.getElementById('bancos-f-cuenta')?.value || '').toLowerCase();
+
+  let tcUsado = (dolar.blue && dolar.blue.venta) ? dolar.blue.venta : 1215;
+  if (tcRef === 'oficial' && dolar.oficial) tcUsado = dolar.oficial.venta || tcUsado;
+  if (tcRef === 'mep' && dolar.mep) tcUsado = dolar.mep.venta || tcUsado;
+
+  let allTx = [];
   allEmp.forEach(e => {
-    const allBancoTx = txForEmpresa(e).filter(t => nk(t.cat||'').includes('banco'));
-    const dayBancoTx = balDate ? allBancoTx.filter(t => t.date === balDate) : allBancoTx;
-    dayBancoTx.forEach(t => {
+    if (fEmp && !e.name.includes(fEmp)) return;
+    txForEmpresa(e).filter(t => nk(t.cat||'').includes('banco')).forEach(t => {
       const isUSD = (t.moneda||'').toUpperCase() === 'USD' || nk(t.cat||'').includes('usd');
-      if (isUSD) {
-        bancosTxUSD.push({...t, empresa:e.name, empColor:e.color||'#6c8fff'});
-        if (t.type === 'ingreso') totalUSD += t.amount || 0;
-      } else {
-        bancosTxARS.push({...t, empresa:e.name, empColor:e.color||'#6c8fff'});
-        if (t.type === 'ingreso') totalARS += t.amount || 0;
-        else if (t.type === 'gasto') totalARS -= t.amount || 0;
-      }
+      if (fMoneda === 'ars' && isUSD) return;
+      if (fMoneda === 'usd' && !isUSD) return;
+      const fRef = t.date || '';
+      if (fDesde && fRef < fDesde) return;
+      if (fHasta && fRef > fHasta) return;
+      if (fTipo && t.type !== fTipo) return;
+      if (fMin && (t.amount||0) < fMin) return;
+      const acct = (t.account||'').toLowerCase();
+      if (fBancoV && !acct.includes(fBancoV)) return;
+      if (fCuenta && acct !== fCuenta) return;
+      if (search && !acct.includes(search) && !(t.desc||'').toLowerCase().includes(search) && !e.name.toLowerCase().includes(search)) return;
+      allTx.push({...t, empresa:e.name, empColor:e.color||'#6c8fff', isUSD});
     });
-    e.accounts.filter(a=>a.type==='banco').forEach(a=>{ if(a.balance) totalARS += a.balance; });
   });
 
-  // Tipo de cambio actual (usar blue como referencia)
-  const tcBlue = (dolar.blue && dolar.blue.venta) ? dolar.blue.venta : 1410;
-  const usdEnPesos = totalUSD * tcBlue;
+  const bancoEl = document.getElementById('bancos-f-banco');
+  if (bancoEl && !bancoEl.dataset.loaded) {
+    const bancos = [...new Set(allTx.map(t=>(t.account||'').split(/[\s\-_]/)[0].toUpperCase()).filter(Boolean))].sort();
+    bancoEl.innerHTML = '<option value="">Todos</option>' + bancos.map(b=>'<option value="'+b.toLowerCase()+'">'+b+'</option>').join('');
+    bancoEl.dataset.loaded = '1';
+  }
+  const cuentaEl = document.getElementById('bancos-f-cuenta');
+  if (cuentaEl && !cuentaEl.dataset.loaded) {
+    const cuentas = [...new Set(allTx.map(t=>(t.account||'').trim()).filter(Boolean))].sort();
+    cuentaEl.innerHTML = '<option value="">Todas las cuentas</option>' + cuentas.map(c=>'<option value="'+c.toLowerCase()+'">'+c+'</option>').join('');
+    cuentaEl.dataset.loaded = '1';
+  }
 
-  // Stats: ARS y USD separados y bien visibles
+  let txARS = allTx.filter(t => !t.isUSD);
+  let txUSD = allTx.filter(t => t.isUSD);
+
+  const sortFn = (a,b) => {
+    if (sortVal==='imp_desc') return (b.amount||0)-(a.amount||0);
+    if (sortVal==='imp_asc')  return (a.amount||0)-(b.amount||0);
+    if (sortVal==='fecha_desc') return (b.date||'').localeCompare(a.date||'');
+    if (sortVal==='fecha_asc')  return (a.date||'').localeCompare(b.date||'');
+    if (sortVal==='banco_asc')  return (a.account||'').localeCompare(b.account||'');
+    if (sortVal==='emp_asc')    return a.empresa.localeCompare(b.empresa);
+    return 0;
+  };
+  txARS.sort(sortFn); txUSD.sort(sortFn);
+
+  const totalIngARS = txARS.filter(t=>t.type==='ingreso').reduce((s,t)=>s+(t.amount||0),0);
+  const totalEgrARS = txARS.filter(t=>t.type!=='ingreso').reduce((s,t)=>s+(t.amount||0),0);
+  const totalARS = totalIngARS - totalEgrARS;
+  const totalUSD = txUSD.filter(t=>t.type==='ingreso').reduce((s,t)=>s+(t.amount||0),0);
+  const usdEnPesos = totalUSD * tcUsado;
+
   const statsEl = document.getElementById('bancos-stats');
-  if (statsEl) {
-    statsEl.innerHTML =
-      // Saldo ARS
-      '<div class="stat-card" style="border-left:3px solid var(--accent)">' +
-        '<div class="label">SALDO TOTAL $ (ARS)</div>' +
-        '<div class="value" style="color:var(--accent);font-size:22px">' + fmtMoney(totalARS) + '</div>' +
-      '</div>' +
-      // Saldo USD
-      '<div class="stat-card" style="border-left:3px solid var(--yellow)">' +
-        '<div class="label">SALDO TOTAL USD</div>' +
-        '<div style="display:flex;flex-direction:column;gap:3px">' +
-          '<div class="value" style="color:var(--yellow);font-size:22px">U$S ' + fmtARS(totalUSD) + '</div>' +
-          '<div style="font-size:11px;color:var(--text3)">' +
-            '≈ ' + fmtMoney(usdEnPesos) +
-            ' <span style="color:var(--text3);font-size:10px">(TC Blue $' + fmtARS(tcBlue) + ')</span>' +
+  const mkKpi = (lbl,val,col,sub) =>
+    '<div class="stat-card" style="border-left:3px solid '+col+'">' +
+      '<div class="label">'+lbl+'</div>' +
+      '<div class="value" style="color:'+col+';font-size:18px">'+val+'</div>' +
+      (sub?'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+sub+'</div>':'') +
+    '</div>';
+  if (statsEl) statsEl.innerHTML =
+    mkKpi('SALDO TOTAL $ (ARS)', fmtMoney(totalARS), 'var(--accent)', txARS.length+' movs') +
+    mkKpi('SALDO TOTAL USD', 'U$S '+fmtARS(totalUSD), 'var(--yellow)', '≈ '+fmtMoney(usdEnPesos)+' (TC '+tcRef+' $'+fmtARS(tcUsado)+')') +
+    mkKpi('TOTAL COMBINADO ($ + USD)', fmtMoney(totalARS+usdEnPesos), 'var(--green)', 'ARS + USD conv.') +
+    mkKpi('INGRESOS ARS', fmtMoney(totalIngARS), 'var(--green)', txARS.filter(t=>t.type==='ingreso').length+' mov.') +
+    mkKpi('EGRESOS ARS', fmtMoney(totalEgrARS), 'var(--red)', txARS.filter(t=>t.type!=='ingreso').length+' mov.') +
+    mkKpi('MOVIMIENTOS', (txARS.length+txUSD.length)+' mov.', 'var(--text2)', 'ARS + USD');
+
+  const chartsEl = document.getElementById('bancos-charts');
+  if (chartsEl) {
+    const mkBar = (title, items) => {
+      const max = items[0]?.[1] || 1;
+      return '<div class="card" style="padding:13px"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:11px">'+title+'</div>' +
+        (items.length ? items.slice(0,7).map(([lbl,val,col])=>{
+          const pct = Math.max(1, Math.round(Math.abs(val)/max*100));
+          return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">' +
+            '<div style="font-size:10px;color:var(--text2);width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+lbl+'">'+lbl+'</div>' +
+            '<div style="flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(col||'var(--accent)')+';border-radius:3px"></div></div>' +
+            '<div style="font-size:9px;font-family:var(--mono);color:'+(col||'var(--text3)')+';width:80px;text-align:right">'+fmtMoney(val)+'</div></div>';
+        }).join('') : '<div style="font-size:11px;color:var(--text3);text-align:center;padding:16px">Sin datos</div>') + '</div>';
+    };
+
+    const bancosMap = {};
+    txARS.forEach(t=>{ const k=(t.account||'').split(/[\s\-_]/)[0].toUpperCase()||'OTRO'; bancosMap[k]=(bancosMap[k]||0)+(t.amount||0); });
+    const topBancos = Object.entries(bancosMap).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v,'var(--accent)']);
+
+    const empMapARS = {};
+    txARS.forEach(t=>{ const k=t.empresa.split(' ')[0]; empMapARS[k]=(empMapARS[k]||0)+(t.amount||0); });
+    const empColMap = {};
+    allEmp.forEach(e=>{ empColMap[e.name.split(' ')[0]]=e.color||'#6c8fff'; });
+    const topEmpresas = Object.entries(empMapARS).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v,empColMap[k]||'var(--accent)']);
+
+    const totalComb = totalARS + usdEnPesos;
+    const pctARS = totalComb ? Math.round(totalARS/totalComb*100) : 50;
+    const pctUSD = 100 - pctARS;
+    const topCuentas = Object.entries(txARS.reduce((m,t)=>{ const k=t.account||'?'; m[k]=(m[k]||0)+(t.amount||0); return m; },{})).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+    chartsEl.innerHTML =
+      mkBar('📊 Saldo por banco (ARS)', topBancos) +
+      mkBar('🏢 Distribución por empresa', topEmpresas) +
+      '<div class="card" style="padding:13px">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:11px">💰 Composición portafolio</div>' +
+        '<div style="margin-bottom:12px">' +
+          '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-bottom:4px"><span>ARS '+fmtMoney(totalARS)+'</span><span>USD ≈ '+fmtMoney(usdEnPesos)+'</span></div>' +
+          '<div style="display:flex;height:8px;border-radius:4px;overflow:hidden">' +
+            '<div style="flex:'+Math.max(1,pctARS)+';background:var(--accent)"></div>' +
+            '<div style="flex:'+Math.max(1,pctUSD)+';background:var(--yellow)"></div>' +
           '</div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:9px;margin-top:3px"><span style="color:var(--accent)">'+pctARS+'% ARS</span><span style="color:var(--yellow)">'+pctUSD+'% USD</span></div>' +
         '</div>' +
-      '</div>' +
-      // Total combinado en pesos
-      '<div class="stat-card" style="border-left:3px solid var(--green)">' +
-        '<div class="label">TOTAL COMBINADO ($ + USD)</div>' +
-        '<div class="value" style="color:var(--green);font-size:22px">' + fmtMoney(totalARS + usdEnPesos) + '</div>' +
-        '<div style="font-size:11px;color:var(--text3);margin-top:2px">ARS + USD convertidos</div>' +
-      '</div>' +
-      // Movimientos
-      '<div class="stat-card">' +
-        '<div class="label">MOVIMIENTOS</div>' +
-        '<div class="value" style="color:var(--text2);font-size:20px">' + (bancosTxARS.length + bancosTxUSD.length) + ' mov.</div>' +
+        '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px">Top cuentas</div>' +
+        (topCuentas.length ? topCuentas.map(([k,v])=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:var(--bg3);border-radius:6px;margin-bottom:4px"><span style="font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px" title="'+k+'">'+k+'</span><span style="font-size:10px;font-family:var(--mono);color:var(--accent);font-weight:700;flex-shrink:0;margin-left:8px">'+fmtMoney(v)+'</span></div>').join('') : '<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">Sin datos</div>') +
       '</div>';
   }
 
-  // Tabla ARS
+  const arsBadges = document.getElementById('bancos-ars-badges');
+  if (arsBadges) arsBadges.innerHTML =
+    '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(74,222,128,0.12);color:var(--green)">'+txARS.filter(t=>t.type==='ingreso').length+' ingresos</span>' +
+    '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(120,130,160,0.12);color:var(--text3)">'+fmtMoney(totalIngARS)+' total</span>';
+
   const arsEl = document.getElementById('bancos-table-ars');
   if (arsEl) {
-    arsEl.innerHTML = bancosTxARS.length === 0
-      ? '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Sin movimientos ARS</td></tr>'
-      : bancosTxARS.map(t =>
-        '<tr>' +
-        '<td style="color:var(--text3);font-size:12px">' + t.date + '</td>' +
-        '<td style="font-size:12px;color:var(--text2)">' + t.account + '</td>' +
-        '<td style="font-size:11px;color:' + t.empColor + '">' + t.empresa.split(' ')[0] + '</td>' +
-        '<td style="font-family:var(--mono);color:' + (t.type==='ingreso'?'var(--green)':'var(--red)') + ';text-align:right;font-weight:600">' +
-          (t.type==='ingreso'?'+':'-') + fmtMoney(t.amount) + '</td>' +
-        '<td><span style="color:' + (t.type==='ingreso'?'var(--green)':'var(--red)') + ';font-size:10px;font-weight:700">' + t.type.toUpperCase() + '</span></td>' +
-        '</tr>'
-      ).join('');
-  }
-
-  // Tabla USD
-  const usdEl = document.getElementById('bancos-table-usd');
-  if (usdEl) {
-    usdEl.innerHTML = bancosTxUSD.length === 0
-      ? '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Sin movimientos USD</td></tr>'
-      : bancosTxUSD.map(t => {
-          const enPesos = (t.amount||0) * tcBlue;
-          return '<tr>' +
-            '<td style="color:var(--text3);font-size:12px">' + t.date + '</td>' +
-            '<td style="font-weight:500">' + t.desc + '</td>' +
-            '<td style="font-size:11px;color:' + t.empColor + '">' + t.empresa.split(' ')[0] + '</td>' +
-            '<td style="font-family:var(--mono);color:var(--yellow);text-align:right;font-weight:700">U$S ' + fmtARS(t.amount) + '</td>' +
-            '<td style="font-family:var(--mono);color:var(--text2);text-align:right;font-size:11px">≈ ' + fmtMoney(enPesos) + '</td>' +
-            '<td style="font-size:10px;color:var(--text3)">TC $' + fmtARS(tcBlue) + '</td>' +
-            '</tr>';
+    arsEl.innerHTML = txARS.length === 0
+      ? '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:32px">Sin movimientos ARS con estos filtros</td></tr>'
+      : txARS.map(t => {
+          const col = t.type==='ingreso'?'var(--green)':'var(--red)';
+          const sign = t.type==='ingreso'?'+':'-';
+          const pct = totalIngARS ? Math.round((t.amount||0)/totalIngARS*100) : 0;
+          const short = t.empresa.includes('Rio')?'Rio':t.empresa.includes('Cipolletti')?'SC':t.empresa.includes('Plaza')?'LP':'—';
+          return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">' +
+            '<td style="padding:8px 12px;color:var(--text3);font-size:11px;white-space:nowrap">'+(t.date||'—')+'</td>' +
+            '<td style="padding:8px 12px;color:var(--text2);font-size:12px">'+(t.account||'—')+'</td>' +
+            '<td style="padding:8px 12px;color:var(--text3);font-size:11px">'+(t.desc||'—')+'</td>' +
+            '<td style="padding:8px 12px"><span style="font-size:9px;padding:1px 6px;border-radius:3px;background:'+t.empColor+'22;color:'+t.empColor+';font-weight:700">'+short+'</span></td>' +
+            '<td style="padding:8px 12px;text-align:right;font-family:var(--mono);color:'+col+';font-weight:700">'+sign+fmtMoney(t.amount||0)+'</td>' +
+            '<td style="padding:8px 12px;text-align:right;font-size:10px;color:var(--text3)">'+pct+'%</td>' +
+            '<td style="padding:8px 12px"><span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px;background:'+col+'18;color:'+col+'">'+t.type.toUpperCase()+'</span></td>' +
+          '</tr>';
         }).join('');
   }
+  const tfootARS = document.getElementById('bancos-tfoot-ars');
+  if (tfootARS) tfootARS.innerHTML = txARS.length ?
+    '<tr style="background:var(--bg2)"><td colspan="4" style="padding:9px 12px;font-size:10px;font-weight:700;color:var(--text2)">TOTAL ARS</td>' +
+    '<td style="padding:9px 12px;text-align:right;font-family:var(--mono);color:var(--green);font-weight:900;font-size:13px">'+fmtMoney(totalIngARS)+'</td>' +
+    '<td colspan="2" style="padding:9px 12px"></td></tr>' : '';
+
+  const usdBadges = document.getElementById('bancos-usd-badges');
+  if (usdBadges) usdBadges.innerHTML =
+    '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(251,191,36,0.12);color:var(--yellow)">'+txUSD.length+' movimientos</span>' +
+    '<span style="font-size:9px;color:var(--text3)">TC '+tcRef.toUpperCase()+': $'+fmtARS(tcUsado)+'</span>';
+
+  const usdEl = document.getElementById('bancos-table-usd');
+  if (usdEl) {
+    usdEl.innerHTML = txUSD.length === 0
+      ? '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:32px">Sin movimientos USD con estos filtros</td></tr>'
+      : txUSD.map(t => {
+          const enPesos = (t.amount||0) * tcUsado;
+          const col = t.type==='ingreso'?'var(--green)':'var(--red)';
+          const short = t.empresa.includes('Rio')?'Rio':t.empresa.includes('Cipolletti')?'SC':t.empresa.includes('Plaza')?'LP':'—';
+          return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">' +
+            '<td style="padding:8px 12px;color:var(--text3);font-size:11px;white-space:nowrap">'+(t.date||'—')+'</td>' +
+            '<td style="padding:8px 12px;color:var(--text2);font-size:12px">'+(t.account||'—')+'</td>' +
+            '<td style="padding:8px 12px;color:var(--text3);font-size:11px">'+(t.desc||'—')+'</td>' +
+            '<td style="padding:8px 12px"><span style="font-size:9px;padding:1px 6px;border-radius:3px;background:'+t.empColor+'22;color:'+t.empColor+';font-weight:700">'+short+'</span></td>' +
+            '<td style="padding:8px 12px;text-align:right;font-family:var(--mono);color:var(--yellow);font-weight:700">U$S '+fmtARS(t.amount||0)+'</td>' +
+            '<td style="padding:8px 12px;text-align:right;font-family:var(--mono);color:var(--text2);font-size:11px">≈ '+fmtMoney(enPesos)+'</td>' +
+            '<td style="padding:8px 12px;font-size:10px;color:var(--text3)">'+tcRef.toUpperCase()+' $'+fmtARS(tcUsado)+'</td>' +
+            '<td style="padding:8px 12px"><span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px;background:'+col+'18;color:'+col+'">'+t.type.toUpperCase()+'</span></td>' +
+          '</tr>';
+        }).join('');
+  }
+  const tfootUSD = document.getElementById('bancos-tfoot-usd');
+  if (tfootUSD) tfootUSD.innerHTML = txUSD.length ?
+    '<tr style="background:var(--bg2)"><td colspan="4" style="padding:9px 12px;font-size:10px;font-weight:700;color:var(--text2)">TOTAL USD</td>' +
+    '<td style="padding:9px 12px;text-align:right;font-family:var(--mono);color:var(--yellow);font-weight:900">U$S '+fmtARS(totalUSD)+'</td>' +
+    '<td style="padding:9px 12px;text-align:right;font-family:var(--mono);color:var(--text2);font-weight:700">≈ '+fmtMoney(usdEnPesos)+'</td>' +
+    '<td colspan="2" style="padding:9px 12px"></td></tr>' : '';
+
+  const resEl = document.getElementById('bancos-resumen-empresas');
+  if (resEl && allEmp.length > 1) {
+    const empData = {};
+    allTx.forEach(t=>{
+      if (!empData[t.empresa]) empData[t.empresa]={ars:0,usd:0,cuentas:new Set(),movs:0,color:t.empColor};
+      if (t.isUSD) empData[t.empresa].usd += t.amount||0;
+      else empData[t.empresa].ars += t.amount||0;
+      empData[t.empresa].cuentas.add(t.account||'');
+      empData[t.empresa].movs++;
+    });
+    const empEntries = Object.entries(empData);
+    if (empEntries.length) {
+      resEl.innerHTML = '<div class="card" style="padding:13px;border:1px solid rgba(74,222,128,0.15);margin-bottom:12px">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📊 Resumen consolidado por empresa</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">' +
+        empEntries.map(([name,d])=>{
+          const short = name.includes('Rio')?'🔵 Rio Salado':name.includes('Cipolletti')?'🟢 Serv. Cipolletti':name.includes('Plaza')?'🟡 La Plaza':name.split(' ')[0];
+          return '<div style="background:var(--bg3);border-radius:9px;padding:12px;border-left:3px solid '+d.color+'">' +
+            '<div style="font-size:11px;font-weight:700;color:'+d.color+';margin-bottom:8px">'+short+'</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">' +
+              '<div style="font-size:9px;color:var(--text3)">ARS<br><span style="font-size:12px;font-weight:700;color:var(--accent);font-family:var(--mono)">'+fmtMoney(d.ars)+'</span></div>' +
+              '<div style="font-size:9px;color:var(--text3)">USD<br><span style="font-size:12px;font-weight:700;color:var(--yellow);font-family:var(--mono)">'+(d.usd?'U$S '+fmtARS(d.usd):'—')+'</span></div>' +
+              '<div style="font-size:9px;color:var(--text3)">Cuentas<br><span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono)">'+d.cuentas.size+'</span></div>' +
+              '<div style="font-size:9px;color:var(--text3)">Movs.<br><span style="font-size:12px;font-weight:700;color:var(--text2);font-family:var(--mono)">'+d.movs+'</span></div>' +
+            '</div></div>';
+        }).join('') + '</div></div>';
+    } else resEl.innerHTML = '';
+  } else if (resEl) resEl.innerHTML = '';
+
+  const cntEl = document.getElementById('bancos-result-count');
+  if (cntEl) cntEl.textContent = (txARS.length+txUSD.length).toLocaleString('es-AR')+' movimientos encontrados';
 }
 
 // ════════════════════════════════════════════════════════════════
 // EFECTIVO PAGE
 // ════════════════════════════════════════════════════════════════
 function efLimpiar(){
-  ['ef-search','ef-f-desde','ef-f-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['ef-f-empresa','ef-f-apies','ef-f-tipo','ef-sort'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='ef-sort'?'imp_desc':'';});
+  ['ef-search','ef-f-desde','ef-f-hasta','ef-umbral'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ef-f-empresa','ef-f-apies','ef-f-tipo','ef-sort','ef-f-col','ef-f-cols','ef-group'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    if(id==='ef-sort')el.value='imp_desc';
+    else if(id==='ef-f-col')el.value='efectivo';
+    else if(id==='ef-f-cols')el.value='todas';
+    else if(id==='ef-group')el.value='estacion';
+    else el.value='';
+  });
   renderEfectivoPage();
 }
 
@@ -8424,238 +8783,228 @@ function renderEfectivoPage() {
   const fDesde  = document.getElementById('ef-f-desde')?.value||'';
   const fHasta  = document.getElementById('ef-f-hasta')?.value||'';
   const sortVal = document.getElementById('ef-sort')?.value||'imp_desc';
+  const fCol    = document.getElementById('ef-f-col')?.value||'efectivo';
+  const umbral  = parseFloat(document.getElementById('ef-umbral')?.value||'0')||0;
 
-  let all = [];
-  allEmp.forEach(e => {
-    if (fEmp && !e.name.includes(fEmp)) return;
-    (e.transactions||[]).filter(t=>t.cat==='Efectivo').forEach(t => {
-      const fRef = t.date||'';
-      if (fDesde && fRef < fDesde) return;
-      if (fHasta && fRef > fHasta) return;
-      if (!fDesde && !fHasta && dateFilterFrom && fRef < dateFilterFrom) return;
-      if (!fDesde && !fHasta && dateFilterTo   && fRef > dateFilterTo)   return;
-      if (fTipo && t.type !== fTipo) return;
-      if (fApies) {
-        const rsApies = new Set(['11902','1526','15814','2016']);
-        const scApies = new Set(['1535','1539','50282','50309']);
-        if (rsApies.has(fApies) && !e.name.includes('Rio')) return;
-        if (scApies.has(fApies) && !e.name.includes('Cipolletti')) return;
-      }
-      if (search && !(t.desc||'').toLowerCase().includes(search) && !(t.account||'').toLowerCase().includes(search) && !e.name.toLowerCase().includes(search)) return;
-      all.push({...t, empName:e.name, empColor:e.color||'#6c8fff'});
-    });
-  });
+  // ── APIES filter con códigos correctos ──
+  const APIES_MATCH = {
+    '11902': n => n.includes('roca') && !n.includes('agro'),
+    '1526':  n => n.includes('chichinales'),
+    '15814': n => n.includes('centro') || (n.includes('regina') && !n.includes('ruta') && !n.includes('2016')),
+    '2016':  n => n.includes('ruta') || n.includes('2016'),
+    '1535':  n => n.includes('cinco'),
+    '15431': n => n.includes('esmeralda'),
+    '1539':  n => (n.includes('cipolletti') || n.includes('pacheco')) && !n.includes('esmeralda') && !n.includes('cinco'),
+    '50282': n => n.includes('agro base') || (n.includes('agro') && n.includes('roca') && !n.includes('pal')),
+    '50309': n => n.includes('pal') || n.includes('agro pal'),
+  };
+  const rsApies = new Set(['11902','1526','15814','2016']);
+  const scApies = new Set(['1535','15431','1539','50282','50309']);
 
-  // APIES estático — hardcoded con los 8 códigos oficiales
-  const apiesEl = document.getElementById('ef-f-apies');
-  if (apiesEl && !apiesEl.dataset.loaded) {
-    apiesEl.innerHTML =
-      '<option value="">Todas</option>' +
-      '<option value="11902">11902 — RS Roca</option>' +
-      '<option value="1526">1526 — RS Chichinales</option>' +
-      '<option value="15814">15814 — RS Centro (V.Regina)</option>' +
-      '<option value="2016">2016 — RS Ruta (V.Regina 2016)</option>' +
-      '<option value="1535">1535 — SC Cinco Saltos</option>' +
-      '<option value="1539">1539 — SC Cipolletti</option>' +
-      '<option value="50282">50282 — SC Esmeralda</option>' +
-      '<option value="50309">50309 — SC Pacheco</option>';
-    apiesEl.dataset.loaded = '1';
-  }
-
-  // Filter by selected date if active (not date range)
-  const efBalDate = activeDateFilter||appState.lastMinutaDate||'';
-  if (efBalDate && !fDesde && !fHasta) {
-    all = all.filter(t => t.date === efBalDate);
-  }
-  all.sort((a,b)=>{
-    if(sortVal==='imp_desc') return (b.amount||0)-(a.amount||0);
-    if(sortVal==='imp_asc')  return (a.amount||0)-(b.amount||0);
-    if(sortVal==='fecha_desc')return (b.date||'').localeCompare(a.date||'');
-    if(sortVal==='fecha_asc') return (a.date||'').localeCompare(b.date||'');
-    return 0;
-  });
-
-  const totalIng = all.filter(t=>t.type==='ingreso').reduce((s,t)=>s+(t.amount||0),0);
-  const totalEgr = all.filter(t=>t.type==='gasto').reduce((s,t)=>s+(t.amount||0),0);
-  const neto = totalIng - totalEgr;
-
-  const statsEl = document.getElementById('efectivo-stats');
-  if(statsEl) statsEl.innerHTML=[
-    ['💵 Total ingresos',totalIng,'var(--green)',false],
-    ['📤 Total egresos',totalEgr,'var(--red)',false],
-    ['💰 Saldo neto',neto,neto>=0?'var(--accent)':'var(--red)',false],
-    ['📋 Movimientos',all.length+' mov.','var(--text2)',true],
-  ].map(([l,v,c,s])=>'<div class="stat-card" style="border-left:3px solid '+c+'"><div class="label">'+l+'</div><div class="value" style="color:'+c+';font-size:18px">'+(s?v:'$ '+fmtARS(v))+'</div></div>').join('');
-
-  // Desglose por estación (si APIES seleccionado) o por subempresa (general)
-  const bySubEl = document.getElementById('efectivo-by-sub');
-  if (bySubEl) {
-    if (fApies) {
-      const APIES_MATCH = {
-        '11902': n => n.includes('roca') && !n.includes('agro'),
-        '1526':  n => n.includes('chichinales'),
-        '15814': n => n.includes('centro') || (n.includes('regina') && !n.includes('ruta') && !n.includes('2016')),
-        '2016':  n => n.includes('ruta') || n.includes('2016'),
-        '1535':  n => n.includes('cinco'),
-        '1539':  n => n.includes('cipolletti') && !n.includes('esmeralda') && !n.includes('pacheco') && !n.includes('cinco'),
-        '50282': n => n.includes('esmeralda'),
-        '50309': n => n.includes('pacheco'),
-      };
-      const matchFn = APIES_MATCH[fApies] || (() => false);
-      const rsApies = new Set(['11902','1526','15814','2016']);
-      const scApies = new Set(['1535','1539','50282','50309']);
-      const matchEsts = [];
-      allEmp.forEach(e => {
-        if (rsApies.has(fApies) && !e.name.includes('Rio')) return;
-        if (scApies.has(fApies) && !e.name.includes('Cipolletti')) return;
-        (e.estaciones||[]).forEach(est => {
-          if (matchFn((est.nombre||'').toLowerCase())) matchEsts.push(est);
-        });
-      });
-      if (!matchEsts.length) {
-        bySubEl.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px;grid-column:1/-1">Sin datos de estaciones para APIES ' + fApies + '</div>';
-      } else {
-        bySubEl.innerHTML = matchEsts.sort((a,b)=>(b.efectivo||0)-(a.efectivo||0)).map(est=>
-          '<div style="background:var(--bg3);border-radius:10px;padding:12px 14px;border-left:3px solid var(--green)">' +
-            '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">'+est.nombre+'</div>' +
-            '<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--green)">$ '+fmtARS(est.efectivo||0)+'</div>' +
-          '</div>'
-        ).join('');
-      }
-    } else {
-      const bySub={};
-      all.filter(t=>t.type==='ingreso').forEach(t=>{const k=t.account||t.empName.split(' ')[0];if(!bySub[k])bySub[k]=0;bySub[k]+=t.amount||0;});
-      bySubEl.innerHTML=Object.entries(bySub).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
-        '<div style="background:var(--bg3);border-radius:10px;padding:12px 14px;border-left:3px solid var(--green)">' +
-          '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">'+k+'</div>' +
-          '<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--green)">$ '+fmtARS(v)+'</div>' +
-        '</div>'
-      ).join('');
-    }
-  }
-
-  const cntEl=document.getElementById('ef-result-count');
-  if(cntEl)cntEl.textContent=all.length.toLocaleString('es-AR')+' movimientos encontrados';
-
-  const tbody=document.getElementById('efectivo-table');
-  if(!tbody)return;
-
-  tbody.innerHTML=all.map(t=>{
-    const ec=t.empColor||'#6c8fff';
-    const short=t.empName.includes('Rio')?'RS':t.empName.includes('Cipolletti')?'SC':'LP';
-    const tc=t.type==='ingreso'?'var(--green)':'var(--red)';
-    return '<tr style="border-bottom:1px solid var(--border)">' +
-      '<td style="padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--text3);white-space:nowrap">'+(t.date||'—')+'</td>' +
-      '<td style="padding:8px 12px;font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(t.desc||'—')+'</td>' +
-      '<td style="padding:8px 12px;font-size:11px;color:var(--text2)">'+(t.account||'—')+'</td>' +
-      '<td style="padding:8px 12px"><span style="font-size:10px;font-weight:700;color:'+ec+';padding:1px 6px;border-radius:3px;background:'+ec+'22">'+short+'</span></td>' +
-      '<td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:700;color:'+tc+'">'+( t.type==='ingreso'?'+':'-')+'$ '+fmtARS(t.amount||0)+'</td>' +
-      '<td style="padding:8px 12px"><span style="font-size:10px;padding:1px 7px;border-radius:99px;background:'+(t.type==='ingreso'?'rgba(74,222,128,0.12)':'rgba(248,113,113,0.12)')+';color:'+tc+'">'+( t.type||'').toUpperCase()+'</span></td>' +
-    '</tr>';
-  }).join('');
-
-  const fcEl=document.getElementById('ef-footer-count');
-  const ftEl=document.getElementById('ef-footer-total');
-  if(fcEl)fcEl.textContent=all.length.toLocaleString()+' movimientos';
-  if(ftEl)ftEl.textContent='Neto: $ '+fmtARS(neto);
-}
-function _renderEfectivoPageInternal() {
-  const allEmp = appState.vistaConsolidada ? appState.empresas : [empresa()];
-  const empEl  = document.getElementById('efectivo-empresa-name');
-  if (empEl) empEl.textContent = appState.vistaConsolidada ? 'Consolidado' : empresa().name;
-
-  const search  = (document.getElementById('ef-search')?.value||'').toLowerCase();
-  const fEmp    = document.getElementById('ef-f-empresa')?.value||'';
-  const fTipo   = document.getElementById('ef-f-tipo')?.value||'';
-  const fDesde  = document.getElementById('ef-f-desde')?.value||'';
-  const fHasta  = document.getElementById('ef-f-hasta')?.value||'';
-  const sortVal = document.getElementById('ef-sort')?.value||'imp_desc';
-
-  // ── KPIs y mapa desde estaciones[] (datos de la Minuta) ──
-  // Filtrar estaciones por empresa y rango de fechas
+  // ── Estaciones (datos de minuta) ──
   let estaciones = [];
   allEmp.forEach(e => {
     if (fEmp && !e.name.includes(fEmp)) return;
     (e.estaciones||[]).forEach(est => {
-      if (fDesde && est.fecha < fDesde) return;
-      if (fHasta && est.fecha > fHasta) return;
-      estaciones.push(est);
+      const fRef = est.fecha||'';
+      if (fDesde && fRef < fDesde) return;
+      if (fHasta && fRef > fHasta) return;
+      if (fApies) {
+        if (rsApies.has(fApies) && !e.name.includes('Rio')) return;
+        if (scApies.has(fApies) && !e.name.includes('Cipolletti')) return;
+        const matchFn = APIES_MATCH[fApies];
+        if (matchFn && !matchFn((est.nombre||'').toLowerCase())) return;
+      }
+      if (search && !(est.nombre||'').toLowerCase().includes(search)) return;
+      estaciones.push({...est, empName:e.name, empColor:e.color||'#6c8fff'});
     });
   });
 
-  // Sumar por estación (puede haber múltiples fechas para la misma estación)
+  // Agrupar por estación (última fecha o suma)
   const porEst = {};
   estaciones.forEach(est => {
     const k = est.nombre;
-    if (!porEst[k]) porEst[k] = { nombre:k, empresa:est.empresa, efectivo:0, cajero:0, fondosNoDep:0, erogaciones:0, dias:0 };
+    if (!porEst[k]) porEst[k] = {nombre:k, empresa:est.empresa||est.empName, empColor:est.empColor, efectivo:0, cajero:0, fondosNoDep:0, erogaciones:0, dispBanco:0, rendAgro:0, chqCartera:0, chqRechaz:0, dias:0, esAgro:est.esAgro||false};
     porEst[k].efectivo    += est.efectivo    || 0;
     porEst[k].cajero      += est.cajero      || 0;
     porEst[k].fondosNoDep += est.fondosNoDep || 0;
     porEst[k].erogaciones += est.erogaciones || 0;
+    porEst[k].dispBanco   += est.dispBanco   || 0;
+    porEst[k].rendAgro    += est.rendAgro    || 0;
+    porEst[k].chqCartera  += est.chqCartera  || 0;
+    porEst[k].chqRechaz   += est.chqRechaz   || 0;
     porEst[k].dias++;
   });
+  const estArr = Object.values(porEst);
 
-  // Totales KPIs
-  const totEfectivo = estaciones.reduce((s,e)=>s+(e.efectivo||0),0);
-  const totCajero   = estaciones.reduce((s,e)=>s+(e.cajero||0),0);
-  const totFondos   = estaciones.reduce((s,e)=>s+(e.fondosNoDep||0),0);
-  const totErog     = estaciones.reduce((s,e)=>s+(e.erogaciones||0),0);
+  // Totales para KPIs
+  const totEfectivo  = estArr.reduce((s,e)=>s+(e.efectivo||0),0);
+  const totCajero    = estArr.reduce((s,e)=>s+(e.cajero||0),0);
+  const totFondos    = estArr.reduce((s,e)=>s+(e.fondosNoDep||0),0);
+  const totErog      = estArr.reduce((s,e)=>s+(e.erogaciones||0),0);
+  const totBanco     = estArr.reduce((s,e)=>s+(e.dispBanco||0),0);
+  const totRendAgro  = estArr.reduce((s,e)=>s+(e.rendAgro||0),0);
+  const totCartera   = estArr.reduce((s,e)=>s+(e.chqCartera||0),0);
+  const totRechaz    = estArr.reduce((s,e)=>s+(e.chqRechaz||0),0);
 
-  // Actualizar KPIs
-  const setKpi = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=fmtMoney(val); };
-  setKpi('ef-kpi-efectivo', totEfectivo);
-  setKpi('ef-kpi-cajero',   totCajero);
-  setKpi('ef-kpi-erog',     totErog);
-  setKpi('ef-kpi-fondos',   totFondos);
+  // ── KPIs 8 ──
+  const statsEl = document.getElementById('efectivo-stats');
+  if (statsEl) {
+    const mkK = (lbl,val,col,sub) =>
+      '<div class="stat-card" style="border-left:3px solid '+col+';padding:11px 13px">' +
+        '<div class="label" style="font-size:9px">'+lbl+'</div>' +
+        '<div class="value" style="color:'+col+';font-size:15px">'+fmtMoney(val)+'</div>' +
+        (sub?'<div style="font-size:9px;color:var(--text3);margin-top:2px">'+sub+'</div>':'') +
+      '</div>';
+    statsEl.innerHTML =
+      mkK('💵 Efectivo EESS', totEfectivo, 'var(--green)', 'consolidado') +
+      mkK('🏧 Cajero autom.', totCajero, 'var(--yellow)', '—') +
+      mkK('📦 Fondos no dep.', totFondos, '#a78bfa', estArr.filter(e=>e.fondosNoDep>0).length+' estaciones') +
+      mkK('⚠️ Erogaciones', totErog, 'var(--red)', estArr.filter(e=>e.erogaciones>0).length+' estaciones') +
+      mkK('🏦 Disp. banco', totBanco, 'var(--accent)', 'hoy') +
+      mkK('🌿 Rendic. Agro', totRendAgro, 'var(--teal)', 'UUNN') +
+      mkK('📋 Cheq. cartera', totCartera, '#6c8fff', 'en custodia') +
+      mkK('🚫 Rechazados', totRechaz, 'var(--red)', estArr.filter(e=>e.chqRechaz>0).length+' estaciones');
+  }
 
-  // Actualizar mapa — mapear nombre a id del span
+  // ── GRÁFICOS DE BARRAS ──
+  const chartsEl = document.getElementById('ef-charts');
+  if (chartsEl && estArr.length) {
+    const mkBar = (title, items) => {
+      const max = Math.max(...items.map(i=>Math.abs(i[1])), 1);
+      return '<div class="card" style="padding:13px"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">'+title+'</div>' +
+        items.sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,9).map(([lbl,val,col])=>{
+          const pct = Math.max(1, Math.round(Math.abs(val)/max*100));
+          return '<div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">' +
+            '<div style="font-size:9px;color:var(--text2);width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+lbl+'">'+lbl+'</div>' +
+            '<div style="flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+col+';border-radius:3px"></div></div>' +
+            '<div style="font-size:9px;font-family:var(--mono);color:'+col+';width:70px;text-align:right">'+fmtMoney(val)+'</div></div>';
+        }).join('') + '</div>';
+    };
+    const efItems = estArr.map(e=>[e.nombre, e.efectivo, e.esAgro?'#fbbf24':e.empColor||'#4ade80']);
+    const rechItems = estArr.filter(e=>e.chqRechaz).map(e=>[e.nombre, e.chqRechaz, 'var(--red)']);
+    chartsEl.innerHTML =
+      mkBar('📊 Efectivo por estación', efItems) +
+      (rechItems.length ? mkBar('🚫 Valores rechazados por estación', rechItems) : '<div class="card" style="padding:13px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px">✅ Sin valores rechazados</div>');
+  } else if (chartsEl) chartsEl.innerHTML = '';
+
+  // ── MAPA ── actualizar importes
   const mapaMap = {
-    'CHICHINALES': 'ef-map-chichinales', 'RS CHICHINALES': 'ef-map-chichinales',
-    'VREGINA': 'ef-map-vregina', 'RS REGINA CENTRO': 'ef-map-vregina', 'RS REGINA': 'ef-map-vregina',
-    'V.REGINA': 'ef-map-vregina', 'REGINA': 'ef-map-vregina',
-    'RS REGINA RUTA 2016': 'ef-map-vregina2016', 'RS RUTA': 'ef-map-vregina2016', 'V.REGINA 2016': 'ef-map-vregina2016',
-    'RS ROCA': 'ef-map-roca', 'ROCA': 'ef-map-roca', 'RS ROCA 11902': 'ef-map-roca',
-    'AGRO ROCA': 'ef-map-agroroca', 'AGRO ROCA-PAL': 'ef-map-agroroca',
-    'AGRO': 'ef-map-agrochoele', 'AGRO PAL': 'ef-map-agrochoele', 'AGRO CHOELE': 'ef-map-agrochoele',
-    'SC CINCO SALTOS': 'ef-map-csaltos', 'CINCO SALTOS': 'ef-map-csaltos', 'SC CINCO SALTOS  1535': 'ef-map-csaltos',
-    'SC ESMERALDA': 'ef-map-cip15431', 'SC ESMERALDA 15431': 'ef-map-cip15431', 'CIP 15431': 'ef-map-cip15431',
-    'SC PACHECO': 'ef-map-cip1539', 'SC PACHECO 1539': 'ef-map-cip1539', 'CIP 1539': 'ef-map-cip1539',
+    'CHICHINALES':'ef-map-chichinales','RS CHICHINALES':'ef-map-chichinales','RS CHICHINALES 1526':'ef-map-chichinales',
+    'VREGINA':'ef-map-vregina','RS REGINA CENTRO':'ef-map-vregina','RS REGINA':'ef-map-vregina','V.REGINA':'ef-map-vregina','REGINA':'ef-map-vregina','RS REGINA CENTRO 15814':'ef-map-vregina',
+    'RS REGINA RUTA 2016':'ef-map-vregina2016','RS RUTA':'ef-map-vregina2016','V.REGINA 2016':'ef-map-vregina2016','RS REGINA 2016':'ef-map-vregina2016',
+    'RS ROCA':'ef-map-roca','ROCA':'ef-map-roca','RS ROCA 11902':'ef-map-roca',
+    'AGRO ROCA-PAL':'ef-map-agroroca','AGRO ROCA':'ef-map-agroroca','AGRO BASE ROCA 50282 (AGRO)':'ef-map-agroroca','AGRO PAL 50309 (AGRO)':'ef-map-agroroca',
+    'AGRO PAL':'ef-map-agrochoele','AGRO CHOELE':'ef-map-agrochoele','AGRO':'ef-map-agrochoele',
+    'SC CINCO SALTOS':'ef-map-csaltos','CINCO SALTOS':'ef-map-csaltos','SC CINCO SALTOS 1535':'ef-map-csaltos','SC CINCO SALTOS  1535':'ef-map-csaltos',
+    'SC ESMERALDA':'ef-map-cip15431','SC ESMERALDA 15431':'ef-map-cip15431','CIP 15431':'ef-map-cip15431',
+    'SC PACHECO':'ef-map-cip1539','SC PACHECO 1539':'ef-map-cip1539','CIP 1539':'ef-map-cip1539',
   };
-  // Reset mapa
-  Object.values(mapaMap).forEach(id => { const el=document.getElementById(id); if(el) el.textContent='—'; });
-  Object.values(porEst).forEach(est => {
+  Object.values(mapaMap).forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent='—'; });
+  estArr.forEach(est => {
     const key = est.nombre.toUpperCase().trim();
     const mapId = mapaMap[key];
-    if (mapId) {
-      const el = document.getElementById(mapId);
-      if (el) el.textContent = fmtARS(est.efectivo);
-    }
+    if (mapId) { const el=document.getElementById(mapId); if(el) el.textContent=fmtARS(est[fCol]||est.efectivo||0); }
   });
 
-  // Cards por estación
+  // ── CARDS POR ESTACIÓN ──
   const bySubEl = document.getElementById('efectivo-by-sub');
   if (bySubEl) {
-    const ests = Object.values(porEst).sort((a,b) => b.efectivo - a.efectivo);
-    if (!ests.length) {
+    if (!estArr.length) {
       bySubEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:20px;font-size:12px">Sin datos de estaciones — importá la Minuta</div>';
     } else {
-      const empColor = n => n&&n.includes('Cipolletti') ? '#4a9fd4' : n&&n.includes('AGRO') ? '#fbbf24' : '#4ade80';
-      bySubEl.innerHTML = ests.map(est => {
-        const col = empColor(est.empresa || est.nombre);
-        return `<div style="background:var(--card);border:1px solid ${col}22;border-radius:10px;padding:11px">
-          <div style="font-size:11px;font-weight:700;color:${col};margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${est.nombre}">${est.nombre}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-            <div style="font-size:9px;color:var(--text3)">Efectivo<br><span style="font-size:12px;font-weight:700;color:var(--green);font-family:var(--mono)">${fmtARS(est.efectivo)}</span></div>
-            <div style="font-size:9px;color:var(--text3)">Cajero<br><span style="font-size:12px;font-weight:700;color:var(--yellow);font-family:var(--mono)">${fmtARS(est.cajero)}</span></div>
-            <div style="font-size:9px;color:var(--text3)">Erogaciones<br><span style="font-size:12px;font-weight:700;color:var(--red);font-family:var(--mono)">${fmtARS(est.erogaciones)}</span></div>
-            <div style="font-size:9px;color:var(--text3)">Fondos no dep.<br><span style="font-size:12px;font-weight:700;color:#a78bfa;font-family:var(--mono)">${fmtARS(est.fondosNoDep)}</span></div>
-          </div>
-        </div>`;
+      const sorted = [...estArr].sort((a,b)=>(b.efectivo||0)-(a.efectivo||0));
+      const empColor = e => e.esAgro ? '#fbbf24' : (e.empColor || '#4ade80');
+      bySubEl.innerHTML = sorted.map(est => {
+        const col = empColor(est);
+        const isAgro = est.esAgro;
+        return '<div style="background:var(--card);border:1px solid '+col+'22;border-radius:10px;padding:11px">' +
+          '<div style="font-size:10px;font-weight:700;color:'+col+';margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+est.nombre+'">'+est.nombre+'</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">' +
+            '<div style="font-size:9px;color:var(--text3)">Efectivo<br><span style="font-size:11px;font-weight:700;color:var(--green);font-family:var(--mono)">'+fmtARS(est.efectivo)+'</span></div>' +
+            (isAgro
+              ? '<div style="font-size:9px;color:var(--text3)">Erogaciones<br><span style="font-size:11px;font-weight:700;color:var(--red);font-family:var(--mono)">'+fmtARS(est.erogaciones)+'</span></div>'
+              : '<div style="font-size:9px;color:var(--text3)">Cajero<br><span style="font-size:11px;font-weight:700;color:var(--yellow);font-family:var(--mono)">'+fmtARS(est.cajero)+'</span></div>') +
+            '<div style="font-size:9px;color:var(--text3)">Cartera<br><span style="font-size:11px;font-weight:700;color:#6c8fff;font-family:var(--mono)">'+fmtARS(est.chqCartera)+'</span></div>' +
+            '<div style="font-size:9px;color:var(--text3)">Rechazados<br><span style="font-size:11px;font-weight:700;color:var(--red);font-family:var(--mono)">'+fmtARS(est.chqRechaz)+'</span></div>' +
+          '</div></div>';
       }).join('');
     }
   }
 
-  // ── Tabla de movimientos (igual que antes pero SIN filtro global) ──
+  // ── TABLA EESS COMPLETA ──
+  const eessTbody = document.getElementById('ef-eess-tbody');
+  const eessTfoot = document.getElementById('ef-eess-tfoot');
+  const eessBadges = document.getElementById('ef-eess-badges');
+  if (eessBadges) eessBadges.innerHTML =
+    '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(74,222,128,0.12);color:var(--green)">'+estArr.length+' estaciones</span>' +
+    (estArr.filter(e=>e.chqRechaz>0).length ? '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,0.12);color:var(--red)">⚠️ '+estArr.filter(e=>e.chqRechaz>0).length+' con rechazados</span>' : '');
+
+  if (eessTbody) {
+    if (!estArr.length) {
+      eessTbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:32px">Sin datos de estaciones — importá la Minuta</td></tr>';
+    } else {
+      const sortedEess = [...estArr].sort((a,b)=>{
+        if(sortVal==='rech_desc') return (b.chqRechaz||0)-(a.chqRechaz||0);
+        if(sortVal==='erog_desc') return (b.erogaciones||0)-(a.erogaciones||0);
+        if(sortVal==='banco_desc') return (b.dispBanco||0)-(a.dispBanco||0);
+        if(sortVal==='nombre_asc') return (a.nombre||'').localeCompare(b.nombre||'');
+        return (b.efectivo||0)-(a.efectivo||0);
+      });
+      eessTbody.innerHTML = sortedEess.map(est => {
+        const col = est.esAgro ? '#fbbf24' : (est.empColor||'#4ade80');
+        const tag = est.esAgro ? 'AGRO' : est.empName?.includes('Cipolletti') ? 'SC' : est.empName?.includes('Rio') ? 'RS' : 'LP';
+        const alertStyle = (umbral && est.efectivo < umbral) ? 'background:rgba(248,113,113,0.06)' : '';
+        const fmtC = v => v ? '<span style="font-family:var(--mono);color:var(--green)">'+fmtARS(v)+'</span>' : '<span style="color:var(--text3)">—</span>';
+        const fmtR = v => v ? '<span style="font-family:var(--mono);font-weight:700;color:var(--red)">'+fmtARS(v)+'</span>' : '<span style="color:var(--text3)">—</span>';
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);'+alertStyle+'">' +
+          '<td style="padding:7px 10px"><span style="font-size:9px;padding:1px 6px;border-radius:3px;background:'+col+'22;color:'+col+';font-weight:700">'+tag+'</span> <span style="font-size:10px;font-weight:600">'+est.nombre+'</span></td>' +
+          '<td style="padding:7px 10px;text-align:right">'+fmtC(est.efectivo)+'</td>' +
+          '<td style="padding:7px 10px;text-align:right">'+(est.cajero?'<span style="font-family:var(--mono);color:var(--yellow)">'+fmtARS(est.cajero)+'</span>':'<span style="color:var(--text3)">—</span>')+'</td>' +
+          '<td style="padding:7px 10px;text-align:right">'+(est.fondosNoDep?'<span style="font-family:var(--mono);color:#a78bfa">'+fmtARS(est.fondosNoDep)+'</span>':'<span style="color:var(--text3)">—</span>')+'</td>' +
+          '<td style="padding:7px 10px;text-align:right">'+fmtR(est.erogaciones)+'</td>' +
+          '<td style="padding:7px 10px;text-align:right">'+(est.dispBanco?'<span style="font-family:var(--mono);color:var(--accent)">'+fmtARS(est.dispBanco)+'</span>':'<span style="color:var(--text3)">—</span>')+'</td>' +
+          '<td style="padding:7px 10px;text-align:right">'+(est.rendAgro?'<span style="font-family:var(--mono);color:var(--teal)">'+fmtARS(est.rendAgro)+'</span>':'<span style="color:var(--text3)">—</span>')+'</td>' +
+          '<td style="padding:7px 10px;text-align:right">'+(est.chqCartera?'<span style="font-family:var(--mono);color:#6c8fff">'+fmtARS(est.chqCartera)+'</span>':'<span style="color:var(--text3)">—</span>')+'</td>' +
+          '<td style="padding:7px 10px;text-align:right">'+fmtR(est.chqRechaz)+'</td>' +
+        '</tr>';
+      }).join('');
+    }
+    if (eessTfoot && estArr.length) eessTfoot.innerHTML =
+      '<tr style="background:var(--bg2)">' +
+        '<td style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--text2)">TOTALES EESS</td>' +
+        '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:var(--green);font-weight:900">'+fmtARS(totEfectivo)+'</td>' +
+        '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:var(--yellow);font-weight:700">'+fmtARS(totCajero)+'</td>' +
+        '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:#a78bfa;font-weight:700">'+fmtARS(totFondos)+'</td>' +
+        '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:var(--red);font-weight:700">'+fmtARS(totErog)+'</td>' +
+        '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:var(--accent);font-weight:700">'+fmtARS(totBanco)+'</td>' +
+        '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:var(--teal);font-weight:700">'+fmtARS(totRendAgro)+'</td>' +
+        '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:#6c8fff;font-weight:700">'+fmtARS(totCartera)+'</td>' +
+        '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:var(--red);font-weight:900;font-size:12px">'+fmtARS(totRechaz)+'</td>' +
+      '</tr>';
+  }
+
+  // ── SECCIÓN AGRO ──
+  const agroEl = document.getElementById('ef-agro-section');
+  if (agroEl) {
+    const agroEsts = estArr.filter(e=>e.esAgro);
+    if (agroEsts.length) {
+      const aTotEf   = agroEsts.reduce((s,e)=>s+(e.efectivo||0),0);
+      const aTotErog = agroEsts.reduce((s,e)=>s+(e.erogaciones||0),0);
+      const aTotRech = agroEsts.reduce((s,e)=>s+(e.chqRechaz||0),0);
+      const aTotCart = agroEsts.reduce((s,e)=>s+(e.chqCartera||0),0);
+      agroEl.innerHTML = '<div class="card" style="padding:13px;border:1px solid rgba(251,191,36,0.2);margin-bottom:12px">' +
+        '<div style="font-size:10px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">🌿 Saldo posición AGRO — Roca / Pal</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">' +
+          '<div class="stat-card" style="border-left:3px solid #fbbf24;padding:10px 13px"><div class="label">Efectivo</div><div class="value" style="color:#fbbf24;font-size:15px">'+fmtMoney(aTotEf)+'</div></div>' +
+          '<div class="stat-card" style="padding:10px 13px"><div class="label">Erogaciones</div><div class="value" style="color:var(--red);font-size:15px">'+fmtMoney(aTotErog)+'</div></div>' +
+          '<div class="stat-card" style="padding:10px 13px"><div class="label">Valores cartera</div><div class="value" style="color:#6c8fff;font-size:15px">'+fmtMoney(aTotCart)+'</div></div>' +
+          '<div class="stat-card" style="border-left:3px solid var(--red);padding:10px 13px"><div class="label">Valores rechazados</div><div class="value" style="color:var(--red);font-size:15px">'+fmtMoney(aTotRech)+'</div></div>' +
+        '</div></div>';
+    } else agroEl.innerHTML = '';
+  }
+
+  // ── TABLA MOVIMIENTOS ──
   let all = [];
   allEmp.forEach(e => {
     if (fEmp && !e.name.includes(fEmp)) return;
@@ -8668,45 +9017,42 @@ function _renderEfectivoPageInternal() {
       all.push({...t, empName:e.name, empColor:e.color||'#6c8fff'});
     });
   });
-
   all.sort((a,b)=>{
-    if(sortVal==='imp_desc') return (b.amount||0)-(a.amount||0);
-    if(sortVal==='imp_asc')  return (a.amount||0)-(b.amount||0);
     if(sortVal==='fecha_desc') return (b.date||'').localeCompare(a.date||'');
     if(sortVal==='fecha_asc')  return (a.date||'').localeCompare(b.date||'');
-    return 0;
+    return (b.amount||0)-(a.amount||0);
   });
 
-  const countEl = document.getElementById('ef-result-count');
-  if (countEl) countEl.textContent = all.length.toLocaleString()+' movimientos';
+  const cntEl = document.getElementById('ef-result-count');
+  if (cntEl) cntEl.textContent = all.length.toLocaleString('es-AR')+' movimientos encontrados';
 
   const tbody = document.getElementById('efectivo-table');
-  if (!tbody) return;
-  if (!all.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">Sin movimientos de efectivo para el período seleccionado</td></tr>';
-  } else {
-    tbody.innerHTML = all.map(t=>{
-      const col = (t.type==='gasto'||t.type==='egreso') ? 'var(--red)' : 'var(--green)';
-      const sign = (t.type==='gasto'||t.type==='egreso') ? '-' : '+';
-      return `<tr style="border-bottom:1px solid var(--border)">
-        <td style="padding:9px 12px;white-space:nowrap;color:var(--text3)">${t.date||'—'}</td>
-        <td style="padding:9px 12px;color:var(--text)">${t.desc||'—'}</td>
-        <td style="padding:9px 12px;color:var(--text2)">${t.account||'—'}</td>
-        <td style="padding:9px 12px"><span style="font-size:10px;padding:2px 6px;border-radius:99px;background:${t.empColor}22;color:${t.empColor}">${t.empName}</span></td>
-        <td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-weight:700;color:${col}">${sign} ${fmtMoney(Math.abs(t.amount||0))}</td>
-        <td style="padding:9px 12px;font-size:11px;color:var(--text3)">${t.type||'—'}</td>
-      </tr>`;
-    }).join('');
+  if (tbody) {
+    if (!all.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text3)">Sin movimientos de efectivo para el período</td></tr>';
+    } else {
+      tbody.innerHTML = all.map(t=>{
+        const col = (t.type==='gasto'||t.type==='egreso')?'var(--red)':'var(--green)';
+        const sign = (t.type==='gasto'||t.type==='egreso')?'-':'+';
+        return '<tr style="border-bottom:1px solid var(--border)">' +
+          '<td style="padding:9px 12px;white-space:nowrap;color:var(--text3)">'+(t.date||'—')+'</td>' +
+          '<td style="padding:9px 12px;color:var(--text)">'+(t.desc||'—')+'</td>' +
+          '<td style="padding:9px 12px;color:var(--text2)">'+(t.account||'—')+'</td>' +
+          '<td style="padding:9px 12px"><span style="font-size:10px;padding:2px 6px;border-radius:99px;background:'+t.empColor+'22;color:'+t.empColor+'">'+t.empName.split(' ')[0]+'</span></td>' +
+          '<td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-weight:700;color:'+col+'">'+sign+' '+fmtMoney(Math.abs(t.amount||0))+'</td>' +
+          '<td style="padding:9px 12px;font-size:11px;color:var(--text3)">'+(t.type||'—')+'</td>' +
+        '</tr>';
+      }).join('');
+    }
   }
 
+  const total = all.reduce((s,t)=>t.type==='gasto'||t.type==='egreso'?s-(t.amount||0):s+(t.amount||0),0);
   const fcount = document.getElementById('ef-footer-count');
   const ftotal = document.getElementById('ef-footer-total');
-  const total  = all.reduce((s,t)=>{
-    return t.type==='gasto'||t.type==='egreso' ? s-(t.amount||0) : s+(t.amount||0);
-  },0);
   if (fcount) fcount.textContent = all.length.toLocaleString()+' registros';
   if (ftotal) ftotal.textContent = 'Total: '+fmtMoney(total);
 }
+
 
 function exportEfectivoExcel(){
   const all=[];
@@ -8719,6 +9065,21 @@ function exportEfectivoExcel(){
   const wb2=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb2,XLSX.utils.json_to_sheet(all),'Efectivo');
   XLSX.writeFile(wb2,'efectivo_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  showToast('📥 Exportado — '+all.length+' movimientos');
+}
+
+function exportBancosExcel(){
+  const all=[];
+  appState.empresas.forEach(e=>{
+    (e.transactions||[]).filter(t=>nk(t.cat||'').includes('banco')).forEach(t=>{
+      const isUSD=(t.moneda||'').toUpperCase()==='USD'||nk(t.cat||'').includes('usd');
+      all.push({Fecha:t.date,Empresa:e.name,Banco_Cuenta:t.account||'',Descripcion:t.desc||'',Moneda:isUSD?'USD':'ARS',Importe:t.type==='ingreso'?t.amount:-(t.amount||0),Tipo:t.type});
+    });
+  });
+  if(!all.length){showToast('Sin datos');return;}
+  const wb2=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2,XLSX.utils.json_to_sheet(all),'Bancos');
+  XLSX.writeFile(wb2,'bancos_'+new Date().toISOString().slice(0,10)+'.xlsx');
   showToast('📥 Exportado — '+all.length+' movimientos');
 }
 
