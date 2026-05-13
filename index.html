@@ -3735,6 +3735,13 @@ let activeDateFilter = null;
 let dateFilterFrom   = null;
 let dateFilterTo     = null;
 
+function dashSetDate(val) {
+  activeDateFilter = val || null;
+  dateFilterFrom   = val || null;
+  dateFilterTo     = val || null;
+  dashSetView(window._dashView || 'grupo');
+}
+
 function renderDashboard() {
   const balDate = activeDateFilter || appState.lastMinutaDate || '';
   const tcBlue  = (dolar && dolar.blue && dolar.blue.venta) ? dolar.blue.venta : 1410;
@@ -3748,7 +3755,11 @@ function renderDashboard() {
     <h2 style="font-size:20px;font-weight:700;margin:0">🏛️ Consolidado Grupo La Plaza</h2>
     <div id="dash-date" style="font-size:12px;color:var(--text3);margin-top:3px"></div>
   </div>
-  <div id="dash-date-badge" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:5px 12px;font-size:12px;font-family:var(--mono);color:var(--accent)"></div>
+  <div style="position:relative;display:inline-flex;align-items:center;gap:6px">
+    <div id="dash-date-badge" onclick="document.getElementById('dash-cal-input').showPicker?document.getElementById('dash-cal-input').showPicker():document.getElementById('dash-cal-input').click()" title="Cambiar fecha" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:5px 12px;font-size:12px;font-family:var(--mono);color:var(--accent);cursor:pointer;user-select:none"></div>
+    <button id="dash-cal-clear" onclick="dashSetDate('')" title="Volver a fecha de la Minuta" style="display:none;background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer;padding:2px 4px;border-radius:4px;line-height:1">✕</button>
+    <input type="date" id="dash-cal-input" onchange="dashSetDate(this.value)" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0">
+  </div>
 </div>
 <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap" id="dash-selector-row">
   <span style="font-size:11px;color:var(--text3)">Ver:</span>
@@ -4052,6 +4063,8 @@ function dashSetView(view) {
       const el = g('dash-date'), badge = g('dash-date-badge');
       if (el) el.textContent = dObj.toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}).replace(/^./,c=>c.toUpperCase());
       if (badge) badge.textContent = '📅 '+dObj.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+      const calIn = g('dash-cal-input'); if (calIn) calIn.value = balDate;
+      const calCl = g('dash-cal-clear'); if (calCl) calCl.style.display = activeDateFilter ? 'inline-block' : 'none';
     }
     const empRS = appState.empresas.find(e=>e.name.includes('Rio Salado'));
     const empSC = appState.empresas.find(e=>e.name.includes('Cipolletti'));
