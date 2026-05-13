@@ -8435,23 +8435,31 @@ function renderEfectivoPage() {
       if (!fDesde && !fHasta && dateFilterFrom && fRef < dateFilterFrom) return;
       if (!fDesde && !fHasta && dateFilterTo   && fRef > dateFilterTo)   return;
       if (fTipo && t.type !== fTipo) return;
-      if (fApies && (t.account||'') !== fApies) return;
+      if (fApies) {
+        const rsApies = new Set(['11902','1526','15814','2016']);
+        const scApies = new Set(['1535','1539','50282','50309']);
+        if (rsApies.has(fApies) && !e.name.includes('Rio')) return;
+        if (scApies.has(fApies) && !e.name.includes('Cipolletti')) return;
+      }
       if (search && !(t.desc||'').toLowerCase().includes(search) && !(t.account||'').toLowerCase().includes(search) && !e.name.toLowerCase().includes(search)) return;
       all.push({...t, empName:e.name, empColor:e.color||'#6c8fff'});
     });
   });
 
-  // Poblar dropdown APIES dinámicamente
+  // APIES estático — hardcoded con los 8 códigos oficiales
   const apiesEl = document.getElementById('ef-f-apies');
-  if (apiesEl) {
-    const allForApies = [];
-    allEmp.forEach(e => {
-      if (fEmp && !e.name.includes(fEmp)) return;
-      (e.transactions||[]).filter(t=>t.cat==='Efectivo').forEach(t=>{ if(t.account) allForApies.push(t.account); });
-    });
-    const vals = [...new Set(allForApies)].sort();
-    const cur = apiesEl.value;
-    apiesEl.innerHTML = '<option value="">Todas</option>' + vals.map(v=>`<option value="${v}"${v===cur?' selected':''}>${v}</option>`).join('');
+  if (apiesEl && !apiesEl.dataset.loaded) {
+    apiesEl.innerHTML =
+      '<option value="">Todas</option>' +
+      '<option value="11902">11902 — RS Roca</option>' +
+      '<option value="1526">1526 — RS Chichinales</option>' +
+      '<option value="15814">15814 — RS Centro (V.Regina)</option>' +
+      '<option value="2016">2016 — RS Ruta (V.Regina 2016)</option>' +
+      '<option value="1535">1535 — SC Cinco Saltos</option>' +
+      '<option value="1539">1539 — SC Cipolletti</option>' +
+      '<option value="50282">50282 — SC Esmeralda</option>' +
+      '<option value="50309">50309 — SC Pacheco</option>';
+    apiesEl.dataset.loaded = '1';
   }
 
   // Filter by selected date if active (not date range)
@@ -8479,17 +8487,51 @@ function renderEfectivoPage() {
     ['📋 Movimientos',all.length+' mov.','var(--text2)',true],
   ].map(([l,v,c,s])=>'<div class="stat-card" style="border-left:3px solid '+c+'"><div class="label">'+l+'</div><div class="value" style="color:'+c+';font-size:18px">'+(s?v:'$ '+fmtARS(v))+'</div></div>').join('');
 
-  // Desglose por subempresa
+  // Desglose por estación (si APIES seleccionado) o por subempresa (general)
   const bySubEl = document.getElementById('efectivo-by-sub');
-  if(bySubEl){
-    const bySub={};
-    all.filter(t=>t.type==='ingreso').forEach(t=>{const k=t.account||t.empName.split(' ')[0];if(!bySub[k])bySub[k]=0;bySub[k]+=t.amount||0;});
-    bySubEl.innerHTML=Object.entries(bySub).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
-      '<div style="background:var(--bg3);border-radius:10px;padding:12px 14px;border-left:3px solid var(--green)">' +
-        '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">'+k+'</div>' +
-        '<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--green)">$ '+fmtARS(v)+'</div>' +
-      '</div>'
-    ).join('');
+  if (bySubEl) {
+    if (fApies) {
+      const APIES_MATCH = {
+        '11902': n => n.includes('roca') && !n.includes('agro'),
+        '1526':  n => n.includes('chichinales'),
+        '15814': n => n.includes('centro') || (n.includes('regina') && !n.includes('ruta') && !n.includes('2016')),
+        '2016':  n => n.includes('ruta') || n.includes('2016'),
+        '1535':  n => n.includes('cinco'),
+        '1539':  n => n.includes('cipolletti') && !n.includes('esmeralda') && !n.includes('pacheco') && !n.includes('cinco'),
+        '50282': n => n.includes('esmeralda'),
+        '50309': n => n.includes('pacheco'),
+      };
+      const matchFn = APIES_MATCH[fApies] || (() => false);
+      const rsApies = new Set(['11902','1526','15814','2016']);
+      const scApies = new Set(['1535','1539','50282','50309']);
+      const matchEsts = [];
+      allEmp.forEach(e => {
+        if (rsApies.has(fApies) && !e.name.includes('Rio')) return;
+        if (scApies.has(fApies) && !e.name.includes('Cipolletti')) return;
+        (e.estaciones||[]).forEach(est => {
+          if (matchFn((est.nombre||'').toLowerCase())) matchEsts.push(est);
+        });
+      });
+      if (!matchEsts.length) {
+        bySubEl.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px;grid-column:1/-1">Sin datos de estaciones para APIES ' + fApies + '</div>';
+      } else {
+        bySubEl.innerHTML = matchEsts.sort((a,b)=>(b.efectivo||0)-(a.efectivo||0)).map(est=>
+          '<div style="background:var(--bg3);border-radius:10px;padding:12px 14px;border-left:3px solid var(--green)">' +
+            '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">'+est.nombre+'</div>' +
+            '<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--green)">$ '+fmtARS(est.efectivo||0)+'</div>' +
+          '</div>'
+        ).join('');
+      }
+    } else {
+      const bySub={};
+      all.filter(t=>t.type==='ingreso').forEach(t=>{const k=t.account||t.empName.split(' ')[0];if(!bySub[k])bySub[k]=0;bySub[k]+=t.amount||0;});
+      bySubEl.innerHTML=Object.entries(bySub).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+        '<div style="background:var(--bg3);border-radius:10px;padding:12px 14px;border-left:3px solid var(--green)">' +
+          '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">'+k+'</div>' +
+          '<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--green)">$ '+fmtARS(v)+'</div>' +
+        '</div>'
+      ).join('');
+    }
   }
 
   const cntEl=document.getElementById('ef-result-count');
