@@ -10608,7 +10608,6 @@ async function _saveCartDeboSupabase(data) {
       cliente: c.cliente||'', librador: c.librador||'',
       importe: c.importe||0, elect: c.elect||'No',
       dias: c.dias != null ? c.dias : null, uunn: c.uunn||'', apies: c.apies||'',
-      tipo: c.tipo||'FISICO', hoja: c.hoja||'',
       importado_by: _supaUser.id
     }));
     let errCount = 0;
