@@ -11987,27 +11987,23 @@ async function loadFromSupabase() {
       }));
     }
 
-    // Extracto bancario — cargar solo lista de meses disponibles en Supabase.
-    // Cada mes se carga on-demand cuando el usuario lo selecciona (onMesExtractoCambia).
-    // Cargar 199k filas al inicio es impractico — usamos un count por mes.
+    // Extracto bancario — detectar qué meses existen en Supabase consultando 1 fila por mes.
+    // Evita cargar 199k filas al inicio. Cada mes se carga on-demand al seleccionarlo.
     {
-      const _anioActual = new Date().getFullYear();
-      const { data: _mesesRows, error: _mesesErr } = await supa
-        .from('extracto_bancario')
-        .select('anio,mes')
-        .gte('fecha', (_anioActual-1)+'-01-01')
-        .order('anio', {ascending:false})
-        .order('mes', {ascending:false})
-        .limit(50000);
-      if (!_mesesErr && _mesesRows && _mesesRows.length) {
-        // Construir set de meses disponibles (ej: "2026-01")
-        const _mesesDisp = new Set(_mesesRows.map(r => {
-          const a = r.anio || (r.fecha||'').slice(0,4);
-          const m = r.mes  || parseInt((r.fecha||'').slice(5,7));
-          return a + '-' + String(m).padStart(2,'0');
-        }));
-        // Guardar en appState para que el selector los muestre como disponibles
-        if (!appState._extractoMesesDisp) appState._extractoMesesDisp = new Set();
+      const _mesesDisp = new Set();
+      const _hoyD = new Date();
+      // Chequear los últimos 24 meses
+      for (let _i = 0; _i < 24; _i++) {
+        const _d = new Date(_hoyD.getFullYear(), _hoyD.getMonth() - _i, 1);
+        const _y = _d.getFullYear();
+        const _m = _d.getMonth() + 1;
+        const _ym = _y + '-' + String(_m).padStart(2,'0');
+        const _lastDay = new Date(_y, _m, 0).getDate();
+        const { data: _chk } = await supa.from('extracto_bancario')
+          .select('fecha').gte('fecha', _ym+'-01').lte('fecha', _ym+'-'+String(_lastDay).padStart(2,'0')).limit(1);
+        if (_chk && _chk.length) _mesesDisp.add(_ym);
+      }
+      if (_mesesDisp.size > 0) {
         appState._extractoMesesDisp = _mesesDisp;
         console.log('✅ Meses con extractos en Supabase:', [..._mesesDisp].join(', '));
       }
@@ -16980,37 +16976,27 @@ function renderGuardia() {
 // Poblar selector consultando qué meses existen en Supabase
 async function _poblarSelectorMeses() {
   const sel = document.getElementById('exf-filter-mes');
-  if (!sel || sel.options.length > 1) return; // ya poblado
+  if (!sel) return;
   if (!_supaUser) return;
   try {
-    // Usar campos mes+anio que ya están en la tabla — traer solo 1000 filas
-    // con limit para obtener los meses distintos sin traer todo
-    const anioActual = new Date().getFullYear();
-    const { data, error } = await supa
-      .from('extracto_bancario')
-      .select('mes,anio')
-      .gte('fecha', (anioActual-1)+'-01-01')
-      .order('anio', {ascending: false})
-      .order('mes', {ascending: false})
-      .limit(500);
-    if (error || !data) return;
-    const mesesSet = new Set();
-    data.forEach(r => {
-      if (r.anio && r.mes) {
-        const ym = r.anio + '-' + String(r.mes).padStart(2,'0');
-        mesesSet.add(ym);
-      }
+    // Si ya tenemos el set de meses en appState, usarlo directamente
+    let mesesSet = appState._extractoMesesDisp instanceof Set ? new Set(appState._extractoMesesDisp) : new Set();
+    // Agregar meses que ya están cargados en memoria
+    (appState.extractoBancario||[]).forEach(r => {
+      const ym = (r.fecha||'').slice(0,7);
+      if (ym.length === 7) mesesSet.add(ym);
     });
+    if (mesesSet.size === 0) return; // sin datos
     const MESES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    // Limpiar opciones excepto la primera ("Todos")
+    while (sel.options.length > 1) sel.remove(1);
     Array.from(mesesSet).sort().reverse().forEach(ym => {
       const [y, m] = ym.split('-');
       const label = MESES[parseInt(m)] + ' ' + y;
-      const loadedMem  = (appState.extractoBancario||[]).some(r=>(r.fecha||'').startsWith(ym));
-      const loadedSupa = appState._extractoMesesDisp && appState._extractoMesesDisp.has(ym);
-      const loaded = loadedMem || loadedSupa;
+      const loadedMem = (appState.extractoBancario||[]).some(r=>(r.fecha||'').startsWith(ym));
       const opt = document.createElement('option');
       opt.value = ym;
-      opt.textContent = (loaded ? '✅ ' : '') + label;
+      opt.textContent = (loadedMem ? '✅ ' : '☁️ ') + label;
       sel.appendChild(opt);
     });
   } catch(e) { console.warn('_poblarSelectorMeses:', e); }
