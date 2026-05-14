@@ -7886,7 +7886,7 @@ function parseRechazadosXls(wb) {
     if (!row||!row.some(v=>v!==null)) return;
     const imp = pn(iImp>=0?row[iImp]:null);
     const fRech = fmtD(iRech>=0?row[iRech]:null);
-    if (!imp||imp<=0||!fRech) return;
+    if (!imp||imp<=0) return;
     appState.rechazadosData.push({
       banco:String(row[iBanco]||'').trim(), nro:String(row[iNro]||'').trim(),
       fEmi:fmtD(row[iEmi]), fCobro:fmtD(row[iCobro]), fRech,
