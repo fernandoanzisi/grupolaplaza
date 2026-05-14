@@ -11146,13 +11146,17 @@ function parseCarteraDebo(wb) {
 }
 
 async function _saveCartDeboSupabase(data) {
-  if (!_supaUser || !data || !data.length) return;
+  if (!_supaUser || !data || !data.length) {
+    if (!_supaUser) showToast('⚠️ Cartera: no hay sesión activa — datos no guardados en Supabase');
+    return;
+  }
   try {
-    showToast('⏳ Guardando cartera en Supabase...');
-    const { error: delError } = await supa.from('cartera_debo').delete().gte('id', 0);
+    showToast('⏳ Guardando ' + data.length.toLocaleString() + ' cheques en Supabase...');
+    // Borrar todos los registros existentes del usuario
+    const { error: delError } = await supa.from('cartera_debo').delete().eq('importado_by', _supaUser.id);
     if (delError) {
       console.warn('cartDebo delete error:', delError.message);
-      showToast('⚠️ Error al limpiar cartera: ' + delError.message.slice(0,80));
+      showToast('⚠️ Error al limpiar cartera: ' + delError.message.slice(0,120));
       return;
     }
     const rows = data.map(c => ({
@@ -11163,15 +11167,15 @@ async function _saveCartDeboSupabase(data) {
       uunn: c.uunn||'', apies: c.apies||'',
       importado_by: _supaUser.id
     }));
-    let errCount = 0;
+    let errCount = 0, firstErr = '';
     for (let i = 0; i < rows.length; i += 500) {
       const { error } = await supa.from('cartera_debo').insert(rows.slice(i, i+500));
-      if (error) { errCount++; console.warn('cartDebo chunk error:', error.message); }
+      if (error) { errCount++; if (!firstErr) firstErr = error.message; console.warn('cartDebo chunk error:', error.message); }
     }
     if (errCount === 0) {
       showToast('✅ Cartera guardada en Supabase (' + data.length.toLocaleString() + ' cheques)');
     } else {
-      showToast('⚠️ Cartera: ' + errCount + ' bloques fallaron — F12 para detalles');
+      showToast('⚠️ Cartera: ' + errCount + ' bloques fallaron — ' + firstErr.slice(0,80));
     }
   } catch(e) {
     console.error('_saveCartDeboSupabase:', e);
@@ -11943,7 +11947,7 @@ async function loadFromSupabase() {
     }
 
     // Cartera DEBO
-    const { data: cartera } = await supa.from('cartera_debo').select('*').order('f_pres');
+    const { data: cartera } = await supa.from('cartera_debo').select('*').order('f_pres').limit(50000);
     if (cartera && cartera.length) {
       const _hoy = new Date().toISOString().slice(0,10);
       appState.cartDebo = cartera.map(r => {
