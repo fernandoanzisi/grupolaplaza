@@ -414,32 +414,37 @@ let _supaUser=null,_supaRol=null;
       <button class="nav-tab" onclick="navGo('subempresas',this)" data-page="subempresas"><span class="ni">🏢</span><span class="nl">Unidades de negocio</span></button>
       <div class="nav-group" id="grp-gestion">
         <button class="nav-tab nav-group-trigger" onclick="toggleGroup('grp-gestion',event)"><span class="ni">📋</span><span class="nl">Gestión</span><span class="nav-arrow">▾</span></button>
-        <div class="nav-dropdown nav-dropdown-2col">
-          <button class="nav-dd-item" onclick="navGo('inversiones',this)"   data-page="inversiones">📈 Inversiones</button>
-          <button class="nav-dd-item" onclick="navGo('cartera',this)"       data-page="cartera">💼 Cartera de Valores</button>
-          <button class="nav-dd-item" onclick="navGo('proveedores',this)"   data-page="proveedores">🧾 Proveedores</button>
-          <button class="nav-dd-item" onclick="navGo('clientes',this)"      data-page="clientes">👥 Clientes</button>
+        <div class="nav-dropdown">
           <button class="nav-dd-item" onclick="navGo('extractos',this)"     data-page="extractos">🏦 Extractos Bancarios</button>
-          <button class="nav-dd-item" onclick="navGo('cashflow',this)"      data-page="cashflow">📊 Cash Flow RS/SC</button>
-          <button class="nav-dd-item" onclick="navGo('obras',this)"         data-page="obras">🏗️ Obras</button>
-          <button class="nav-dd-item" onclick="navGo('riesgo',this)"        data-page="riesgo">🎯 Riesgo Crediticio</button>
-          <button class="nav-dd-item" onclick="navGo('mercados',this)"      data-page="mercados">📈 Mercados & Tasas</button>
-          <button class="nav-dd-item" onclick="navGo('metas',this)"          data-page="metas">🏆 Metas</button>
-          <button class="nav-dd-item" onclick="navGo('recordatorios',this)"  data-page="recordatorios">🔔 Recordatorios</button>
-          <button class="nav-dd-item" onclick="navGo('limite_credito',this)"  data-page="limite_credito">💳 Límite de Crédito</button>
-          <button class="nav-dd-item" onclick="navGo('nlp_comisiones',this)"  data-page="nlp_comisiones">💰 NLP - Comisiones</button>
-          <button class="nav-dd-item" onclick="navGo('fci',this)"             data-page="fci">📊 FCI</button>
-          <button class="nav-dd-item" onclick="navGo('preop',this)"           data-page="preop">📋 Planilla Maestra Prov.</button>
           <button class="nav-dd-item" onclick="navGo('conciliaciones',this)" data-page="conciliaciones">🔗 Conciliaciones Bancarias</button>
-          <button class="nav-dd-item" onclick="navGo('petroleras',this)"      data-page="petroleras">⛽ Pago a Petroleras</button>
-          <button class="nav-dd-item" onclick="navGo('pasivos',this)"          data-page="pasivos">📊 Pasivos Financieros</button>
-          <button class="nav-dd-item" onclick="navGo('gastos',this)"           data-page="gastos">📊 Análisis de Gastos</button>
-          <button class="nav-dd-item" onclick="navGo('lector_doc',this)"      data-page="lector_doc">🔍 Lector de Documentos</button>
-          <button class="nav-dd-item" onclick="navGo('flota',this)"            data-page="flota">🚗 Flota Automotor</button>
-          <button class="nav-dd-item" onclick="navGo('tarjetas',this)"         data-page="tarjetas">💳 Tarjetas de Crédito</button>
+          <button class="nav-dd-item" onclick="navGo('obras',this)"         data-page="obras">🏗️ Obras</button>
+          <button class="nav-dd-item" onclick="navGo('flota',this)"          data-page="flota">🚗 Flota Automotor</button>
+          <button class="nav-dd-item" onclick="navGo('recordatorios',this)"  data-page="recordatorios">🔔 Recordatorios</button>
+          <button class="nav-dd-item" onclick="navGo('metas',this)"          data-page="metas">🏆 Metas</button>
+          <button class="nav-dd-item" onclick="navGo('lector_doc',this)"    data-page="lector_doc">🔍 Lector de Documentos</button>
           <hr style="border:none;border-top:1px solid var(--border);margin:4px 0">
           <button class="nav-dd-item" onclick="window.open('https://bancogalicia.com.ar','_blank')" style="color:#e30613">🏦 Galicia</button>
           <button class="nav-dd-item" onclick="window.open('https://interbanking.com.ar','_blank')" style="color:#4a9fd4">🔗 Interbanking</button>
+        </div>
+      </div>
+      <div class="nav-group" id="grp-finanzas">
+        <button class="nav-tab nav-group-trigger" onclick="toggleGroup('grp-finanzas',event)"><span class="ni">💰</span><span class="nl">Finanzas</span><span class="nav-arrow">▾</span></button>
+        <div class="nav-dropdown nav-dropdown-2col">
+          <button class="nav-dd-item" onclick="navGo('inversiones',this)"    data-page="inversiones">📈 Inversiones</button>
+          <button class="nav-dd-item" onclick="navGo('cartera',this)"        data-page="cartera">💼 Cartera de Valores</button>
+          <button class="nav-dd-item" onclick="navGo('fci',this)"            data-page="fci">📊 FCI</button>
+          <button class="nav-dd-item" onclick="navGo('cashflow',this)"       data-page="cashflow">📊 Cash Flow</button>
+          <button class="nav-dd-item" onclick="navGo('limite_credito',this)" data-page="limite_credito">💳 Límite de Crédito</button>
+          <button class="nav-dd-item" onclick="navGo('pasivos',this)"        data-page="pasivos">📊 Pasivos Financieros</button>
+          <button class="nav-dd-item" onclick="navGo('riesgo',this)"         data-page="riesgo">🎯 Riesgo Crediticio</button>
+          <button class="nav-dd-item" onclick="navGo('proveedores',this)"    data-page="proveedores">🧾 Proveedores</button>
+          <button class="nav-dd-item" onclick="navGo('clientes',this)"       data-page="clientes">👥 Clientes</button>
+          <button class="nav-dd-item" onclick="navGo('nlp_comisiones',this)" data-page="nlp_comisiones">💰 NLP - Comisiones</button>
+          <button class="nav-dd-item" onclick="navGo('gastos',this)"         data-page="gastos">📊 Análisis de Gastos</button>
+          <button class="nav-dd-item" onclick="navGo('preop',this)"          data-page="preop">📋 Planilla Maestra</button>
+          <button class="nav-dd-item" onclick="navGo('petroleras',this)"     data-page="petroleras">⛽ Pago a Petroleras</button>
+          <button class="nav-dd-item" onclick="navGo('tarjetas',this)"       data-page="tarjetas">💳 Tarjetas de Crédito</button>
+          <button class="nav-dd-item" onclick="navGo('mercados',this)"       data-page="mercados">📈 Mercados & Tasas</button>
         </div>
       </div>
 
@@ -9232,11 +9237,28 @@ const _origSheetMap = null; // markerashSetView
   <button class="more-item" onclick="navGo('efectivo',this);closeMoreMenu()">💵 Efectivo</button>
   <button class="more-item" onclick="navGo('cheques',this);closeMoreMenu()">📋 Cheques</button>
   <button class="more-item" onclick="navGo('subempresas',this);closeMoreMenu()">🏢 Unidades de negocio</button>
-  <button class="more-item" onclick="navGo('lc',this);closeMoreMenu()">💳 Límite de Crédito</button>
-  <button class="more-item" onclick="navGo('pasivos',this);closeMoreMenu()">📊 Pasivos Financieros</button>
+  <div style="width:100%;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:4px">📋 Gestión</div>
+  <button class="more-item" onclick="navGo('extractos',this);closeMoreMenu()">🏦 Extractos Bancarios</button>
+  <button class="more-item" onclick="navGo('conciliaciones',this);closeMoreMenu()">🔗 Conciliaciones</button>
+  <button class="more-item" onclick="navGo('obras',this);closeMoreMenu()">🏗️ Obras</button>
   <button class="more-item" onclick="navGo('flota',this);closeMoreMenu()">🚗 Flota Automotor</button>
-  <button class="more-item" onclick="navGo('tarjetas',this);closeMoreMenu()">💳 Tarjetas de Crédito</button>
+  <button class="more-item" onclick="navGo('recordatorios',this);closeMoreMenu()">🔔 Recordatorios</button>
+  <button class="more-item" onclick="navGo('metas',this);closeMoreMenu()">🏆 Metas</button>
+  <button class="more-item" onclick="navGo('lector_doc',this);closeMoreMenu()">🔍 Lector Doc.</button>
+  <div style="width:100%;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:4px">💰 Finanzas</div>
+  <button class="more-item" onclick="navGo('inversiones',this);closeMoreMenu()">📈 Inversiones</button>
+  <button class="more-item" onclick="navGo('cartera',this);closeMoreMenu()">💼 Cartera</button>
+  <button class="more-item" onclick="navGo('fci',this);closeMoreMenu()">📊 FCI</button>
+  <button class="more-item" onclick="navGo('cashflow',this);closeMoreMenu()">📊 Cash Flow</button>
+  <button class="more-item" onclick="navGo('limite_credito',this);closeMoreMenu()">💳 Límite de Crédito</button>
+  <button class="more-item" onclick="navGo('pasivos',this);closeMoreMenu()">📊 Pasivos</button>
   <button class="more-item" onclick="navGo('riesgo',this);closeMoreMenu()">🎯 Riesgo Crediticio</button>
+  <button class="more-item" onclick="navGo('proveedores',this);closeMoreMenu()">🧾 Proveedores</button>
+  <button class="more-item" onclick="navGo('clientes',this);closeMoreMenu()">👥 Clientes</button>
+  <button class="more-item" onclick="navGo('gastos',this);closeMoreMenu()">📊 Análisis de Gastos</button>
+  <button class="more-item" onclick="navGo('petroleras',this);closeMoreMenu()">⛽ Petroleras</button>
+  <button class="more-item" onclick="navGo('tarjetas',this);closeMoreMenu()">💳 Tarjetas</button>
+  <button class="more-item" onclick="navGo('mercados',this);closeMoreMenu()">📈 Mercados</button>
 </div>
 
 
