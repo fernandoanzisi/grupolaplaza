@@ -6310,14 +6310,22 @@ function handleFile(input) {
         return;
       }
 
-      if (typeof isCarteraDebo === 'function' && isCarteraDebo(wb)) {
+      const _fnCartDebo = /debo/i.test(fileName) || /cartera.*(valor|debo)/i.test(fileName);
+      if (_fnCartDebo || (typeof isCarteraDebo === 'function' && isCarteraDebo(wb))) {
         const result = parseCarteraDebo(wb);
         const logDiv = document.getElementById('import-log');
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
-        showToast('✅ Cartera DEBO — ' + result.total.toLocaleString() + ' cheques');
-        if (typeof renderCarteraDebo === 'function') renderCarteraDebo();
-        if (typeof chequesHistorialGuardar === 'function') chequesHistorialGuardar();
-        if (typeof navGo === 'function') navGo('cartera', null);
+        if (result.total > 0) {
+          showToast('✅ Cartera DEBO — ' + result.total.toLocaleString() + ' cheques');
+          if (typeof renderCarteraDebo === 'function') renderCarteraDebo();
+          if (typeof chequesHistorialGuardar === 'function') chequesHistorialGuardar();
+          if (typeof navGo === 'function') navGo('cartera', null);
+        } else {
+          // No se importó nada — mostrar hojas detectadas para debug
+          const sheetList = wb.SheetNames.join(', ');
+          statusEl.innerHTML = '<div class="alert yellow">⚠️ Cartera DEBO: 0 cheques importados.<br><small>Hojas del Excel: <strong>' + sheetList + '</strong></small></div>';
+          showToast('⚠️ Cartera DEBO: no se encontraron datos. Revisá los nombres de las hojas.');
+        }
         return;
       }
       // 4a. Límite de Crédito
@@ -10944,6 +10952,9 @@ function isClientesDebo(wb) {
 function parseCarteraDebo(wb) {
   const log = []; let total = 0;
   appState.cartDebo = [];
+
+  // Hojas encontradas — siempre logear para debug
+  log.push(`<span style="color:var(--text3)">📂 Hojas detectadas: ${wb.SheetNames.map(s=>`"${s}"`).join(', ')}</span>`);
 
   // Mapa de hojas → empresa + tipo
   const SHEET_MAP = {
