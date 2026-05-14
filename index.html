@@ -10774,18 +10774,21 @@ async function _saveExtractosSupabase(data, mesNum, anioNum) {
         saldo:        m.saldo!=null?parseFloat(m.saldo):null,
         mes:          (() => { const mv = m.mes; if (!mv) return parseInt((m.fecha||'').slice(5,7))||null; if (typeof mv === 'number') return mv; const meses = {ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12}; return meses[String(mv).toLowerCase().slice(0,3)] || parseInt(mv) || null; })(),
         anio:         parseInt((m.fecha||'').slice(0,4))||null,
+        importado_by: _supaUser.id,
       })));
     }
     // Enviar en grupos de PARALLEL chunks simultáneos
     for (let i = 0; i < chunks.length; i += PARALLEL) {
       const grupo = chunks.slice(i, i+PARALLEL);
       const resultados = await Promise.all(grupo.map(chunk => supa.from('extracto_bancario').insert(chunk)));
+      let _firstExtErr = '';
       resultados.forEach(({ error }) => {
         if (error) {
           errCount++;
-          if (errCount === 1) console.error('Supabase extracto error:', error.message);
+          if (!_firstExtErr) { _firstExtErr = error.message; console.error('Supabase extracto error:', error.message); }
         }
       });
+      if (_firstExtErr && errCount === 1) showToast('⚠️ Error guardando extractos: ' + _firstExtErr.slice(0,100));
       // Pequeña pausa cada 10 grupos para no saturar Supabase
       if (i > 0 && i % (PARALLEL * 10) === 0) {
         showToast('⏳ Guardando... ' + Math.min(100, Math.round((i/chunks.length)*100)) + '%');
@@ -11994,7 +11997,8 @@ async function loadFromSupabase() {
           .gte('fecha', (_anioActual-1)+'-01-01')
           .order('fecha', {ascending:false})
           .range(_pg*_PAGE, (_pg+1)*_PAGE-1);
-        if (_extErr || !_extChunk || !_extChunk.length) break;
+        if (_extErr) { console.warn('extracto load error:', _extErr.message); break; }
+        if (!_extChunk || !_extChunk.length) break;
         _extAll = _extAll.concat(_extChunk.map(r => ({
           fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
           nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
