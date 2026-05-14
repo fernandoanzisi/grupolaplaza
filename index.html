@@ -6316,6 +6316,7 @@ function handleFile(input) {
         const logDiv = document.getElementById('import-log');
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
         if (result.total > 0) {
+          statusEl.innerHTML = '<div class="alert green">✅ Cartera DEBO — ' + result.total.toLocaleString() + ' cheques importados</div>';
           showToast('✅ Cartera DEBO — ' + result.total.toLocaleString() + ' cheques');
           if (typeof renderCarteraDebo === 'function') renderCarteraDebo();
           if (typeof chequesHistorialGuardar === 'function') chequesHistorialGuardar();
