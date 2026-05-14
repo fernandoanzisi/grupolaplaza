@@ -2025,8 +2025,16 @@ let _supaUser=null,_supaRol=null;
     </div>
     <div>
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px" id="preop-fecha1-label2">UUNN</div>
-      <div id="preop-uunn-toggles" style="display:flex;gap:4px;flex-wrap:wrap;min-height:34px;align-items:center">
-        <button onclick="preOpToggleUunn('__todas__')" style="padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--accent);background:rgba(74,159,212,0.15);color:var(--accent);font-family:inherit">Todas</button>
+      <div style="position:relative">
+        <button id="preop-uunn-trigger" onclick="preOpToggleUunnDrop(event)"
+          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;text-align:left;box-sizing:border-box">
+          <span id="preop-uunn-label">Todas</span><span style="color:var(--text3);font-size:10px;flex-shrink:0">▾</span>
+        </button>
+        <div id="preop-uunn-drop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:200;background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:10px;box-shadow:0 4px 20px rgba(0,0,0,0.5);max-height:280px;overflow-y:auto">
+          <div id="preop-uunn-toggles" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+            <button onclick="preOpToggleUunn('__todas__')" style="padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--accent);background:rgba(74,159,212,0.15);color:var(--accent);font-family:inherit">Todas</button>
+          </div>
+        </div>
       </div>
     </div>
     <div>
@@ -14724,6 +14732,31 @@ function preOpExcel() {
 
 // UUNN toggle state
 if (typeof window._preOpUunnSel === 'undefined') window._preOpUunnSel = [];
+
+function preOpUpdateUunnLabel() {
+  const sel = window._preOpUunnSel || [];
+  const lbl = document.getElementById('preop-uunn-label');
+  if (lbl) lbl.textContent = sel.length === 0 ? 'Todas' : sel.length === 1 ? sel[0] : sel.length + ' seleccionadas';
+}
+
+function preOpToggleUunnDrop(e) {
+  if (e) e.stopPropagation();
+  const drop = document.getElementById('preop-uunn-drop');
+  if (!drop) return;
+  const isOpen = drop.style.display !== 'none';
+  drop.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    const outsideClick = (ev) => {
+      const trigger = document.getElementById('preop-uunn-trigger');
+      if (!drop.contains(ev.target) && ev.target !== trigger && !trigger?.contains(ev.target)) {
+        drop.style.display = 'none';
+        document.removeEventListener('click', outsideClick);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', outsideClick), 0);
+  }
+}
+
 function preOpToggleUunn(uunn) {
   if (uunn === '__todas__') { window._preOpUunnSel = []; }
   else {
@@ -14731,6 +14764,7 @@ function preOpToggleUunn(uunn) {
     if (idx >= 0) window._preOpUunnSel.splice(idx, 1);
     else window._preOpUunnSel.push(uunn);
   }
+  preOpUpdateUunnLabel();
   renderPreOp();
 }
 
@@ -14844,6 +14878,7 @@ function renderPreOp() {
     togglesEl.innerHTML =
       '<button onclick="preOpToggleUunn(\'__todas__\')" style="' + (sel.length===0?onSt:offSt) + '">Todas</button> ' +
       uunns.map(u => '<button onclick="preOpToggleUunn(\''+ u.replace(/'/g,'\\\'')+'\')" style="' + (sel.includes(u)?onSt:offSt) + '">' + u + '</button>').join(' ');
+    preOpUpdateUunnLabel();
   }
 }
 
