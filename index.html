@@ -11146,7 +11146,7 @@ async function _saveCartDeboSupabase(data) {
       f_emi: c.fEmi||null, f_pres: c.fPres||null,
       cliente: c.cliente||'', librador: c.librador||'',
       importe: c.importe||0, elect: c.elect||'No',
-      dias: c.dias != null ? c.dias : null, uunn: c.uunn||'', apies: c.apies||'',
+      uunn: c.uunn||'', apies: c.apies||'',
       importado_by: _supaUser.id
     }));
     let errCount = 0;
@@ -12170,7 +12170,7 @@ async function syncSupabase() {
       const rows = appState.cartDebo.map(c => ({
         empresa:c.emp, uunn:c.uunn, apies:c.apies, banco:c.banco, numero:c.numero,
         f_emi:c.fEmi||null, f_pres:c.fPres||null, cliente:c.cliente, librador:c.librador,
-        importe:c.importe, elect:c.elect, dias:c.dias, importado_by:_supaUser.id
+        importe:c.importe, elect:c.elect, importado_by:_supaUser.id
       }));
       // Insertar en chunks de 500
       for (let i=0; i<rows.length; i+=500) {
