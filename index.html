@@ -11008,7 +11008,7 @@ function parseCarteraDebo(wb) {
         cols.banco   = rStr.findIndex(h=>h.includes('banco'));
         cols.nro     = rStr.findIndex(h=>h.includes('número')||h.includes('numero')||h==='nº de cheque'||h.includes('cheque nº'));
         cols.emi     = rStr.findIndex(h=>h.includes('emisi'));
-        cols.pres    = rStr.findIndex(h=>h.includes('presentaci')||h.includes('fecha de pago'));
+        cols.pres    = rStr.findIndex(h=>h.includes('presentaci')||h.includes('fecha de pago')||h.includes('vencimiento')||h.includes('vto')||h.includes('cobro')||h.includes('f.pres')||h.includes('f. pres'));
         cols.cliente = rStr.findIndex(h=>h.includes('cliente')||h.includes('recibido de'));
         cols.librador= rStr.findIndex(h=>h.includes('librador')||h.includes('razón social')||h==='razón social');
         cols.lugar   = rStr.findIndex(h=>h.includes('lugar'));
@@ -11059,7 +11059,9 @@ function parseCarteraDebo(wb) {
 
     if(byEmp[info.emp]) { byEmp[info.emp].c+=sheetCount; byEmp[info.emp].t+=0; }
     const col = info.emp==='RS'?'#4a9fd4':'#3aaa2a';
-    log.push(`<span style="color:${col}">✅ "${sn}" → ${info.emp}/${info.tipo}: ${sheetCount.toLocaleString('es-AR')} cheques</span>`);
+    const sinFecha = appState.cartDebo.filter(c=>c.hoja===sn.trim()&&!c.fPres).length;
+    const warnFecha = sinFecha>0 ? ` <span style="color:var(--yellow)">⚠️ ${sinFecha} sin fecha pres.</span>` : '';
+    log.push(`<span style="color:${col}">✅ "${sn}" → ${info.emp}/${info.tipo}: ${sheetCount.toLocaleString('es-AR')} cheques${warnFecha}</span>`);
   });
 
   // Parsear hojas Galicia — historial informativo desde 2025
@@ -11270,15 +11272,18 @@ function renderCarteraDebo(){
   if(!appState.cartDebo||!appState.cartDebo.length){
     const kEl=document.getElementById('cart-kpis');
     if(kEl)kEl.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">💼</div><div style="font-weight:600;margin-bottom:4px">Sin datos de cartera</div><div style="font-size:12px">Importá el Excel <strong>Valores en Cartera</strong> desde la sección Excel</div></div>';
+    const cEl=document.getElementById('cart-cascada-debo');if(cEl)cEl.innerHTML='';
     return;
   }
   const data=_cartFiltered();
   _cartUpdFilters();
   // KPIs
   const today=new Date().toISOString().slice(0,10);
+  // Helper: calcula dias desde hoy a fPres (ignora el valor cacheado en el objeto)
+  const calcDias=(c)=>c.fPres?Math.round((new Date(c.fPres)-new Date(today))/86400000):null;
   const tot=data.reduce((s,c)=>s+c.importe,0);
   const cnt=data.length;
-  const next7=data.filter(c=>c.fPres&&c.fPres>=today&&c.dias!==null&&c.dias<=7).reduce((s,c)=>s+c.importe,0);
+  const next7=data.filter(c=>c.fPres&&c.fPres>=today&&calcDias(c)!==null&&calcDias(c)<=7).reduce((s,c)=>s+c.importe,0);
   const kEl=document.getElementById('cart-kpis');
   if(kEl)kEl.innerHTML=[
     ['💼 Total cartera',tot,'var(--accent)',false],
@@ -11297,7 +11302,7 @@ function renderCarteraDebo(){
   ];
   const cEl=document.getElementById('cart-cascada-debo');
   if(cEl)cEl.innerHTML=buckets.map(b=>{
-    const items=data.filter(c=>c.dias!==null&&c.dias>=b.mn&&c.dias<=b.mx);
+    const items=data.filter(c=>{const d=calcDias(c);return d!==null&&d>=b.mn&&d<=b.mx;});
     const t=items.reduce((s,c)=>s+c.importe,0);
     const n=items.length;
     return `<div style="background:${b.bg};border:1px solid var(--border);border-radius:12px;padding:14px 16px">
@@ -11316,7 +11321,8 @@ function renderCarteraDebo(){
     if(!vis.length){tbody.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:32px">Sin resultados</td></tr>';}
     else tbody.innerHTML=vis.map(c=>{
       const ec=c.emp==='RS'?'#4a9fd4':'#3aaa2a';
-      const dc=c.dias===null?'var(--text3)':c.dias<0?'var(--red)':c.dias<=7?'var(--yellow)':c.dias<=15?'var(--accent)':'var(--green)';
+      const d=calcDias(c);
+      const dc=d===null?'var(--text3)':d<0?'var(--red)':d<=7?'var(--yellow)':d<=15?'var(--accent)':'var(--green)';
       return `<tr style="border-bottom:1px solid var(--border)">
         <td style="padding:7px 10px"><span style="font-size:10px;font-weight:700;color:${ec};padding:1px 6px;border-radius:3px;background:${ec}22">${c.emp}</span></td>
         <td style="padding:7px 10px;font-size:11px;color:var(--text2)">${c.uunn} <span style="font-size:9px;color:var(--text3)">${c.apies}</span></td>
@@ -11327,7 +11333,7 @@ function renderCarteraDebo(){
         <td style="padding:7px 10px;text-align:center"><span style="font-size:9px;padding:2px 5px;border-radius:3px;background:${c.elect==='Si'?'rgba(74,159,212,0.15)':'rgba(255,255,255,0.06)'};color:${c.elect==='Si'?'#4a9fd4':'var(--text3)'}">${c.elect==='Si'?'E-Cheq':'Fís.'}</span></td>
         <td style="padding:7px 10px;font-family:var(--mono);font-size:11px;text-align:right;color:var(--text3)">${c.fEmi||'—'}</td>
         <td style="padding:7px 10px;font-family:var(--mono);font-size:12px;text-align:right;font-weight:700;color:var(--accent)">${c.fPres||'—'}</td>
-        <td style="padding:7px 10px;font-family:var(--mono);font-size:12px;text-align:right;font-weight:700;color:${dc}">${c.dias!==null?c.dias+'d':'—'}</td>
+        <td style="padding:7px 10px;font-family:var(--mono);font-size:12px;text-align:right;font-weight:700;color:${dc}">${d!==null?d+'d':'—'}</td>
         <td style="padding:7px 10px;font-family:var(--mono);font-size:12px;text-align:right;font-weight:700">$ ${fmtARS(c.importe)}</td>
       </tr>`;
     }).join('');
