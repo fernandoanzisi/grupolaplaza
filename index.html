@@ -11987,34 +11987,29 @@ async function loadFromSupabase() {
       }));
     }
 
-    // Extracto bancario — paginado de a 1000 (límite Supabase) hasta traer todo
+    // Extracto bancario — cargar solo lista de meses disponibles en Supabase.
+    // Cada mes se carga on-demand cuando el usuario lo selecciona (onMesExtractoCambia).
+    // Cargar 199k filas al inicio es impractico — usamos un count por mes.
     {
-      const _PAGE = 1000; let _pg = 0; let _extAll = [];
       const _anioActual = new Date().getFullYear();
-      while (true) {
-        const { data: _extChunk, error: _extErr } = await supa.from('extracto_bancario')
-          .select('*')
-          .gte('fecha', (_anioActual-1)+'-01-01')
-          .order('fecha', {ascending:false})
-          .range(_pg*_PAGE, (_pg+1)*_PAGE-1);
-        if (_extErr) { console.warn('extracto load error:', _extErr.message); break; }
-        if (!_extChunk || !_extChunk.length) break;
-        _extAll = _extAll.concat(_extChunk.map(r => ({
-          fecha:r.fecha, empTag:r.emp_tag||'', banco:r.banco||'', cuenta:r.cuenta||'',
-          nroCta:r.nro_cta||'', concepto:r.concepto||'', detalle:r.detalle||'',
-          denominacion:r.denominacion||'', cat:r.categoria||r.cat||'',
-          cuit:r.cuit||'', mes:r.mes||null, anio:r.anio||null,
-          importe:parseFloat(r.importe)||0, importeOriginal:parseFloat(r.importe_original||r.importe)||0,
-          saldo:r.saldo!=null?parseFloat(r.saldo):null, tipo:r.tipo||'ingreso',
-          _fromExtracto:true
-        })));
-        if (_extChunk.length < 1000) break;
-        _pg++;
-        if (_pg > 200) break; // safety: max 200k rows
-      }
-      if (_extAll.length > 0) {
-        appState.extractoBancario = _extAll;
-        console.log('✅ Extractos cargados:', _extAll.length, 'movimientos');
+      const { data: _mesesRows, error: _mesesErr } = await supa
+        .from('extracto_bancario')
+        .select('anio,mes')
+        .gte('fecha', (_anioActual-1)+'-01-01')
+        .order('anio', {ascending:false})
+        .order('mes', {ascending:false})
+        .limit(50000);
+      if (!_mesesErr && _mesesRows && _mesesRows.length) {
+        // Construir set de meses disponibles (ej: "2026-01")
+        const _mesesDisp = new Set(_mesesRows.map(r => {
+          const a = r.anio || (r.fecha||'').slice(0,4);
+          const m = r.mes  || parseInt((r.fecha||'').slice(5,7));
+          return a + '-' + String(m).padStart(2,'0');
+        }));
+        // Guardar en appState para que el selector los muestre como disponibles
+        if (!appState._extractoMesesDisp) appState._extractoMesesDisp = new Set();
+        appState._extractoMesesDisp = _mesesDisp;
+        console.log('✅ Meses con extractos en Supabase:', [..._mesesDisp].join(', '));
       }
     }
 
@@ -17010,7 +17005,9 @@ async function _poblarSelectorMeses() {
     Array.from(mesesSet).sort().reverse().forEach(ym => {
       const [y, m] = ym.split('-');
       const label = MESES[parseInt(m)] + ' ' + y;
-      const loaded = (appState.extractoBancario||[]).some(r=>(r.fecha||'').startsWith(ym));
+      const loadedMem  = (appState.extractoBancario||[]).some(r=>(r.fecha||'').startsWith(ym));
+      const loadedSupa = appState._extractoMesesDisp && appState._extractoMesesDisp.has(ym);
+      const loaded = loadedMem || loadedSupa;
       const opt = document.createElement('option');
       opt.value = ym;
       opt.textContent = (loaded ? '✅ ' : '') + label;
