@@ -449,18 +449,9 @@ let _supaUser=null,_supaRol=null;
   </div>
   <div class="topnav-right" style="flex-shrink:0">
     
-    <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--accent);border-radius:10px;padding:4px 10px">
-      <span style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:0.5px">📅 Desde</span>
-      <input type="date" id="date-filter-from"
-        style="background:transparent;border:none;border-bottom:1px solid var(--accent);padding:3px 6px;font-size:12px;color:var(--text);font-family:var(--mono);outline:none;cursor:pointer;width:120px;font-weight:600"
-        oninput="applyDateRange()" title="Fecha desde">
-      <span style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:0.5px;margin:0 2px">Hasta</span>
-      <input type="date" id="date-filter-to"
-        style="background:transparent;border:none;border-bottom:1px solid var(--accent);padding:3px 6px;font-size:12px;color:var(--text);font-family:var(--mono);outline:none;cursor:pointer;width:120px;font-weight:600"
-        oninput="applyDateRange()" title="Fecha hasta">
-      <button onclick="clearDateRange()"
-        style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:14px;padding:2px 4px;font-weight:700"
-        title="Limpiar filtro de fecha">✕</button>
+    <div style="display:none">
+      <input type="date" id="date-filter-from" oninput="applyDateRange()">
+      <input type="date" id="date-filter-to" oninput="applyDateRange()">
     </div>
     <div class="empresa-selector" style="display:flex;align-items:center;gap:8px">
       <select id="empresa-select" onchange="switchEmpresa(this.value)" style="display:none"></select>
@@ -595,7 +586,7 @@ let _supaUser=null,_supaRol=null;
 
   <!-- Filtros -->
   <div class="card mb" style="padding:12px 16px">
-    <div style="display:grid;grid-template-columns:2fr repeat(4,1fr) auto;gap:10px;align-items:end;flex-wrap:wrap">
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr auto;gap:10px;align-items:end;flex-wrap:wrap">
       <div>
         <input type="text" id="inv-search" placeholder="🔍 Buscar fondo, empresa..." oninput="renderInvestments()"
           style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box">
@@ -629,6 +620,16 @@ let _supaUser=null,_supaRol=null;
           <option value="rend_desc">Rendimiento ↓</option>
           <option value="fecha_desc">Fecha ↓</option>
         </select>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Desde</div>
+        <input type="date" id="inv-f-desde" oninput="document.getElementById('date-filter-from').value=this.value;applyDateRange()"
+          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:11px;color:var(--text);outline:none;box-sizing:border-box">
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Hasta</div>
+        <input type="date" id="inv-f-hasta" oninput="document.getElementById('date-filter-to').value=this.value;applyDateRange()"
+          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 8px;font-size:11px;color:var(--text);outline:none;box-sizing:border-box">
       </div>
       <div style="display:flex;align-items:flex-end">
         <button onclick="invLimpiar()" style="width:100%;padding:7px 8px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text3);font-size:11px;cursor:pointer">✕ Limpiar</button>
@@ -2440,6 +2441,25 @@ let _supaUser=null,_supaRol=null;
 
   <!-- KPIs -->
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="cf-kpis"></div>
+
+  <!-- Filtro fecha -->
+  <div class="card mb" style="padding:10px 16px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">📅 Período</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;color:var(--accent);font-weight:700">Desde</span>
+        <input type="date" id="cf-f-desde" oninput="renderCashFlow()"
+          style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:5px 8px;font-size:12px;color:var(--text);outline:none;font-family:var(--mono)">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;color:var(--accent);font-weight:700">Hasta</span>
+        <input type="date" id="cf-f-hasta" oninput="renderCashFlow()"
+          style="background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:5px 8px;font-size:12px;color:var(--text);outline:none;font-family:var(--mono)">
+      </div>
+      <button onclick="document.getElementById('cf-f-desde').value='';document.getElementById('cf-f-hasta').value='';renderCashFlow()"
+        style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:4px 8px;border-radius:6px;border:1px solid var(--border)">✕ Limpiar</button>
+    </div>
+  </div>
 
   <!-- Saldo inicial -->
   <div class="card mb" style="padding:16px 20px">
@@ -4785,9 +4805,9 @@ function renderReminders() {
 // ==================== INVESTMENTS ====================
 const fimaFunds=[{name:'Fima Premium',initial:200000,current:320000,tna:18.75,plazo:'Inmediato'},{name:'Fima Ahorro Plus',initial:100000,current:138000,tna:65.2,plazo:'72hs'}];
 function invLimpiar() {
-  ['inv-search'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['inv-search','inv-f-desde','inv-f-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['inv-f-empresa','inv-f-fondo','inv-sort'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='inv-sort'?'cap_desc':'';});
-  renderInvestments();
+  clearDateRange();
 }
 
 function renderInvestments() {
@@ -10296,8 +10316,10 @@ function renderCashFlow() {
   const saldoSC = parseFloat(saldoSCEl&&saldoSCEl.value||0)||0;
   const saldoInicial = _cfEmp==='RS' ? saldoRS : _cfEmp==='SC' ? saldoSC : saldoRS+saldoSC;
 
-  const manuales = appState.cfFilas.filter(f => _cfEmp==='grupo' || f.empresa===_cfEmp);
-  const autoCheques = _cfGetCheques(_cfEmp);
+  const cfDesde = document.getElementById('cf-f-desde')?.value || '';
+  const cfHasta = document.getElementById('cf-f-hasta')?.value || '';
+  const manuales = appState.cfFilas.filter(f => (_cfEmp==='grupo' || f.empresa===_cfEmp) && (!cfDesde||f.fecha>=cfDesde) && (!cfHasta||f.fecha<=cfHasta));
+  const autoCheques = _cfGetCheques(_cfEmp).filter(f => (!cfDesde||f.fecha>=cfDesde) && (!cfHasta||f.fecha<=cfHasta));
   const todasFilas = [...manuales, ...autoCheques].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
 
   const byDate = {};
