@@ -6321,13 +6321,10 @@ function handleFile(input) {
           if (typeof renderCarteraDebo === 'function') renderCarteraDebo();
           if (typeof chequesHistorialGuardar === 'function') chequesHistorialGuardar();
           if (typeof navGo === 'function') navGo('cartera', null);
-        } else {
-          // No se importó nada — mostrar hojas detectadas para debug
-          const sheetList = wb.SheetNames.join(', ');
-          statusEl.innerHTML = '<div class="alert yellow">⚠️ Cartera DEBO: 0 cheques importados.<br><small>Hojas del Excel: <strong>' + sheetList + '</strong></small></div>';
-          showToast('⚠️ Cartera DEBO: no se encontraron datos. Revisá los nombres de las hojas.');
+          return;
         }
-        return;
+        // result.total === 0 → puede ser Excel de Clientes DEBO con hoja Hoja1
+        // No hacemos return: dejamos que el router siga hacia isClientesDebo
       }
       // 4a. Límite de Crédito
       if (typeof isLimiteCredito === 'function' && isLimiteCredito(wb)) {
@@ -10943,13 +10940,26 @@ function isCarteraDebo(wb) {
   return hasCartera || hasClientes;
 }
 function isClientesDebo(wb) {
-  if (isMinutaDiaria(wb) || isCarteraDebo(wb)) return false;
+  if (isMinutaDiaria(wb)) return false;
   // Exclude extracto bancario files
   if (typeof isExtractoBancario === 'function' && isExtractoBancario(wb)) return false;
-  // Only match files specifically about clientes - NOT generic Hoja1
   const sheets = wb.SheetNames.map(s => s.toLowerCase().trim());
-  return sheets.some(s => s.includes('cliente')) ||
-         (wb.SheetNames.length === 1 && wb.SheetNames[0] === 'Hoja1' && !sheets.some(s=>s.includes('pre-op')||s.includes('preop')||s.includes('fci')||s.includes('fima')||s.includes('nlp')));
+  // Exclusión estricta: si tiene hojas propias de cartera de valores, no es clientes
+  const hasCartSheets = sheets.some(s => s.includes('cartera rs') || s.includes('cartera sc') || s.includes('cartera agro') || s.includes('e-cheq'));
+  if (hasCartSheets) return false;
+  // Excluir otros parsers específicos
+  if (sheets.some(s => s.includes('pre-op') || s.includes('preop') || s.includes('fci') || s.includes('fima') || s.includes('nlp'))) return false;
+  // Match si tiene hoja "clientes" o una sola hoja Hoja1 con cabeceras de clientes DEBO
+  if (sheets.some(s => s.includes('cliente'))) return true;
+  if (wb.SheetNames.length === 1 && sheets[0] === 'hoja1') {
+    // Verificar que la primera fila tenga columnas de clientes DEBO
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+    if (!rows || rows.length < 1) return false;
+    const hdr = rows[0].map(h => String(h || '').toLowerCase().trim());
+    return hdr.some(h => h.includes('cliente')) && hdr.some(h => h.includes('saldo'));
+  }
+  return false;
 }
 
 // ─── PARSER CARTERA ──────────────────────────────────────────
