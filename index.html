@@ -9524,7 +9524,7 @@ function navGo(page, triggerEl) {
     'cashflow':     ()=>renderCashFlow(),
     'obras':        ()=>renderObras(),
     'riesgo':       ()=>renderRiesgo(),
-    'mercados':     ()=>renderMercados(),
+    'mercados':     ()=>{ renderMercados(); actualizarMercados(); },
     'cartera':      ()=>renderCarteraDebo(),
     'clientes':     ()=>renderClientesDebo(),
   };
@@ -13882,7 +13882,7 @@ async function actualizarMercados() {
         if (c==='oficial')  _mercadosData.dolar.oficial  = {c:d.compra, v:d.venta};
         if (c==='blue')     _mercadosData.dolar.blue     = {c:d.compra, v:d.venta};
         if (c==='bolsa'||c==='mep') _mercadosData.dolar.mep = {c:d.compra||d.venta, v:d.venta};
-        if (c==='contadoliqui'||c==='ccl') _mercadosData.dolar.ccl = {c:d.compra||d.venta, v:d.venta};
+        if (c==='contadoconliqui'||c==='contadoliqui'||c==='ccl'||c.startsWith('contado')) _mercadosData.dolar.ccl = {c:d.compra||d.venta, v:d.venta};
         if (c==='cripto'||c==='crypto') _mercadosData.dolar.cripto = {c:d.compra||d.venta, v:d.venta};
       });
       // Also update global dolar object
@@ -13892,45 +13892,57 @@ async function actualizarMercados() {
     }
   } catch(e) { errors.push('dólar'); }
 
-  // 2. Variables BCRA — pases activos (id=1), BADLAR privados (id=7), TNA PF 30d (id=6)
+  // 2. Variables BCRA v4 — pases entre terceros (id=150), BADLAR privados (id=7), TNA depósitos 30d (id=12)
   try {
     const [rPases, rBadlar, rTnaPf] = await Promise.allSettled([
-      fetch('https://api.bcra.gob.ar/estadisticas/v3.0/monetarias/1?offset=0&limit=2'),
-      fetch('https://api.bcra.gob.ar/estadisticas/v3.0/monetarias/7?offset=0&limit=2'),
-      fetch('https://api.bcra.gob.ar/estadisticas/v3.0/monetarias/6?offset=0&limit=2'),
+      fetch('https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/150?offset=0&limit=2'),
+      fetch('https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/7?offset=0&limit=2'),
+      fetch('https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/12?offset=0&limit=2'),
     ]);
     if (rPases.status==='fulfilled' && rPases.value.ok) {
       const d = await rPases.value.json();
-      const v = d.results?.[0]?.valor; if (v!=null) _mercadosData.tasasBCRA.pases = v;
+      const v = d.results?.[0]?.detalle?.[0]?.valor; if (v!=null) _mercadosData.tasasBCRA.pases = v;
     }
     if (rBadlar.status==='fulfilled' && rBadlar.value.ok) {
       const d = await rBadlar.value.json();
-      const v = d.results?.[0]?.valor; if (v!=null) _mercadosData.tasasBCRA.badlar = v;
+      const v = d.results?.[0]?.detalle?.[0]?.valor; if (v!=null) _mercadosData.tasasBCRA.badlar = v;
     }
     if (rTnaPf.status==='fulfilled' && rTnaPf.value.ok) {
       const d = await rTnaPf.value.json();
-      const v = d.results?.[0]?.valor; if (v!=null) _mercadosData.tasasBCRA.tna_pf = v;
+      const v = d.results?.[0]?.detalle?.[0]?.valor; if (v!=null) _mercadosData.tasasBCRA.tna_pf = v;
     }
   } catch(e) { errors.push('BCRA'); }
 
-  // 3. Inflación IPC — intentar obtener último dato
+  // 3. Inflación IPC — calcular variación mensual desde CER (BCRA v4, var 30)
   try {
-    const r = await fetch('https://apis.datos.gob.ar/series/api/series/?ids=148.3_INUCLEONAL_DICI_M_26&limit=12&sort=asc');
-    if (r.ok) {
-      const d = await r.json();
-      const series = d.data || [];
-      if (series.length > 0) {
-        // Actualizar últimos meses
-        series.slice(-6).forEach(s => {
-          const [fecha, val] = s;
-          const [y,m] = fecha.split('-');
-          const meses=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-          const label = meses[parseInt(m)]+' '+String(y).slice(2);
-          const exists = _mercadosData.inflacion.find(x=>x.mes===label);
-          if (!exists && val !== null) _mercadosData.inflacion.push({mes:label, ipc:parseFloat((val*100).toFixed(1))});
-          else if (exists && val !== null) exists.ipc = parseFloat((val*100).toFixed(1)); // actualizar si ya existe
-        });
+    const rCER = await fetch('https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/30?offset=0&limit=430');
+    if (rCER.ok) {
+      const dCER = await rCER.json();
+      const cerData = dCER.results?.[0]?.detalle || [];
+      // Data comes sorted desc — first occurrence per YYYY-MM = latest date = end-of-month value
+      const byMonth = {};
+      cerData.forEach(({fecha, valor}) => {
+        const ym = fecha.slice(0,7);
+        if (!byMonth[ym]) byMonth[ym] = valor;
+      });
+      const months = Object.keys(byMonth).sort();
+      const meses=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      for (let i = 1; i < months.length; i++) {
+        const pct = parseFloat(((byMonth[months[i]]/byMonth[months[i-1]]-1)*100).toFixed(1));
+        if (pct <= 0 || pct > 50) continue; // skip anomalies
+        const [y,m] = months[i].split('-');
+        const label = meses[parseInt(m)]+' '+String(y).slice(2);
+        const exists = _mercadosData.inflacion.find(x=>x.mes===label);
+        if (!exists) _mercadosData.inflacion.push({mes:label, ipc:pct});
+        else exists.ipc = pct;
       }
+      const mN=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      _mercadosData.inflacion.sort((a,b) => {
+        const [ma,ya]=a.mes.split(' '), [mb,yb]=b.mes.split(' ');
+        const ya2=parseInt(ya)<50?2000+parseInt(ya):1900+parseInt(ya);
+        const yb2=parseInt(yb)<50?2000+parseInt(yb):1900+parseInt(yb);
+        return ya2!==yb2?ya2-yb2:mN.indexOf(ma)-mN.indexOf(mb);
+      });
     }
   } catch(e) { errors.push('inflación'); }
 
