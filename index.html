@@ -5003,15 +5003,23 @@ function renderInvestments() {
     </tr>`;
   }).join('');
 
-  // Gráfico rendimiento mensual vs inflación
-  const fimaM  = [3.2,4.1,5.8,6.2,5.5,7.1,8.2,7.8,9.1,8.5,10.2,tnaFima/12];
-  const inflac = [8.8,13.2,7.7,8.4,9.0,6.0,7.0,4.2,5.5,3.5,2.4,3.0];
+  // Gráfico rendimiento mensual vs inflación — datos en vivo
+  const _chartMeses = appState.fimaHistoricoMeses || (() => {
+    const t=new Date(), ml=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'], lb=[];
+    for(let i=11;i>=0;i--){const d=new Date(t.getFullYear(),t.getMonth()-1-i,1);lb.push(ml[d.getMonth()]+' '+String(d.getFullYear()).slice(2));}
+    return lb;
+  })();
+  const fimaM = appState.fimaHistoricoRend
+    ? appState.fimaHistoricoRend.map(v => v!=null ? v : null)
+    : Array(12).fill(null);
+  const _infMercados = (typeof _mercadosData!=='undefined' && _mercadosData.inflacion) ? _mercadosData.inflacion : [];
+  const inflac = _chartMeses.map(lbl => { const f=_infMercados.find(x=>x.mes===lbl); return f?f.ipc:null; });
   if(chartFima) chartFima.destroy();
   chartFima = new Chart(document.getElementById('chart-fima').getContext('2d'),{
     type:'line',
-    data:{labels:months,datasets:[
-      {label:'Fima Premium (% mensual)',data:fimaM,borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,0.1)',tension:0.4,fill:true,pointBackgroundColor:'#a78bfa',pointRadius:4},
-      {label:'Inflación (%)',data:inflac,borderColor:'#f26b6b',tension:0.4,borderDash:[6,3],pointBackgroundColor:'#f26b6b',pointRadius:3}
+    data:{labels:_chartMeses,datasets:[
+      {label:'Fima Premium (% mensual)',data:fimaM,borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,0.1)',tension:0.4,fill:true,pointBackgroundColor:'#a78bfa',pointRadius:4,spanGaps:false},
+      {label:'Inflación IPC (%)',data:inflac,borderColor:'#f26b6b',tension:0.4,borderDash:[6,3],pointBackgroundColor:'#f26b6b',pointRadius:3,spanGaps:false}
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{labels:{color:'#8b8fa8',font:{family:'DM Mono',size:11}}}},
@@ -5038,10 +5046,11 @@ function renderInvestments() {
                 y:{ticks:{color:'#5a5e78',callback:v=>fmtARS(v)},grid:{color:'rgba(255,255,255,0.04)'}}}}
     });
   } else {
+    const _tna25 = appState.tnaFima2025 || null;
     chartFimaAnual = new Chart(document.getElementById('chart-fima-anual').getContext('2d'),{
       type:'bar',
-      data:{labels:['2020','2021','2022','2023','2024','2025*'],
-            datasets:[{label:'TNA Fima Premium',data:[38,52,67,108,145,tnaFima],backgroundColor:'rgba(167,139,250,0.7)',borderRadius:8}]},
+      data:{labels:['2021','2022','2023','2024','2025',new Date().getFullYear()+'*'],
+            datasets:[{label:'Rend. anual Fima Premium (%)',data:[52,67,108,145,_tna25,tnaFima/12*12],backgroundColor:['rgba(167,139,250,0.5)','rgba(167,139,250,0.5)','rgba(167,139,250,0.5)','rgba(167,139,250,0.5)','rgba(167,139,250,0.7)','rgba(167,139,250,1)'],borderRadius:8}]},
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{labels:{color:'#8b8fa8',font:{family:'DM Mono',size:11}}}},
         scales:{x:{ticks:{color:'#5a5e78'},grid:{color:'rgba(255,255,255,0.04)'}},
@@ -5125,8 +5134,41 @@ async function fetchTnaFima() {
       ? '✅ Actualizado '+new Date().toLocaleDateString('es-AR')+' · Fuente: CAFCI'
       : '⚠️ Sin conexion · ultimo: '+(appState.tnaFimaDate||'no disponible');
   }
-  if (typeof renderInversiones === 'function') renderInversiones();
+  if (typeof renderInvestments === 'function') renderInvestments();
   saveState();
+  fetchFimaHistoricoMensual(); // carga datos históricos para los gráficos
+}
+
+async function fetchFimaHistoricoMensual() {
+  const today = new Date();
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const labels = [], fechas = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - 1 - i, 1);
+    const y = d.getFullYear(), m = d.getMonth();
+    const desde = y+'-'+String(m+1).padStart(2,'0')+'-01';
+    const hasta  = y+'-'+String(m+1).padStart(2,'0')+'-'+String(new Date(y,m+1,0).getDate()).padStart(2,'0');
+    labels.push(meses[m]+' '+String(y).slice(2));
+    fechas.push({desde, hasta});
+  }
+  const tryRend = async (desde, hasta, id, clase) => {
+    const url = 'https://api.cafci.org.ar/fondo/'+id+'/clase/'+clase+'/rendimiento/'+desde+'/'+hasta;
+    try { const r=await fetch(url); if(r.ok){const d=await r.json();return d?.data?.rendimiento;} } catch(e){}
+    try { const r2=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url)); if(r2.ok){const d2=await r2.json();return d2?.data?.rendimiento;} } catch(e){}
+    return null;
+  };
+  // 12 meses en paralelo — FIMA Premium (345/575)
+  const results = await Promise.allSettled(fechas.map(f=>tryRend(f.desde,f.hasta,'345','575')));
+  const rendimientos = results.map(r => {
+    if (r.status==='fulfilled' && r.value!=null) return parseFloat((parseFloat(r.value)*100).toFixed(2));
+    return null;
+  });
+  // Rendimiento anual 2025 para el gráfico histórico
+  const rend2025 = await tryRend('2025-01-01','2025-12-31','345','575');
+  if (rend2025!=null) appState.tnaFima2025 = parseFloat((parseFloat(rend2025)*100).toFixed(1));
+  appState.fimaHistoricoMeses = labels;
+  appState.fimaHistoricoRend  = rendimientos;
+  if (typeof renderInvestments === 'function') renderInvestments();
 }
 
 
