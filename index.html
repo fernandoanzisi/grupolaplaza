@@ -13927,7 +13927,11 @@ async function actualizarMercados() {
       });
       const months = Object.keys(byMonth).sort();
       const meses=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      // Solo mostrar meses completos: hasta el mes anterior al actual
+      const _hoy = new Date();
+      const _mesLimite = new Date(_hoy.getFullYear(), _hoy.getMonth() - 1, 1).toISOString().slice(0,7);
       for (let i = 1; i < months.length; i++) {
+        if (months[i] > _mesLimite) continue; // no mostrar mes actual ni futuros
         const pct = parseFloat(((byMonth[months[i]]/byMonth[months[i-1]]-1)*100).toFixed(1));
         if (pct <= 0 || pct > 50) continue; // skip anomalies
         const [y,m] = months[i].split('-');
