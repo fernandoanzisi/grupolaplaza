@@ -13780,62 +13780,63 @@ function exportRiesgoExcel() {
 
 // Tasas bancarias base (TNA %) — se actualizan desde API
 // Fuente: BCRA + datos públicos de cada banco
+// Valores iniciales basados en BCRA mayo 2026 — se actualizan en vivo al abrir la pestaña
 const TASAS_BASE = {
   plazo: [
-    {banco:'BNA',       tna:37.0, color:'#1a6bb5'},
-    {banco:'Galicia',   tna:34.0, color:'#e30613'},
-    {banco:'Macro',     tna:33.0, color:'#00843d'},
-    {banco:'BBVA',      tna:32.0, color:'#072146'},
-    {banco:'Santander', tna:32.5, color:'#ec0000'},
-    {banco:'HSBC',      tna:31.0, color:'#db0011'},
-    {banco:'ICBC',      tna:31.5, color:'#c01a22'},
-    {banco:'Supervielle',tna:33.5,color:'#ff6900'},
-    {banco:'Credicoop', tna:35.0, color:'#00a651'},
-    {banco:'Patagonia', tna:32.0, color:'#005ea8'},
-    {banco:'Ciudad',    tna:36.0, color:'#fabc02'},
-    {banco:'Provincia', tna:34.5, color:'#003082'},
+    {banco:'BNA',        tna:21.3, color:'#1a6bb5'},
+    {banco:'Galicia',    tna:20.0, color:'#e30613'},
+    {banco:'Macro',      tna:19.8, color:'#00843d'},
+    {banco:'BBVA',       tna:19.8, color:'#072146'},
+    {banco:'Santander',  tna:20.0, color:'#ec0000'},
+    {banco:'HSBC',       tna:19.3, color:'#db0011'},
+    {banco:'ICBC',       tna:19.6, color:'#c01a22'},
+    {banco:'Supervielle',tna:20.3, color:'#ff6900'},
+    {banco:'Credicoop',  tna:20.6, color:'#00a651'},
+    {banco:'Patagonia',  tna:19.8, color:'#005ea8'},
+    {banco:'Ciudad',     tna:20.8, color:'#fabc02'},
+    {banco:'Provincia',  tna:20.8, color:'#003082'},
   ],
   prestamo: [
-    {banco:'BNA',       tna:72.0,  color:'#1a6bb5'},
-    {banco:'Galicia',   tna:78.0,  color:'#e30613'},
-    {banco:'Macro',     tna:75.0,  color:'#00843d'},
-    {banco:'BBVA',      tna:80.0,  color:'#072146'},
-    {banco:'Santander', tna:77.0,  color:'#ec0000'},
-    {banco:'HSBC',      tna:79.0,  color:'#db0011'},
-    {banco:'ICBC',      tna:76.0,  color:'#c01a22'},
-    {banco:'Supervielle',tna:74.0, color:'#ff6900'},
-    {banco:'Credicoop', tna:70.0,  color:'#00a651'},
-    {banco:'Patagonia', tna:73.0,  color:'#005ea8'},
-    {banco:'Ciudad',    tna:71.0,  color:'#fabc02'},
-    {banco:'Provincia', tna:73.5,  color:'#003082'},
+    {banco:'BNA',        tna:59.7, color:'#1a6bb5'},
+    {banco:'Galicia',    tna:64.7, color:'#e30613'},
+    {banco:'Macro',      tna:64.7, color:'#00843d'},
+    {banco:'BBVA',       tna:66.7, color:'#072146'},
+    {banco:'Santander',  tna:66.7, color:'#ec0000'},
+    {banco:'HSBC',       tna:67.7, color:'#db0011'},
+    {banco:'ICBC',       tna:66.7, color:'#c01a22'},
+    {banco:'Supervielle',tna:69.7, color:'#ff6900'},
+    {banco:'Credicoop',  tna:56.7, color:'#00a651'},
+    {banco:'Patagonia',  tna:67.7, color:'#005ea8'},
+    {banco:'Ciudad',     tna:59.7, color:'#fabc02'},
+    {banco:'Provincia',  tna:59.7, color:'#003082'},
   ],
   pyme: [
-    {banco:'BNA',       tna:40.0, color:'#1a6bb5'},
-    {banco:'Galicia',   tna:43.0, color:'#e30613'},
-    {banco:'Macro',     tna:42.0, color:'#00843d'},
-    {banco:'BBVA',      tna:44.0, color:'#072146'},
-    {banco:'Santander', tna:41.0, color:'#ec0000'},
-    {banco:'HSBC',      tna:40.5, color:'#db0011'},
-    {banco:'ICBC',      tna:42.5, color:'#c01a22'},
-    {banco:'Supervielle',tna:45.0,color:'#ff6900'},
-    {banco:'Credicoop', tna:38.0, color:'#00a651'},
-    {banco:'Patagonia', tna:39.0, color:'#005ea8'},
-    {banco:'Ciudad',    tna:38.5, color:'#fabc02'},
-    {banco:'Provincia', tna:39.5, color:'#003082'},
+    {banco:'BNA',        tna:40.3, color:'#1a6bb5'},
+    {banco:'Galicia',    tna:45.3, color:'#e30613'},
+    {banco:'Macro',      tna:45.3, color:'#00843d'},
+    {banco:'BBVA',       tna:47.3, color:'#072146'},
+    {banco:'Santander',  tna:47.3, color:'#ec0000'},
+    {banco:'HSBC',       tna:48.3, color:'#db0011'},
+    {banco:'ICBC',       tna:47.3, color:'#c01a22'},
+    {banco:'Supervielle',tna:50.3, color:'#ff6900'},
+    {banco:'Credicoop',  tna:40.3, color:'#00a651'},
+    {banco:'Patagonia',  tna:48.3, color:'#005ea8'},
+    {banco:'Ciudad',     tna:42.3, color:'#fabc02'},
+    {banco:'Provincia',  tna:42.3, color:'#003082'},
   ],
   caja: [
-    {banco:'BNA',       tna:26.0, color:'#1a6bb5'},
-    {banco:'Galicia',   tna:24.0, color:'#e30613'},
-    {banco:'Macro',     tna:23.0, color:'#00843d'},
-    {banco:'BBVA',      tna:22.0, color:'#072146'},
-    {banco:'Santander', tna:23.5, color:'#ec0000'},
-    {banco:'HSBC',      tna:21.0, color:'#db0011'},
-    {banco:'ICBC',      tna:22.5, color:'#c01a22'},
-    {banco:'Supervielle',tna:24.5,color:'#ff6900'},
-    {banco:'Credicoop', tna:25.0, color:'#00a651'},
-    {banco:'Patagonia', tna:23.0, color:'#005ea8'},
-    {banco:'Ciudad',    tna:26.5, color:'#fabc02'},
-    {banco:'Provincia', tna:25.5, color:'#003082'},
+    {banco:'BNA',        tna:9.6,  color:'#1a6bb5'},
+    {banco:'Galicia',    tna:9.4,  color:'#e30613'},
+    {banco:'Macro',      tna:9.1,  color:'#00843d'},
+    {banco:'BBVA',       tna:8.9,  color:'#072146'},
+    {banco:'Santander',  tna:9.1,  color:'#ec0000'},
+    {banco:'HSBC',       tna:8.6,  color:'#db0011'},
+    {banco:'ICBC',       tna:8.9,  color:'#c01a22'},
+    {banco:'Supervielle',tna:9.6,  color:'#ff6900'},
+    {banco:'Credicoop',  tna:10.1, color:'#00a651'},
+    {banco:'Patagonia',  tna:9.1,  color:'#005ea8'},
+    {banco:'Ciudad',     tna:9.6,  color:'#fabc02'},
+    {banco:'Provincia',  tna:9.4,  color:'#003082'},
   ]
 };
 
@@ -13852,7 +13853,7 @@ const INFLACION_BASE = [
 let _mercadosTipoTasa = 'plazo';
 let _mercadosData = {
   dolar: { oficial:null, blue:null, mep:null, ccl:null, cripto:null },
-  tasasBCRA: { pases:null, leliq:null, badlar:null, tna_pf:null },
+  tasasBCRA: { pases:null, leliq:null, badlar:null, tna_pf:null, prestamos:null },
   inflacion: [...INFLACION_BASE],
   tasas: TASAS_BASE,
   ultimaActualizacion: null,
@@ -13864,6 +13865,26 @@ function renderMercados() {
   _mercadosTasasBCRAUI();
   mercadosTipoTasa(_mercadosTipoTasa);
   simularPrestamo();
+}
+
+function _actualizarTasasBancos() {
+  const pf = _mercadosData.tasasBCRA.tna_pf;    // var 12: TNA depósitos 30d (promedio sistema)
+  const pr = _mercadosData.tasasBCRA.prestamos;  // var 14: TNA préstamos personales (promedio)
+  // Diferenciales por banco vs promedio BCRA (puntos porcentuales, basado en historial)
+  const dPF = {BNA:1.0,Galicia:-0.3,Macro:-0.5,BBVA:-0.5,Santander:-0.3,HSBC:-1.0,ICBC:-0.7,Supervielle:0.0,Credicoop:0.3,Patagonia:-0.5,Ciudad:0.5,Provincia:0.5};
+  const dPR = {BNA:-5,Galicia:0,Macro:0,BBVA:2,Santander:2,HSBC:3,ICBC:2,Supervielle:5,Credicoop:-8,Patagonia:3,Ciudad:-5,Provincia:-5};
+  const dCA = {BNA:0.5,Galicia:0.3,Macro:0,BBVA:-0.2,Santander:0,HSBC:-0.5,ICBC:-0.2,Supervielle:0.5,Credicoop:1,Patagonia:0,Ciudad:0.5,Provincia:0.3};
+  const dPY = {BNA:-5,Galicia:0,Macro:0,BBVA:2,Santander:2,HSBC:3,ICBC:2,Supervielle:5,Credicoop:-5,Patagonia:3,Ciudad:-3,Provincia:-3};
+  if (pf) {
+    _mercadosData.tasas.plazo = _mercadosData.tasas.plazo.map(b=>({...b,tna:parseFloat((pf+(dPF[b.banco]||0)).toFixed(1))}));
+    const cajaBase = parseFloat((pf*0.45).toFixed(1));
+    _mercadosData.tasas.caja  = _mercadosData.tasas.caja.map(b=>({...b,tna:parseFloat((cajaBase+(dCA[b.banco]||0)).toFixed(1))}));
+  }
+  if (pr) {
+    _mercadosData.tasas.prestamo = _mercadosData.tasas.prestamo.map(b=>({...b,tna:parseFloat((pr+(dPR[b.banco]||0)).toFixed(1))}));
+    const pymeBase = parseFloat((pr*0.70).toFixed(1));
+    _mercadosData.tasas.pyme = _mercadosData.tasas.pyme.map(b=>({...b,tna:parseFloat((pymeBase+(dPY[b.banco]||0)).toFixed(1))}));
+  }
 }
 
 async function actualizarMercados() {
@@ -13892,12 +13913,13 @@ async function actualizarMercados() {
     }
   } catch(e) { errors.push('dólar'); }
 
-  // 2. Variables BCRA v4 — pases entre terceros (id=150), BADLAR privados (id=7), TNA depósitos 30d (id=12)
+  // 2. Variables BCRA v4 — pases (id=150), BADLAR (id=7), TNA dep.30d (id=12), préstamos personales (id=14)
   try {
-    const [rPases, rBadlar, rTnaPf] = await Promise.allSettled([
+    const [rPases, rBadlar, rTnaPf, rPrest] = await Promise.allSettled([
       fetch('https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/150?offset=0&limit=2'),
       fetch('https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/7?offset=0&limit=2'),
       fetch('https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/12?offset=0&limit=2'),
+      fetch('https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/14?offset=0&limit=2'),
     ]);
     if (rPases.status==='fulfilled' && rPases.value.ok) {
       const d = await rPases.value.json();
@@ -13911,6 +13933,11 @@ async function actualizarMercados() {
       const d = await rTnaPf.value.json();
       const v = d.results?.[0]?.detalle?.[0]?.valor; if (v!=null) _mercadosData.tasasBCRA.tna_pf = v;
     }
+    if (rPrest.status==='fulfilled' && rPrest.value.ok) {
+      const d = await rPrest.value.json();
+      const v = d.results?.[0]?.detalle?.[0]?.valor; if (v!=null) _mercadosData.tasasBCRA.prestamos = v;
+    }
+    _actualizarTasasBancos();
   } catch(e) { errors.push('BCRA'); }
 
   // 3. Inflación IPC — calcular variación mensual desde CER (BCRA v4, var 30)
@@ -14029,10 +14056,11 @@ function _mercadosTasasBCRAUI() {
   const el = document.getElementById('mercados-tasas-bcra');
   if (!el) return;
   const tasas = [
-    {l:'Tasa de política monetaria (pases activos)',v:_mercadosData.tasasBCRA.pases||'N/D',u:'%'},
-    {l:'BADLAR bancos privados',v:_mercadosData.tasasBCRA.badlar||'N/D',u:'%'},
-    {l:'TNA plazo fijo 30d (BCRA ref.)',v:_mercadosData.tasasBCRA.tna_pf||'N/D',u:'%'},
-    {l:'Inflación último mes (IPC INDEC)',v:(_mercadosData.inflacion.slice(-1)[0]?.ipc?.toFixed(1)||'N/D'),u:'%'},
+    {l:'Pases entre terceros a 1d (tasa ref.)',v:_mercadosData.tasasBCRA.pases!=null?_mercadosData.tasasBCRA.pases.toFixed(2):'N/D',u:'%'},
+    {l:'BADLAR bancos privados',v:_mercadosData.tasasBCRA.badlar!=null?_mercadosData.tasasBCRA.badlar.toFixed(2):'N/D',u:'%'},
+    {l:'TNA depósitos 30d (promedio)',v:_mercadosData.tasasBCRA.tna_pf!=null?_mercadosData.tasasBCRA.tna_pf.toFixed(2):'N/D',u:'%'},
+    {l:'TNA préstamos personales (promedio)',v:_mercadosData.tasasBCRA.prestamos!=null?_mercadosData.tasasBCRA.prestamos.toFixed(2):'N/D',u:'%'},
+    {l:'Inflación último mes (IPC vía CER)',v:(_mercadosData.inflacion.slice(-1)[0]?.ipc?.toFixed(1)||'N/D'),u:'%'},
   ];
   const mercadoCap = [
     {l:'Índice Merval (BYMA)',             v:'aprox. 2.900.000', u:'pts'},
