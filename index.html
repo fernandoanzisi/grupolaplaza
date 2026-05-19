@@ -4840,11 +4840,10 @@ function renderInvestments() {
   const fFondo   = document.getElementById('inv-f-fondo')?.value||'';
   const sortVal  = document.getElementById('inv-sort')?.value||'cap_desc';
 
-  // Usar investments del estado, fallback a datos hardcoded FIMA si vacío
+  // Investments de TODAS las empresas (independiente del selector global)
   const invDate = activeDateFilter || appState.lastMinutaDate || '';
-  let allInv = (emp.investments && emp.investments.length > 0)
-    ? emp.investments
-    : buildDefaultInvestments(emp);
+  const _allEmpInv = appState.empresas.flatMap(e => e.investments || []);
+  let allInv = _allEmpInv.length > 0 ? _allEmpInv : buildDefaultInvestments(emp);
   // Filter by date range if active, otherwise use single date
   let invData;
   if (dateFilterFrom && dateFilterTo && dateFilterFrom !== dateFilterTo) {
@@ -5095,19 +5094,23 @@ async function fetchTnaFima() {
   const fmt   = d => d.toISOString().slice(0,10);
   let fetchedAny = false;
 
+  const _fetchWithTimeout = (url, ms=6000) => {
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), ms);
+    return fetch(url, {signal:ctrl.signal}).finally(()=>clearTimeout(t));
+  };
   for (const fondo of FONDOS_CAFCI) {
     let rend = null;
-    // Intento directo
+    const url = 'https://api.cafci.org.ar/fondo/'+fondo.id+'/clase/'+fondo.clase+'/rendimiento/'+fmt(d7)+'/'+fmt(today);
+    // Intento directo con timeout
     try {
-      const url = 'https://api.cafci.org.ar/fondo/'+fondo.id+'/clase/'+fondo.clase+'/rendimiento/'+fmt(d7)+'/'+fmt(today);
-      const r   = await fetch(url);
+      const r = await _fetchWithTimeout(url);
       if (r.ok) { const d = await r.json(); rend = d?.data?.rendimiento; }
     } catch(e) {}
-    // Fallback proxy
+    // Fallback proxy con timeout
     if (rend === null || rend === undefined) {
       try {
-        const proxyUrl = 'https://api.allorigins.win/raw?url='+encodeURIComponent('https://api.cafci.org.ar/fondo/'+fondo.id+'/clase/'+fondo.clase+'/rendimiento/'+fmt(d7)+'/'+fmt(today));
-        const r2 = await fetch(proxyUrl);
+        const r2 = await _fetchWithTimeout('https://api.allorigins.win/raw?url='+encodeURIComponent(url));
         if (r2.ok) { const d2 = await r2.json(); rend = d2?.data?.rendimiento; }
       } catch(e2) {}
     }
@@ -5134,41 +5137,54 @@ async function fetchTnaFima() {
       ? '✅ Actualizado '+new Date().toLocaleDateString('es-AR')+' · Fuente: CAFCI'
       : '⚠️ Sin conexion · ultimo: '+(appState.tnaFimaDate||'no disponible');
   }
-  if (typeof renderInvestments === 'function') renderInvestments();
   saveState();
-  fetchFimaHistoricoMensual(); // carga datos históricos para los gráficos
+  fetchFimaHistoricoMensual(); // carga histórico mensual para gráficos (no vuelve a llamar renderInvestments)
 }
 
 async function fetchFimaHistoricoMensual() {
-  const today = new Date();
-  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const labels = [], fechas = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(today.getFullYear(), today.getMonth() - 1 - i, 1);
-    const y = d.getFullYear(), m = d.getMonth();
-    const desde = y+'-'+String(m+1).padStart(2,'0')+'-01';
-    const hasta  = y+'-'+String(m+1).padStart(2,'0')+'-'+String(new Date(y,m+1,0).getDate()).padStart(2,'0');
-    labels.push(meses[m]+' '+String(y).slice(2));
-    fechas.push({desde, hasta});
+  if (appState._fimaHistFetching) return; // evita loop y llamadas concurrentes
+  appState._fimaHistFetching = true;
+  try {
+    const today = new Date();
+    const mL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const labels = [], fechas = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth()-1-i, 1);
+      const y = d.getFullYear(), m = d.getMonth();
+      labels.push(mL[m]+' '+String(y).slice(2));
+      fechas.push({
+        desde: y+'-'+String(m+1).padStart(2,'0')+'-01',
+        hasta:  y+'-'+String(m+1).padStart(2,'0')+'-'+String(new Date(y,m+1,0).getDate()).padStart(2,'0')
+      });
+    }
+    const _ft = (url, ms=6000) => { const c=new AbortController(),t=setTimeout(()=>c.abort(),ms); return fetch(url,{signal:c.signal}).finally(()=>clearTimeout(t)); };
+    const tryRend = async (desde, hasta) => {
+      const url = 'https://api.cafci.org.ar/fondo/345/clase/575/rendimiento/'+desde+'/'+hasta;
+      try { const r=await _ft(url); if(r.ok){const d=await r.json();return d?.data?.rendimiento;} } catch(e){}
+      try { const r2=await _ft('https://api.allorigins.win/raw?url='+encodeURIComponent(url)); if(r2.ok){const d2=await r2.json();return d2?.data?.rendimiento;} } catch(e){}
+      return null;
+    };
+    const results = await Promise.allSettled(fechas.map(f=>tryRend(f.desde,f.hasta)));
+    const rendimientos = results.map(r=>r.status==='fulfilled'&&r.value!=null?parseFloat((parseFloat(r.value)*100).toFixed(2)):null);
+    const rend2025 = await tryRend('2025-01-01','2025-12-31');
+    if (rend2025!=null) appState.tnaFima2025 = parseFloat((parseFloat(rend2025)*100).toFixed(1));
+    appState.fimaHistoricoMeses = labels;
+    appState.fimaHistoricoRend  = rendimientos;
+    // Actualizar gráfico directamente sin re-renderizar toda la página
+    if (typeof chartFima !== 'undefined' && chartFima) {
+      const _infM = (typeof _mercadosData!=='undefined'&&_mercadosData.inflacion)||[];
+      chartFima.data.labels            = labels;
+      chartFima.data.datasets[0].data  = rendimientos;
+      chartFima.data.datasets[1].data  = labels.map(l=>{const f=_infM.find(x=>x.mes===l);return f?f.ipc:null;});
+      chartFima.update();
+    }
+    if (typeof chartFimaAnual !== 'undefined' && chartFimaAnual && appState.tnaFima2025) {
+      chartFimaAnual.data.datasets[0].data[4] = appState.tnaFima2025;
+      chartFimaAnual.update();
+    }
+  } finally {
+    appState._fimaHistFetching = false;
   }
-  const tryRend = async (desde, hasta, id, clase) => {
-    const url = 'https://api.cafci.org.ar/fondo/'+id+'/clase/'+clase+'/rendimiento/'+desde+'/'+hasta;
-    try { const r=await fetch(url); if(r.ok){const d=await r.json();return d?.data?.rendimiento;} } catch(e){}
-    try { const r2=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url)); if(r2.ok){const d2=await r2.json();return d2?.data?.rendimiento;} } catch(e){}
-    return null;
-  };
-  // 12 meses en paralelo — FIMA Premium (345/575)
-  const results = await Promise.allSettled(fechas.map(f=>tryRend(f.desde,f.hasta,'345','575')));
-  const rendimientos = results.map(r => {
-    if (r.status==='fulfilled' && r.value!=null) return parseFloat((parseFloat(r.value)*100).toFixed(2));
-    return null;
-  });
-  // Rendimiento anual 2025 para el gráfico histórico
-  const rend2025 = await tryRend('2025-01-01','2025-12-31','345','575');
-  if (rend2025!=null) appState.tnaFima2025 = parseFloat((parseFloat(rend2025)*100).toFixed(1));
-  appState.fimaHistoricoMeses = labels;
-  appState.fimaHistoricoRend  = rendimientos;
-  if (typeof renderInvestments === 'function') renderInvestments();
 }
 
 
