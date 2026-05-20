@@ -8147,7 +8147,7 @@ function renderSubempresas() {
     if (nombresUnicos.length > 0) {
       chipsEl.innerHTML = nombresUnicos.map(n => {
         const sel = _subRazonesSel.has(n);
-        return `<button onclick="toggleRazonSel(${JSON.stringify(n)})" style="padding:4px 12px;border-radius:99px;font-size:11px;cursor:pointer;font-family:var(--font);transition:all 0.15s;border:1px solid ${sel?'var(--accent)':'var(--border2)'};background:${sel?'rgba(74,159,212,0.18)':'var(--bg3)'};color:${sel?'var(--accent)':'var(--text2)'};font-weight:${sel?'700':'400'}">${n}</button>`;
+        return `<button data-razon="${n.replace(/"/g,'&quot;')}" onclick="toggleRazonSel(this.dataset.razon)" style="padding:4px 12px;border-radius:99px;font-size:11px;cursor:pointer;font-family:var(--font);transition:all 0.15s;border:1px solid ${sel?'var(--accent)':'var(--border2)'};background:${sel?'rgba(74,159,212,0.18)':'var(--bg3)'};color:${sel?'var(--accent)':'var(--text2)'};font-weight:${sel?'700':'400'}">${n}</button>`;
       }).join('');
     } else {
       chipsEl.innerHTML = '<span style="font-size:11px;color:var(--text3)">— sin datos —</span>';
