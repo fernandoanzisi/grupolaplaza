@@ -1176,6 +1176,10 @@ let _supaUser=null,_supaRol=null;
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
       <input id="sub-search" type="text" placeholder="🔍 Buscar unidad…" oninput="renderSubempresas()"
         style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-size:13px;color:var(--text);outline:none;flex:1;min-width:160px">
+      <select id="sub-f-razon" onchange="renderSubempresas()"
+        style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;max-width:220px">
+        <option value="">Todas las razones sociales</option>
+      </select>
       <select id="sub-f-tipo" onchange="renderSubempresas()"
         style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
         <option value="">Todos los tipos</option>
@@ -8029,7 +8033,7 @@ function subMetrica(m) {
 
 function subLimpiarFiltros() {
   ['sub-search','sub-f-desde','sub-f-hasta'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  ['sub-f-tipo','sub-f-estado'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['sub-f-razon','sub-f-tipo','sub-f-estado'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   const el = document.getElementById('sub-sort'); if (el) el.value = 'nombre';
   subMetrica('todos');
 }
@@ -8044,12 +8048,14 @@ function renderSubempresas() {
   const searchQ   = (document.getElementById('sub-search')?.value  || '').toLowerCase();
   const fDesde    = document.getElementById('sub-f-desde')?.value   || '';
   const fHasta    = document.getElementById('sub-f-hasta')?.value   || '';
+  const fRazon    = document.getElementById('sub-f-razon')?.value   || '';
   const fTipo     = document.getElementById('sub-f-tipo')?.value    || '';
   const fEstado   = document.getElementById('sub-f-estado')?.value  || '';
   const sortVal   = document.getElementById('sub-sort')?.value      || 'nombre';
   const metrica   = _subMetricaActiva || 'todos';
 
-  const allEmp = appState.vistaConsolidada ? appState.empresas : [empresa()];
+  // Unidades de negocio siempre muestra todas las empresas, independiente del selector global
+  const allEmp = appState.empresas;
 
   // Recolectar todas las fechas disponibles en estaciones para mostrar info
   const allDatesSet = new Set();
@@ -8126,8 +8132,17 @@ function renderSubempresas() {
     _seen.add(k); return true;
   });
 
+  // Poblar dropdown de razón social con los nombres reales disponibles
+  const razonEl = document.getElementById('sub-f-razon');
+  if (razonEl) {
+    const currentRazon = razonEl.value;
+    const nombresUnicos = [...new Set(cards.map(c => c.s.nombre))].sort((a,b) => a.localeCompare(b,'es'));
+    razonEl.innerHTML = '<option value="">Todas las razones sociales</option>' +
+      nombresUnicos.map(n => `<option value="${n}"${n===currentRazon?' selected':''}>${n}</option>`).join('');
+  }
+
   // Si no hay datos reales, mostrar demo visual (sin guardar en estado)
-  const isDemoMode = cards.length === 0 && !fDesde && !fHasta && !searchQ && !fTipo && !fEstado;
+  const isDemoMode = cards.length === 0 && !fDesde && !fHasta && !searchQ && !fTipo && !fEstado && !fRazon;
   if (isDemoMode) {
     const DEMO_COLORS = ['#6c8fff','#3ecf8e','#f5c842','#a78bfa','#2dd4bf','#fb923c','#f26b6b'];
     const demoEmp = { name: appState.empresas[0]?.name || 'Empresa' };
@@ -8142,9 +8157,10 @@ function renderSubempresas() {
 
   const rawCount = cards.length; // cards antes de filtros
 
-  // Filtrar por búsqueda, tipo y estado
+  // Filtrar por búsqueda, razón social, tipo y estado
   cards = cards.filter(({s}) => {
     if (searchQ && !s.nombre.toLowerCase().includes(searchQ)) return false;
+    if (fRazon && s.nombre !== fRazon) return false;
     if (fTipo === 'ypf'  && s.esAgro)    return false;
     if (fTipo === 'agro' && !s.esAgro)   return false;
     if (fEstado === 'rechazados' && !(s.rechazados > 0))  return false;
