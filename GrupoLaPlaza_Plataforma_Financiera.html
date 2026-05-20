@@ -4,7 +4,34 @@
 <meta charset="UTF-8">
 <title>Grupo La Plaza — Plataforma Financiera Digital</title>
 <style>
-  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #222; max-width: 800px; margin: 40px auto; line-height: 1.6; }
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #222; max-width: 800px; margin: 40px auto; line-height: 1.6; padding-bottom: 60px; }
+
+  /* ── Barra de herramientas ── */
+  #toolbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+    background: #1a3a5c; color: white;
+    display: flex; align-items: center; gap: 10px; padding: 8px 20px;
+    font-family: Arial, sans-serif; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  #toolbar span { font-weight: 700; margin-right: 8px; }
+  #toolbar button {
+    padding: 5px 14px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 12px; font-weight: 600; font-family: Arial, sans-serif;
+  }
+  #btn-editar  { background: #3ecf8e; color: #0a2a1a; }
+  #btn-guardar { background: #f5c842; color: #2a1a00; display: none; }
+  #btn-descargar { background: #4a9fd4; color: white; }
+  #btn-imprimir  { background: #a78bfa; color: white; }
+  #edit-badge { background: #f26b6b; color: white; border-radius: 4px; padding: 2px 8px; font-size: 11px; display: none; }
+
+  /* ── Modo edición ── */
+  body.editing [contenteditable] {
+    outline: 1px dashed #4a9fd4; border-radius: 3px;
+    background: rgba(74,159,212,0.04);
+  }
+  body.editing [contenteditable]:focus { outline: 2px solid #4a9fd4; background: #f0f7ff; }
+  body.editing [contenteditable]:hover { outline: 1px dashed #4a9fd4; }
+  @media print { #toolbar { display: none; } body { margin: 20px; padding: 0; } }
   h1 { font-size: 22pt; color: #1a3a5c; border-bottom: 3px solid #1a3a5c; padding-bottom: 8px; margin-top: 0; }
   h2 { font-size: 15pt; color: #1a5c8a; border-bottom: 1px solid #c0d8f0; padding-bottom: 4px; margin-top: 32px; }
   h3 { font-size: 12pt; color: #2a6090; margin-top: 20px; }
@@ -30,6 +57,19 @@
 </head>
 <body>
 
+<!-- ── BARRA DE HERRAMIENTAS ── -->
+<div id="toolbar">
+  <span>📄 Grupo La Plaza</span>
+  <button id="btn-editar"    onclick="activarEdicion()">✏️ Editar</button>
+  <button id="btn-guardar"   onclick="guardarCambios()">💾 Guardar cambios</button>
+  <button id="btn-descargar" onclick="descargar()">⬇️ Descargar</button>
+  <button id="btn-imprimir"  onclick="window.print()">🖨️ Imprimir / PDF</button>
+  <span id="edit-badge">MODO EDICIÓN</span>
+  <span style="margin-left:auto;opacity:0.6;font-size:11px">Hacé clic en Editar para modificar el contenido</span>
+</div>
+<div style="height:46px"></div><!-- espacio para la barra fija -->
+
+<div id="doc-content">
 <!-- PORTADA -->
 <div class="cover">
   <h1>🏛️ Grupo La Plaza</h1>
@@ -244,6 +284,61 @@
 <p style="margin-top:40px;color:#888;font-size:9pt;text-align:center">
   Grupo La Plaza — Plataforma Financiera Digital · Documento generado Mayo 2026
 </p>
+
+</div><!-- /doc-content -->
+
+<script>
+// ── Edición inline ──────────────────────────────────────────────
+var editando = false;
+var editables = [];
+
+function activarEdicion() {
+  editando = true;
+  document.body.classList.add('editing');
+  document.getElementById('btn-editar').style.display  = 'none';
+  document.getElementById('btn-guardar').style.display = 'inline-block';
+  document.getElementById('edit-badge').style.display  = 'inline-block';
+
+  // Hacer editables todos los textos de contenido
+  var selectores = 'p, li, td, th, h1, h2, h3, h4, .highlight, .cover .subtitle, .cover .meta';
+  editables = document.querySelectorAll(selectores);
+  editables.forEach(function(el) {
+    if (!el.closest('#toolbar')) {
+      el.setAttribute('contenteditable', 'true');
+    }
+  });
+}
+
+function guardarCambios() {
+  editando = false;
+  document.body.classList.remove('editing');
+  document.getElementById('btn-editar').style.display  = 'inline-block';
+  document.getElementById('btn-guardar').style.display = 'none';
+  document.getElementById('edit-badge').style.display  = 'none';
+
+  editables.forEach(function(el) { el.removeAttribute('contenteditable'); });
+
+  // Guardar en localStorage para que persista al recargar
+  localStorage.setItem('glp_doc_html', document.getElementById('doc-content').innerHTML);
+  alert('✅ Cambios guardados. Usá "Descargar" para exportar el archivo actualizado.');
+}
+
+function descargar() {
+  var html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'GrupoLaPlaza_Plataforma_Financiera.html';
+  a.click();
+}
+
+// Restaurar contenido guardado si existe
+window.addEventListener('DOMContentLoaded', function() {
+  var saved = localStorage.getItem('glp_doc_html');
+  var content = document.getElementById('doc-content');
+  if (saved && content) content.innerHTML = saved;
+});
+</script>
 
 </body>
 </html>
