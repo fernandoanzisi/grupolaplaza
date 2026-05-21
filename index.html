@@ -6801,6 +6801,15 @@ function parseMinutaDiaria(wb) {
     });
     const totalHoyIng = Object.values(appState.hoyData.byEmp).reduce((s,e)=>s+e.ing,0);
     log.push('<span style="color:#4ade80">📊 HOY en curso (' + todayStr + '): ' + hoyCount + ' registros · Ing grupo: $' + fmtARS(totalHoyIng) + '</span>');
+    // Actualizar filtro activo a HOY para que el dashboard muestre los datos del día real
+    appState.lastMinutaDate = todayStr;
+    activeDateFilter = todayStr;
+    const _dfEl  = document.getElementById('date-filter');
+    const _dfFrom = document.getElementById('date-filter-from');
+    const _dfTo   = document.getElementById('date-filter-to');
+    if (_dfEl)   _dfEl.value   = todayStr;
+    if (_dfFrom) _dfFrom.value = todayStr;
+    if (_dfTo)   _dfTo.value   = todayStr;
   }
 
   return { log, totalCount, dias: dateSheets.length };
