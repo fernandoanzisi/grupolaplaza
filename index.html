@@ -11400,95 +11400,161 @@ function _renderCFMinutaTable(dates, emps, template) {
   const container = document.getElementById('cf-minuta-table');
   if (!container) return;
   const today = new Date().toISOString().slice(0,10);
+  const cols = 1 + dates.length;
 
-  // Determine header rows (EGRESOS RS / SC divider)
+  // Sección EGRESOS: índice de la fila divisoria
   const egresosIdx = template.findIndex(r => /^EGRESOS/.test(r.label));
 
-  // Build table HTML
-  let html = '<table style="border-collapse:collapse;font-size:11px;min-width:' + (200 + dates.length * 120) + 'px">';
+  // ── Detectar sección visual de cada fila (para sub-headers) ──
+  function _cfRowSection(lbl) {
+    const l = (lbl||'').toUpperCase();
+    if (!l) return null;
+    if (l.includes('BLP') || l.includes('BBVA') || l.includes('BNA') ||
+        (l.includes('GALICIA') && l.includes('ROCA')) || l.includes('MACRO 09') || l.includes('MACRO 0')) return 'BANCOS_ARS';
+    if ((l.includes('FIMA') || l.includes('PLAZO FIJO')) && !l.includes('U$S') && !l.includes('REND')) return 'INVERSIONES';
+    if (l.includes('REND') && l.includes('DOL')) return 'DOLARES';
+    if (l.includes('U$S') || (l.includes('REND') && !l.includes('DOL') && l.includes('FIMA'))) {
+      if (l.includes('U$S')) return 'DOLARES';
+      return 'INVERSIONES';
+    }
+    if (l.includes('MERCADO PAGO') || l.includes('CLEARING') || l.includes('CARTERA') || l.includes('COLCHON')) return 'OTROS';
+    return null;
+  }
+  const _cfSectionMeta = {
+    'BANCOS_ARS':  { label: '🏦 Bancos ARS',       color: 'rgba(74,159,212,0.12)',  text: '#4a9fd4' },
+    'INVERSIONES': { label: '📈 Inversiones',        color: 'rgba(167,139,250,0.12)', text: '#a78bfa' },
+    'DOLARES':     { label: '💵 Dólares',            color: 'rgba(245,200,66,0.10)',  text: '#f5c842' },
+    'OTROS':       { label: '🔄 Otros ingresos',     color: 'rgba(62,207,142,0.10)',  text: '#3ecf8e' },
+  };
+
+  // ── Pre-calcular saldos por fecha ──
+  const _getVal = (d, ri) => {
+    if (emps.length > 1) return (cfGetValue(d,'RS',ri,template).val||0) + (cfGetValue(d,'SC',ri,template).val||0);
+    return cfGetValue(d, emps[0], ri, template).val || 0;
+  };
+  const perDate = {};
+  dates.forEach(d => {
+    let ing = 0, egr = 0;
+    template.forEach((r, ri) => {
+      if (!r.label || /TOTAL/i.test(r.label) || /^EGRESOS/.test(r.label)) return;
+      const v = _getVal(d, ri);
+      if (egresosIdx >= 0 && ri > egresosIdx) egr += Math.abs(v);
+      else ing += v;
+    });
+    perDate[d] = { ing, egr, saldo: ing - egr };
+  });
+  let acumulado = 0;
+
+  // ── Build table ──
+  let html = '<table style="border-collapse:collapse;font-size:11px;min-width:' + (210 + dates.length * 120) + 'px">';
 
   // Header row — dates
   html += '<thead><tr>';
-  html += '<th style="position:sticky;left:0;z-index:2;background:var(--bg2);padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);white-space:nowrap;min-width:200px;border-right:2px solid var(--border)">Categoría</th>';
+  html += '<th style="position:sticky;left:0;z-index:2;background:var(--bg2);padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);white-space:nowrap;min-width:210px;border-right:2px solid var(--border)">Categoría</th>';
   dates.forEach(d => {
     const isToday = d === today;
     const isPast  = d < today;
     const bg = isToday ? 'rgba(108,143,255,0.18)' : isPast ? 'rgba(255,255,255,0.03)' : 'var(--bg2)';
-    const border = isToday ? '2px solid var(--accent)' : '1px solid var(--border)';
-    html += '<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:' + (isToday ? 'var(--accent)' : isPast ? 'var(--text3)' : 'var(--text2)') + ';background:' + bg + ';border-bottom:' + border + ';white-space:nowrap;min-width:110px">';
-    html += (isToday ? '📍 ' : '') + _cfFmtDate(d);
-    html += '</th>';
+    html += '<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:' + (isToday ? 'var(--accent)' : isPast ? 'var(--text3)' : 'var(--text2)') + ';background:' + bg + ';border-bottom:' + (isToday ? '2px solid var(--accent)' : '1px solid var(--border)') + ';white-space:nowrap;min-width:110px">' + (isToday ? '📍 ' : '') + _cfFmtDate(d) + '</th>';
   });
   html += '</tr></thead><tbody>';
 
-  // Data rows
+  // ── Data rows ──
+  let prevSection = null;
   template.forEach((row, rowIdx) => {
     const lbl = row.label;
     const isTotal  = /TOTAL/i.test(lbl);
-    const isHeader = lbl === 'EGRESOS RS' || lbl === 'EGRESOS SC' || lbl === 'EGRESOS';
+    const isHeader = /^EGRESOS/.test(lbl);
     const isEmpty  = lbl === '';
     const isEgreso = egresosIdx >= 0 && rowIdx > egresosIdx && !isHeader;
 
     if (isEmpty) {
-      html += '<tr><td colspan="' + (1 + dates.length) + '" style="height:4px;background:var(--bg3)"></td></tr>';
+      prevSection = null; // reset section on blank row
+      html += '<tr><td colspan="' + cols + '" style="height:4px;background:var(--bg3)"></td></tr>';
+      return;
+    }
+    if (isHeader) {
+      prevSection = null;
+      html += '<tr><td colspan="' + cols + '" style="background:var(--bg2);padding:6px 12px;font-size:10px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;border-top:2px solid var(--border)">— ' + lbl + ' —</td></tr>';
       return;
     }
 
-    if (isHeader) {
-      html += '<tr><td colspan="' + (1 + dates.length) + '" style="background:var(--bg2);padding:6px 12px;font-size:10px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;border-top:2px solid var(--border)">— ' + lbl + ' —</td></tr>';
-      return;
+    // Sub-header de sección dentro de ingresos
+    if (!isEgreso && !isTotal) {
+      const sec = _cfRowSection(lbl);
+      if (sec && sec !== prevSection) {
+        prevSection = sec;
+        const m = _cfSectionMeta[sec];
+        html += '<tr><td colspan="' + cols + '" style="background:' + m.color + ';padding:4px 12px;font-size:9px;font-weight:800;letter-spacing:1px;color:' + m.text + ';text-transform:uppercase;border-top:1px solid rgba(255,255,255,0.06)">' + m.label + '</td></tr>';
+      }
     }
 
     const rowBg = isTotal ? 'rgba(255,255,255,0.04)' : '';
     html += '<tr style="background:' + rowBg + ';border-top:1px solid rgba(255,255,255,0.04)">';
-    html += '<td style="position:sticky;left:0;z-index:1;background:' + (isTotal ? 'var(--bg2)' : 'var(--card)') + ';padding:5px 12px;font-size:10px;font-weight:' + (isTotal ? '800' : '500') + ';color:' + (isTotal ? 'var(--text)' : 'var(--text2)') + ';white-space:nowrap;border-right:2px solid var(--border);max-width:200px;overflow:hidden;text-overflow:ellipsis" title="' + lbl.replace(/"/g,'&quot;') + '">' + lbl + '</td>';
+    const lblStyle = 'position:sticky;left:0;z-index:1;background:' + (isTotal ? 'var(--bg2)' : 'var(--card)') + ';padding:5px 12px;font-size:10px;font-weight:' + (isTotal ? '800' : '500') + ';color:' + (isTotal ? 'var(--text)' : 'var(--text2)') + ';white-space:nowrap;border-right:2px solid var(--border);max-width:210px;overflow:hidden;text-overflow:ellipsis';
+    html += '<td style="' + lblStyle + '" title="' + lbl.replace(/"/g,'&quot;') + '">' + lbl + '</td>';
 
     dates.forEach(d => {
       const isToday = d === today;
       const isPast  = d < today;
-      // For grupo mode, sum RS+SC
       let valObj;
       if (emps.length > 1) {
-        // Grupo: sum both
-        const rsV = cfGetValue(d, 'RS', rowIdx, template).val || 0;
-        const scV = cfGetValue(d, 'SC', rowIdx, template).val || 0;
-        const combined = rsV + scV;
-        valObj = { val: combined || null, source: 'combined' };
+        const v = (cfGetValue(d,'RS',rowIdx,template).val||0) + (cfGetValue(d,'SC',rowIdx,template).val||0);
+        valObj = { val: v || null, source: 'combined' };
       } else {
         valObj = cfGetValue(d, emps[0], rowIdx, template);
       }
       const { val, source } = valObj;
       const hasVal = val !== null && val !== undefined && val !== 0;
       const cellBg = isToday ? 'rgba(108,143,255,0.08)' : isPast ? 'rgba(255,255,255,0.01)' : '';
-      const numColor = isEgreso ? 'var(--red)' : 'var(--green)';
-      const sourceTag = source === 'cheque' ? ' title="Proyectado desde cheques"' : source === 'override' ? ' title="Valor editado"' : '';
-      const cellStyle = 'padding:4px 6px;text-align:right;font-family:var(--mono);font-size:10px;background:' + cellBg + ';border-left:1px solid rgba(255,255,255,0.04);cursor:pointer;' + (isToday ? 'border-top:2px solid var(--accent);' : '');
+      const numColor = isEgreso ? 'var(--red)' : (val < 0 ? 'var(--red)' : 'var(--green)');
+      const sourceTag = source === 'cheque' ? ' title="Proyectado desde cheques"' : source === 'override' ? ' title="Valor editado manualmente"' : '';
+      const cellStyle = 'padding:4px 6px;text-align:right;font-family:var(--mono);font-size:10px;background:' + cellBg + ';border-left:1px solid rgba(255,255,255,0.04);' + (isToday ? 'border-top:2px solid var(--accent);' : '');
 
       if (isTotal) {
-        // Total rows: show value, no edit
         html += '<td style="' + cellStyle + 'font-weight:800;color:var(--accent)"' + sourceTag + '>';
         html += hasVal ? fmtARS(val) : '<span style="color:var(--text3)">—</span>';
         html += '</td>';
       } else {
-        // Editable cell
-        const empKey = emps.length > 1 ? 'RS' : emps[0]; // grupo edit defaults to RS
+        const empKey = emps.length > 1 ? 'RS' : emps[0];
         const safeDate = d.replace(/"/g,'');
         const cellId = 'cfcell_' + safeDate + '_' + empKey + '_' + rowIdx;
-        html += '<td id="' + cellId + '" style="' + cellStyle + '" onclick="cfCellEdit(\'' + safeDate + '\',\'' + empKey + '\',' + rowIdx + ',this)"' + sourceTag + '>';
-        if (source === 'cheque') {
-          html += '<span style="color:var(--accent);opacity:0.8">' + fmtARS(val) + '</span>';
-        } else if (source === 'override') {
-          html += '<span style="color:var(--yellow)">' + (hasVal ? fmtARS(val) : '0') + '</span>';
-        } else if (hasVal) {
-          html += '<span style="color:' + numColor + '">' + fmtARS(val) + '</span>';
-        } else {
-          html += '<span style="color:rgba(255,255,255,0.1)">·</span>';
-        }
+        html += '<td id="' + cellId + '" style="' + cellStyle + 'cursor:pointer;" onclick="cfCellEdit(\'' + safeDate + '\',\'' + empKey + '\',' + rowIdx + ',this)"' + sourceTag + '>';
+        if (source === 'cheque') html += '<span style="color:var(--accent);opacity:0.85">' + fmtARS(val) + '</span>';
+        else if (source === 'override') html += '<span style="color:var(--yellow)">' + (hasVal ? fmtARS(val) : '0') + '</span>';
+        else if (hasVal) html += '<span style="color:' + numColor + '">' + fmtARS(val) + '</span>';
+        else html += '<span style="color:rgba(255,255,255,0.1)">·</span>';
         html += '</td>';
       }
     });
     html += '</tr>';
   });
+
+  // ── Fila separadora ──
+  html += '<tr><td colspan="' + cols + '" style="height:2px;background:rgba(255,255,255,0.1)"></td></tr>';
+
+  // ── SALDO DEL DÍA (ingresos − egresos) ──
+  html += '<tr style="background:rgba(255,255,255,0.05)">';
+  html += '<td style="position:sticky;left:0;z-index:1;background:var(--bg2);padding:6px 12px;font-size:10px;font-weight:800;color:var(--text);white-space:nowrap;border-right:2px solid var(--border)">= SALDO DEL DÍA</td>';
+  dates.forEach(d => {
+    const isToday = d === today;
+    const s = perDate[d].saldo;
+    const col = s >= 0 ? 'var(--green)' : 'var(--red)';
+    html += '<td style="padding:5px 6px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:800;color:' + col + ';background:' + (isToday ? 'rgba(108,143,255,0.1)' : 'rgba(255,255,255,0.02)') + ';border-left:1px solid rgba(255,255,255,0.08)">' + (s !== 0 ? fmtARS(s) : '<span style="color:var(--text3)">—</span>') + '</td>';
+  });
+  html += '</tr>';
+
+  // ── SALDO ACUMULADO (running balance) ──
+  acumulado = 0;
+  html += '<tr style="background:rgba(74,159,212,0.08)">';
+  html += '<td style="position:sticky;left:0;z-index:1;background:var(--bg2);padding:6px 12px;font-size:10px;font-weight:800;color:var(--accent);white-space:nowrap;border-right:2px solid var(--border)">∑ SALDO ACUMULADO</td>';
+  dates.forEach(d => {
+    const isToday = d === today;
+    acumulado += perDate[d].saldo;
+    const col = acumulado >= 0 ? 'var(--accent)' : 'var(--red)';
+    html += '<td style="padding:5px 6px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:900;color:' + col + ';background:' + (isToday ? 'rgba(74,159,212,0.15)' : 'rgba(74,159,212,0.04)') + ';border-left:1px solid rgba(255,255,255,0.08)">' + fmtARS(acumulado) + '</td>';
+  });
+  html += '</tr>';
 
   html += '</tbody></table>';
   container.innerHTML = html;
@@ -11690,7 +11756,7 @@ function _renderCFChart(dates, byDate, saldoInicial) {
     const ctx = document.getElementById('chart-cashflow');
     if (!ctx || !dates.length) return;
     if (window._chCashFlow) window._chCashFlow.destroy();
-    const labels = dates.map(d => d.slice(5));
+    const labels = dates.map(d => _cfFmtDate(d));
     const ings   = dates.map(d => byDate[d].ing);
     const egrs   = dates.map(d => byDate[d].egr);
     let acum = saldoInicial;
