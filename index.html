@@ -11427,7 +11427,7 @@ function _renderCFMinutaTable(dates, emps, template) {
     'OTROS':       { label: '🔄 Otros ingresos',     color: 'rgba(62,207,142,0.10)',  text: '#3ecf8e' },
   };
 
-  // ── Pre-calcular saldos por fecha ──
+  // ── Pre-calcular neto por fecha ──
   const _getVal = (d, ri) => {
     if (emps.length > 1) return (cfGetValue(d,'RS',ri,template).val||0) + (cfGetValue(d,'SC',ri,template).val||0);
     return cfGetValue(d, emps[0], ri, template).val || 0;
@@ -11443,7 +11443,38 @@ function _renderCFMinutaTable(dates, emps, template) {
     });
     perDate[d] = { ing, egr, saldo: ing - egr };
   });
-  let acumulado = 0;
+
+  // ── Calcular SALDO INICIAL en cascada ──
+  const empKey = emps.length > 1 ? 'GRP' : emps[0];
+  const saldoIni = [];
+  dates.forEach((d, i) => {
+    const ovKey = 'saldo_ini|' + d + '|' + empKey;
+    const override = appState.cfOverrides && appState.cfOverrides[ovKey];
+    if (override !== undefined) {
+      saldoIni[i] = Number(override);
+    } else if (i === 0) {
+      // Primer día: buscar saldo final del día anterior en cfMinutaData
+      const allDates = Object.keys(appState.cfMinutaData || {}).sort();
+      const prevDay = allDates.filter(x => x < d).pop();
+      if (prevDay) {
+        let prevIng = 0, prevEgr = 0;
+        template.forEach((r, ri) => {
+          if (!r.label || /TOTAL/i.test(r.label) || /^EGRESOS/.test(r.label)) return;
+          const pv = emps.length > 1
+            ? (cfGetValue(prevDay,'RS',ri,template).val||0) + (cfGetValue(prevDay,'SC',ri,template).val||0)
+            : cfGetValue(prevDay, emps[0], ri, template).val || 0;
+          if (egresosIdx >= 0 && ri > egresosIdx) prevEgr += Math.abs(pv);
+          else prevIng += pv;
+        });
+        saldoIni[i] = prevIng - prevEgr;
+      } else {
+        saldoIni[i] = 0;
+      }
+    } else {
+      // Día siguiente: SALDO FINAL del día anterior
+      saldoIni[i] = saldoIni[i - 1] + perDate[dates[i - 1]].saldo;
+    }
+  });
 
   // ── Build table ──
   let html = '<table style="border-collapse:collapse;font-size:11px;min-width:' + (210 + dates.length * 120) + 'px">';
@@ -11458,6 +11489,19 @@ function _renderCFMinutaTable(dates, emps, template) {
     html += '<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:' + (isToday ? 'var(--accent)' : isPast ? 'var(--text3)' : 'var(--text2)') + ';background:' + bg + ';border-bottom:' + (isToday ? '2px solid var(--accent)' : '1px solid var(--border)') + ';white-space:nowrap;min-width:110px">' + (isToday ? '📍 ' : '') + _cfFmtDate(d) + '</th>';
   });
   html += '</tr></thead><tbody>';
+
+  // ── SALDO INICIAL (primera fila, siempre editable) ──
+  html += '<tr style="background:rgba(245,200,66,0.08);border-bottom:2px solid rgba(245,200,66,0.2)">';
+  html += '<td style="position:sticky;left:0;z-index:1;background:var(--bg2);padding:6px 12px;font-size:10px;font-weight:800;color:var(--yellow);white-space:nowrap;border-right:2px solid var(--border)">▶ SALDO INICIAL</td>';
+  dates.forEach((d, i) => {
+    const isToday = d === today;
+    const v = saldoIni[i];
+    const col = v >= 0 ? 'var(--yellow)' : 'var(--red)';
+    const safeD = d.replace(/"/g,'');
+    html += '<td style="padding:5px 6px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:' + col + ';background:' + (isToday ? 'rgba(245,200,66,0.1)' : 'rgba(245,200,66,0.03)') + ';border-left:1px solid rgba(255,255,255,0.06);cursor:pointer" title="Clic para editar" onclick="cfSaldoIniEdit(\'' + safeD + '\',\'' + empKey + '\',' + v + ',this)">' + (v !== 0 ? fmtARS(v) : '<span style="color:rgba(255,255,255,0.25)">0</span>') + '</td>';
+  });
+  html += '</tr>';
+  html += '<tr><td colspan="' + cols + '" style="height:2px;background:rgba(245,200,66,0.15)"></td></tr>';
 
   // ── Data rows ──
   let prevSection = null;
@@ -11530,34 +11574,59 @@ function _renderCFMinutaTable(dates, emps, template) {
     html += '</tr>';
   });
 
-  // ── Fila separadora ──
+  // ── Separador ──
   html += '<tr><td colspan="' + cols + '" style="height:2px;background:rgba(255,255,255,0.1)"></td></tr>';
 
-  // ── SALDO DEL DÍA (ingresos − egresos) ──
-  html += '<tr style="background:rgba(255,255,255,0.05)">';
-  html += '<td style="position:sticky;left:0;z-index:1;background:var(--bg2);padding:6px 12px;font-size:10px;font-weight:800;color:var(--text);white-space:nowrap;border-right:2px solid var(--border)">= SALDO DEL DÍA</td>';
+  // ── NETO DEL DÍA (ingresos − egresos) ──
+  html += '<tr style="background:rgba(255,255,255,0.04)">';
+  html += '<td style="position:sticky;left:0;z-index:1;background:var(--bg2);padding:6px 12px;font-size:10px;font-weight:700;color:var(--text2);white-space:nowrap;border-right:2px solid var(--border)">± NETO DEL DÍA</td>';
   dates.forEach(d => {
     const isToday = d === today;
     const s = perDate[d].saldo;
-    const col = s >= 0 ? 'var(--green)' : 'var(--red)';
-    html += '<td style="padding:5px 6px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:800;color:' + col + ';background:' + (isToday ? 'rgba(108,143,255,0.1)' : 'rgba(255,255,255,0.02)') + ';border-left:1px solid rgba(255,255,255,0.08)">' + (s !== 0 ? fmtARS(s) : '<span style="color:var(--text3)">—</span>') + '</td>';
+    const col = s > 0 ? 'var(--green)' : s < 0 ? 'var(--red)' : 'var(--text3)';
+    html += '<td style="padding:5px 6px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:' + col + ';background:' + (isToday ? 'rgba(108,143,255,0.06)' : '') + ';border-left:1px solid rgba(255,255,255,0.06)">' + (s !== 0 ? fmtARS(s) : '<span style="color:var(--text3)">—</span>') + '</td>';
   });
   html += '</tr>';
 
-  // ── SALDO ACUMULADO (running balance) ──
-  acumulado = 0;
-  html += '<tr style="background:rgba(74,159,212,0.08)">';
-  html += '<td style="position:sticky;left:0;z-index:1;background:var(--bg2);padding:6px 12px;font-size:10px;font-weight:800;color:var(--accent);white-space:nowrap;border-right:2px solid var(--border)">∑ SALDO ACUMULADO</td>';
-  dates.forEach(d => {
+  // ── SALDO FINAL (= SALDO INICIAL + NETO DEL DÍA) → pasa al día siguiente ──
+  html += '<tr style="background:rgba(74,159,212,0.08);border-top:2px solid rgba(74,159,212,0.25)">';
+  html += '<td style="position:sticky;left:0;z-index:1;background:var(--bg2);padding:7px 12px;font-size:10px;font-weight:900;color:var(--accent);white-space:nowrap;border-right:2px solid var(--border)">◀ SALDO FINAL</td>';
+  dates.forEach((d, i) => {
     const isToday = d === today;
-    acumulado += perDate[d].saldo;
-    const col = acumulado >= 0 ? 'var(--accent)' : 'var(--red)';
-    html += '<td style="padding:5px 6px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:900;color:' + col + ';background:' + (isToday ? 'rgba(74,159,212,0.15)' : 'rgba(74,159,212,0.04)') + ';border-left:1px solid rgba(255,255,255,0.08)">' + fmtARS(acumulado) + '</td>';
+    const final = saldoIni[i] + perDate[d].saldo;
+    const col = final >= 0 ? 'var(--accent)' : 'var(--red)';
+    html += '<td style="padding:6px 6px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:900;color:' + col + ';background:' + (isToday ? 'rgba(74,159,212,0.15)' : 'rgba(74,159,212,0.04)') + ';border-left:1px solid rgba(255,255,255,0.08)">' + fmtARS(final) + '</td>';
   });
   html += '</tr>';
 
   html += '</tbody></table>';
   container.innerHTML = html;
+}
+
+function cfSetSaldoIni(date, empKey, val) {
+  if (!appState.cfOverrides) appState.cfOverrides = {};
+  const key = 'saldo_ini|' + date + '|' + empKey;
+  if (val === null || val === '') delete appState.cfOverrides[key];
+  else appState.cfOverrides[key] = Number(val);
+  cacheGuardar('cf_minuta', { data: appState.cfMinutaData || {}, overrides: appState.cfOverrides || {} });
+  renderCashFlow();
+}
+
+function cfSaldoIniEdit(date, empKey, curVal, td) {
+  if (!td) return;
+  const inp = document.createElement('input');
+  inp.type = 'number';
+  inp.value = curVal !== null ? String(curVal) : '';
+  inp.style.cssText = 'width:100px;background:var(--bg3);border:1px solid var(--yellow);border-radius:4px;padding:2px 4px;font-size:10px;font-family:var(--mono);color:var(--text);outline:none;text-align:right';
+  td.innerHTML = '';
+  td.appendChild(inp);
+  inp.focus(); inp.select();
+  const save = () => { const v = inp.value.trim(); cfSetSaldoIni(date, empKey, v === '' ? null : v); };
+  inp.addEventListener('blur', save);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    if (e.key === 'Escape') { td.innerHTML = curVal !== null ? fmtARS(curVal) : '<span style="color:rgba(255,255,255,0.1)">·</span>'; }
+  });
 }
 
 function cfCellEdit(date, emp, rowIdx, td) {
