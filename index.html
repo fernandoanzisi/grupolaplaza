@@ -2543,11 +2543,20 @@ let _supaUser=null,_supaRol=null;
         style="padding:7px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,159,212,0.3);background:var(--bg3);color:var(--text2);cursor:pointer">🔵 Rio Salado</button>
       <button onclick="cfSetEmp('SC',this)" id="cf-btn-SC"
         style="padding:7px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(58,170,42,0.3);background:var(--bg3);color:var(--text2);cursor:pointer">🟢 Serv. Cipolletti</button>
-      <button onclick="cfAgregarFila()" 
+      <button onclick="cfAgregarFila()"
         style="padding:7px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);cursor:pointer">＋ Agregar fila</button>
       <button onclick="exportCashFlowExcel()"
         style="padding:7px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);cursor:pointer">📥 Excel</button>
     </div>
+  </div>
+
+  <!-- Quick range buttons -->
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
+    <span style="font-size:11px;color:var(--text3);align-self:center">Período:</span>
+    <button id="cf-q-hoy"  onclick="cfSetRango('hoy')"  class="rate-btn" style="font-size:11px;padding:4px 10px">Hoy</button>
+    <button id="cf-q-7d"   onclick="cfSetRango('7d')"   class="rate-btn" style="font-size:11px;padding:4px 10px">7 días</button>
+    <button id="cf-q-15d"  onclick="cfSetRango('15d')"  class="rate-btn active" style="font-size:11px;padding:4px 10px">15 días</button>
+    <button id="cf-q-30d"  onclick="cfSetRango('30d')"  class="rate-btn" style="font-size:11px;padding:4px 10px">30 días</button>
   </div>
 
   <!-- KPIs -->
@@ -2603,6 +2612,20 @@ let _supaUser=null,_supaRol=null;
     <div style="position:relative;height:220px"><canvas id="chart-cashflow"></canvas></div>
   </div>
 
+  <!-- Bar + Pie charts -->
+  <div class="card mb" style="padding:18px 20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">📊 Ingresos vs Egresos por día</div>
+        <div style="position:relative;height:180px"><canvas id="chart-cf-bar"></canvas></div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">🥧 Composición ingresos</div>
+        <div style="position:relative;height:180px"><canvas id="chart-cf-pie"></canvas></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Tabla editable -->
   <div class="card" style="padding:0;overflow:hidden">
     <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
@@ -2628,6 +2651,17 @@ let _supaUser=null,_supaRol=null;
         </thead>
         <tbody id="cf-table"></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Nueva tabla Cash Flow por minuta (columnas = fechas, filas = categorías) -->
+  <div class="card" style="padding:0;overflow:hidden;margin-top:16px" id="cf-minuta-card">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:12px;font-weight:700;color:var(--text2)">📋 Cash Flow — Vista Minuta (importado)</div>
+      <div style="font-size:10px;color:var(--text3)" id="cf-minuta-legend">Hoy = datos minuta · Futuro = proyectado + editable</div>
+    </div>
+    <div style="overflow-x:auto" id="cf-minuta-scroll">
+      <div id="cf-minuta-table"></div>
     </div>
   </div>
 </div>
@@ -3415,7 +3449,7 @@ function defaultState() {
     {date:'2026-04-01',desc:'Alquiler oficina',cat:'Vivienda',account:'Banco Nación',amount:85000,type:'gasto'},
     {date:'2026-04-10',desc:'Software contable',cat:'Servicios',account:'Tarjeta',amount:18000,type:'gasto'}
   ];
-  return { empresas: [e0, e1], currentEmpresaId: 1, cfFilas: [], cartDebo: [], clientesDebo: [], extractoBancario: [] };
+  return { empresas: [e0, e1], currentEmpresaId: 1, cfFilas: [], cfMinutaData: {}, cfOverrides: {}, cartDebo: [], clientesDebo: [], extractoBancario: [] };
 }
 
 // ==================== PERSISTENCE ====================
@@ -3446,6 +3480,8 @@ function loadState() {
       if (appState.vistaConsolidada === undefined) appState.vistaConsolidada = false;
       if (appState.tnaFima === undefined) appState.tnaFima = 18.75;
       if (!appState.cfFilas)      appState.cfFilas      = [];
+      if (!appState.cfMinutaData) appState.cfMinutaData = {};
+      if (!appState.cfOverrides)  appState.cfOverrides  = {};
   if (!appState.obras)       appState.obras        = [];
   if (!appState.riesgoData)   appState.riesgoData   = [];
   if (!appState.mercadosTasas) appState.mercadosTasas = {}; // historial Nosis
@@ -6686,6 +6722,16 @@ function parseMinutaDiaria(wb) {
       }
     });
 
+    // ── Cash Flow: A26:B68 (RS) / C26:D68 (SC) ──────────────────
+    if (!appState.cfMinutaData) appState.cfMinutaData = {};
+    const _cfRS = [], _cfSC = [];
+    for (let ri = 25; ri <= 67; ri++) {
+      const row = R[ri] || [];
+      _cfRS.push({ label: String(row[0]||'').trim(), value: pn(row[1]) });
+      _cfSC.push({ label: String(row[2]||'').trim(), value: pn(row[3]) });
+    }
+    appState.cfMinutaData[fecha] = { RS: _cfRS, SC: _cfSC };
+
     return cnt;
   }
 
@@ -6709,6 +6755,9 @@ function parseMinutaDiaria(wb) {
     if (dfFrom) dfFrom.value = lastDate;
     if (dfTo)   dfTo.value   = lastDate;
   }
+
+  // ── Guardar Cash Flow minuta en Supabase ─────────────────────
+  cacheGuardar('cf_minuta', { data: appState.cfMinutaData || {}, overrides: appState.cfOverrides || {} });
 
   // ── Log final ────────────────────────────────────────────────
   log.push('<span class="log-ok">✅ Minuta Diaria — ' + dateSheets.length + ' días · Fuente: hojas de fecha</span>');
@@ -7771,6 +7820,8 @@ const _origLoad = loadState;
 
 function ensureNewArrays() {
   if (!appState.cfFilas)      appState.cfFilas      = [];
+  if (!appState.cfMinutaData) appState.cfMinutaData = {};
+  if (!appState.cfOverrides)  appState.cfOverrides  = {};
   if (!appState.cartDebo)     appState.cartDebo     = [];
   if (!appState.clientesDebo) appState.clientesDebo = [];
   appState.empresas.forEach(e => {
@@ -11229,8 +11280,240 @@ function _cfGetCheques(empFilter) {
   return result;
 }
 
+// ── Cash Flow Quick Range ──────────────────────────────────────────────────
+let _cfRango = '15d';
+
+function cfSetRango(rango) {
+  _cfRango = rango;
+  // Update active button
+  ['hoy','7d','15d','30d'].forEach(r => {
+    const b = document.getElementById('cf-q-'+r);
+    if (b) { b.classList.remove('active'); if (r === rango) b.classList.add('active'); }
+  });
+  const today = new Date().toISOString().slice(0,10);
+  const desdeEl = document.getElementById('cf-f-desde');
+  const hastaEl = document.getElementById('cf-f-hasta');
+  if (!desdeEl || !hastaEl) { renderCashFlow(); return; }
+  if (rango === 'hoy') {
+    desdeEl.value = today; hastaEl.value = today;
+  } else {
+    const days = rango === '7d' ? 6 : rango === '15d' ? 14 : 29;
+    const end = new Date(); end.setDate(end.getDate() + days);
+    desdeEl.value = today;
+    hastaEl.value = end.toISOString().slice(0,10);
+  }
+  renderCashFlow();
+}
+
+// ── Cash Flow Minuta helpers ────────────────────────────────────────────────
+
+// Build template from latest cfMinutaData date, empresa RS (or SC)
+function _cfGetTemplate(emp) {
+  const md = appState.cfMinutaData || {};
+  const dates = Object.keys(md).sort();
+  if (!dates.length) return null;
+  const latest = dates[dates.length - 1];
+  const empKey = (emp === 'SC') ? 'SC' : 'RS';
+  return (md[latest] && md[latest][empKey]) ? md[latest][empKey] : null;
+}
+
+// Get value for a cell: override > minuta > cheques projection > null
+function cfGetValue(date, emp, rowIdx, template) {
+  const overrideKey = date + '|' + emp + '|' + rowIdx;
+  if (appState.cfOverrides && appState.cfOverrides[overrideKey] !== undefined)
+    return { val: appState.cfOverrides[overrideKey], source: 'override' };
+  const dayData = appState.cfMinutaData && appState.cfMinutaData[date];
+  if (dayData && dayData[emp] && dayData[emp][rowIdx] !== undefined)
+    return { val: dayData[emp][rowIdx].value, source: 'minuta' };
+  // Cheques projection for future dates
+  const today = new Date().toISOString().slice(0,10);
+  if (date > today && template) {
+    const lbl = (template[rowIdx] && template[rowIdx].label) || '';
+    // rowIdx 22 = VALORES EN CARTERA — cheques EN CARTERA
+    if (rowIdx === 22) {
+      return { val: _cfChequesSum(date, emp, 'EN CARTERA'), source: 'cheque' };
+    }
+    // rowIdx 21 = CH. CLEARING — cheques AL COBRO
+    if (rowIdx === 21) {
+      return { val: _cfChequesSum(date, emp, 'AL COBRO'), source: 'cheque' };
+    }
+  }
+  return { val: null, source: 'empty' };
+}
+
+function _cfChequesSum(date, emp, estado) {
+  const empName = emp === 'RS' ? 'Rio Salado' : 'Cipolletti';
+  let total = 0;
+  (appState.empresas || []).forEach(e => {
+    if (!e.name.includes(empName)) return;
+    (e.cheques || []).forEach(c => {
+      const fv = c.fVto || c.fechaVto || c.vencimiento || c.fecha || '';
+      if (fv === date && (c.estado || '') === estado) total += (c.importe || 0);
+    });
+  });
+  return total || null;
+}
+
+function cfSetOverride(date, emp, rowIdx, val) {
+  if (!appState.cfOverrides) appState.cfOverrides = {};
+  const key = date + '|' + emp + '|' + rowIdx;
+  if (val === null || val === '' || val === undefined) {
+    delete appState.cfOverrides[key];
+  } else {
+    appState.cfOverrides[key] = parseFloat(val) || 0;
+  }
+  cacheGuardar('cf_minuta', { data: appState.cfMinutaData || {}, overrides: appState.cfOverrides || {} });
+  renderCashFlow();
+}
+
+function _cfMakeDateRange(desde, hasta) {
+  const today = new Date().toISOString().slice(0,10);
+  const start = desde || today;
+  let end = hasta;
+  if (!end) {
+    const d = new Date(); d.setDate(d.getDate() + 14);
+    end = d.toISOString().slice(0,10);
+  }
+  const dates = [];
+  const cur = new Date(start + 'T00:00:00');
+  const endD = new Date(end + 'T00:00:00');
+  while (cur <= endD) {
+    dates.push(cur.toISOString().slice(0,10));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
+
+function _cfFmtDate(d) { return d.slice(8,10) + '/' + d.slice(5,7); }
+
+// Render the new minuta-based CF table
+function _renderCFMinutaTable(dates, emps, template) {
+  const container = document.getElementById('cf-minuta-table');
+  if (!container) return;
+  const today = new Date().toISOString().slice(0,10);
+
+  // Determine header rows (EGRESOS RS / SC divider)
+  const egresosIdx = template.findIndex(r => /^EGRESOS/.test(r.label));
+
+  // Build table HTML
+  let html = '<table style="border-collapse:collapse;font-size:11px;min-width:' + (200 + dates.length * 120) + 'px">';
+
+  // Header row — dates
+  html += '<thead><tr>';
+  html += '<th style="position:sticky;left:0;z-index:2;background:var(--bg2);padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);white-space:nowrap;min-width:200px;border-right:2px solid var(--border)">Categoría</th>';
+  dates.forEach(d => {
+    const isToday = d === today;
+    const isPast  = d < today;
+    const bg = isToday ? 'rgba(108,143,255,0.18)' : isPast ? 'rgba(255,255,255,0.03)' : 'var(--bg2)';
+    const border = isToday ? '2px solid var(--accent)' : '1px solid var(--border)';
+    html += '<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:' + (isToday ? 'var(--accent)' : isPast ? 'var(--text3)' : 'var(--text2)') + ';background:' + bg + ';border-bottom:' + border + ';white-space:nowrap;min-width:110px">';
+    html += (isToday ? '📍 ' : '') + _cfFmtDate(d);
+    html += '</th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  // Data rows
+  template.forEach((row, rowIdx) => {
+    const lbl = row.label;
+    const isTotal  = /TOTAL/i.test(lbl);
+    const isHeader = lbl === 'EGRESOS RS' || lbl === 'EGRESOS SC' || lbl === 'EGRESOS';
+    const isEmpty  = lbl === '';
+    const isEgreso = egresosIdx >= 0 && rowIdx > egresosIdx && !isHeader;
+
+    if (isEmpty) {
+      html += '<tr><td colspan="' + (1 + dates.length) + '" style="height:4px;background:var(--bg3)"></td></tr>';
+      return;
+    }
+
+    if (isHeader) {
+      html += '<tr><td colspan="' + (1 + dates.length) + '" style="background:var(--bg2);padding:6px 12px;font-size:10px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;border-top:2px solid var(--border)">— ' + lbl + ' —</td></tr>';
+      return;
+    }
+
+    const rowBg = isTotal ? 'rgba(255,255,255,0.04)' : '';
+    html += '<tr style="background:' + rowBg + ';border-top:1px solid rgba(255,255,255,0.04)">';
+    html += '<td style="position:sticky;left:0;z-index:1;background:' + (isTotal ? 'var(--bg2)' : 'var(--card)') + ';padding:5px 12px;font-size:10px;font-weight:' + (isTotal ? '800' : '500') + ';color:' + (isTotal ? 'var(--text)' : 'var(--text2)') + ';white-space:nowrap;border-right:2px solid var(--border);max-width:200px;overflow:hidden;text-overflow:ellipsis" title="' + lbl.replace(/"/g,'&quot;') + '">' + lbl + '</td>';
+
+    dates.forEach(d => {
+      const isToday = d === today;
+      const isPast  = d < today;
+      // For grupo mode, sum RS+SC
+      let valObj;
+      if (emps.length > 1) {
+        // Grupo: sum both
+        const rsV = cfGetValue(d, 'RS', rowIdx, template).val || 0;
+        const scV = cfGetValue(d, 'SC', rowIdx, template).val || 0;
+        const combined = rsV + scV;
+        valObj = { val: combined || null, source: 'combined' };
+      } else {
+        valObj = cfGetValue(d, emps[0], rowIdx, template);
+      }
+      const { val, source } = valObj;
+      const hasVal = val !== null && val !== undefined && val !== 0;
+      const cellBg = isToday ? 'rgba(108,143,255,0.08)' : isPast ? 'rgba(255,255,255,0.01)' : '';
+      const numColor = isEgreso ? 'var(--red)' : 'var(--green)';
+      const sourceTag = source === 'cheque' ? ' title="Proyectado desde cheques"' : source === 'override' ? ' title="Valor editado"' : '';
+      const cellStyle = 'padding:4px 6px;text-align:right;font-family:var(--mono);font-size:10px;background:' + cellBg + ';border-left:1px solid rgba(255,255,255,0.04);cursor:pointer;' + (isToday ? 'border-top:2px solid var(--accent);' : '');
+
+      if (isTotal) {
+        // Total rows: show value, no edit
+        html += '<td style="' + cellStyle + 'font-weight:800;color:var(--accent)"' + sourceTag + '>';
+        html += hasVal ? fmtARS(val) : '<span style="color:var(--text3)">—</span>';
+        html += '</td>';
+      } else {
+        // Editable cell
+        const empKey = emps.length > 1 ? 'RS' : emps[0]; // grupo edit defaults to RS
+        const safeDate = d.replace(/"/g,'');
+        const cellId = 'cfcell_' + safeDate + '_' + empKey + '_' + rowIdx;
+        html += '<td id="' + cellId + '" style="' + cellStyle + '" onclick="cfCellEdit(\'' + safeDate + '\',\'' + empKey + '\',' + rowIdx + ',this)"' + sourceTag + '>';
+        if (source === 'cheque') {
+          html += '<span style="color:var(--accent);opacity:0.8">' + fmtARS(val) + '</span>';
+        } else if (source === 'override') {
+          html += '<span style="color:var(--yellow)">' + (hasVal ? fmtARS(val) : '0') + '</span>';
+        } else if (hasVal) {
+          html += '<span style="color:' + numColor + '">' + fmtARS(val) + '</span>';
+        } else {
+          html += '<span style="color:rgba(255,255,255,0.1)">·</span>';
+        }
+        html += '</td>';
+      }
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function cfCellEdit(date, emp, rowIdx, td) {
+  if (!td) return;
+  const template = _cfGetTemplate(emp);
+  const { val } = cfGetValue(date, emp, rowIdx, template);
+  const cur = (val !== null && val !== undefined) ? String(val) : '';
+  const inp = document.createElement('input');
+  inp.type = 'number';
+  inp.value = cur;
+  inp.style.cssText = 'width:90px;background:var(--bg3);border:1px solid var(--accent);border-radius:4px;padding:2px 4px;font-size:10px;font-family:var(--mono);color:var(--text);outline:none;text-align:right';
+  td.innerHTML = '';
+  td.appendChild(inp);
+  inp.focus();
+  inp.select();
+  const save = () => {
+    const newVal = inp.value.trim();
+    cfSetOverride(date, emp, rowIdx, newVal === '' ? null : newVal);
+  };
+  inp.addEventListener('blur', save);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    if (e.key === 'Escape') { td.innerHTML = cur || '<span style="color:rgba(255,255,255,0.1)">·</span>'; }
+  });
+}
+
 function renderCashFlow() {
   if (!appState.cfFilas) appState.cfFilas = [];
+  if (!appState.cfMinutaData) appState.cfMinutaData = {};
+  if (!appState.cfOverrides)  appState.cfOverrides  = {};
+
   const saldoRSEl = document.getElementById('cf-saldo-rs');
   const saldoSCEl = document.getElementById('cf-saldo-sc');
   const saldoRS = parseFloat(saldoRSEl&&saldoRSEl.value||0)||0;
@@ -11257,12 +11540,40 @@ function renderCashFlow() {
   const saldoFinal= saldoInicial + totalIng - totalEgr;
   const autoCount = autoCheques.length;
 
+  // ── KPIs ─────────────────────────────────────────────────────────
+  // If cfMinutaData has data, compute better KPIs from minuta
+  let kpiIng = totalIng, kpiEgr = totalEgr, kpiCheques = autoCount;
+  const hasMD = Object.keys(appState.cfMinutaData).length > 0;
+  if (hasMD) {
+    const mdDates = Object.keys(appState.cfMinutaData).sort();
+    const latestMD = mdDates[mdDates.length - 1];
+    const empKeys = _cfEmp === 'grupo' ? ['RS','SC'] : [_cfEmp];
+    const tmpl = _cfGetTemplate(_cfEmp === 'SC' ? 'SC' : 'RS');
+    if (tmpl) {
+      const egresosIdx = tmpl.findIndex(r => /^EGRESOS/.test(r.label));
+      let mIng = 0, mEgr = 0;
+      empKeys.forEach(ek => {
+        const dayD = appState.cfMinutaData[latestMD] && appState.cfMinutaData[latestMD][ek];
+        if (dayD) {
+          dayD.forEach((r, ri) => {
+            if (!r.label || /^EGRESOS/.test(r.label) || /TOTAL/.test(r.label)) return;
+            if (ri > egresosIdx && egresosIdx >= 0) mEgr += Math.abs(r.value || 0);
+            else mIng += Math.abs(r.value || 0);
+          });
+        }
+      });
+      kpiIng = mIng || totalIng;
+      kpiEgr = mEgr || totalEgr;
+    }
+  }
+
+  const kpiSaldo = saldoInicial + kpiIng - kpiEgr;
   const kEl = document.getElementById('cf-kpis');
   if (kEl) kEl.innerHTML = [
-    ['TOTAL INGRESOS',  totalIng,   'var(--green)', false],
-    ['TOTAL EGRESOS',   totalEgr,   'var(--red)',   false],
-    ['SALDO NETO',      saldoFinal, saldoFinal>=0?'var(--accent)':'var(--red)', false],
-    ['DIAS CON DATOS',  dates.length+' dias - '+autoCount+' cheques auto', 'var(--text2)', true],
+    ['TOTAL INGRESOS',  kpiIng,   'var(--green)', false],
+    ['TOTAL EGRESOS',   kpiEgr,   'var(--red)',   false],
+    ['SALDO NETO',      kpiSaldo, kpiSaldo>=0?'var(--accent)':'var(--red)', false],
+    ['CHEQUES PROYECTADOS', kpiCheques+' cheques auto', 'var(--text2)', true],
   ].map(([l,v,c,isStr])=>
     '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;border-left:3px solid '+c+'">' +
       '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:8px">'+l+'</div>' +
@@ -11271,74 +11582,98 @@ function renderCashFlow() {
   ).join('');
 
   _renderCFChart(dates, byDate, saldoInicial);
+  _renderCFBarPieCharts(dates, byDate);
 
+  // ── Old table (manual + auto cheques) ─────────────────────────────
   const tbody = document.getElementById('cf-table');
-  if (!tbody) return;
-
-  if (!todasFilas.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:40px;font-size:13px">Sin filas. Hace clic en + Agregar fila para ingresar proyecciones.<br><span style="font-size:11px;display:block;margin-top:6px">Los cheques en cartera con vencimiento futuro se agregan automaticamente.</span></td></tr>';
-    return;
+  if (tbody) {
+    if (!todasFilas.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:40px;font-size:13px">Sin filas. Hace clic en + Agregar fila para ingresar proyecciones.<br><span style="font-size:11px;display:block;margin-top:6px">Los cheques en cartera con vencimiento futuro se agregan automaticamente.</span></td></tr>';
+    } else {
+      let acum = saldoInicial;
+      const today2 = new Date().toISOString().slice(0,10);
+      let rows = '';
+      dates.forEach(fecha => {
+        const d = byDate[fecha];
+        const saldoDia = d.ing - d.egr;
+        acum += saldoDia;
+        const isPast  = fecha < today2;
+        const isToday = fecha === today2;
+        const prefix  = isToday ? '📍 ' : isPast ? '' : '📆 ';
+        const dateCol = isToday ? 'var(--accent)' : isPast ? 'var(--text3)' : 'var(--text)';
+        const saldoCol= saldoDia >= 0 ? 'var(--accent)' : 'var(--red)';
+        const acumCol = acum >= 0 ? 'var(--teal)' : 'var(--red)';
+        rows += '<tr style="background:var(--bg2);border-top:2px solid var(--border)">' +
+          '<td style="padding:8px 12px;font-family:var(--mono);font-size:12px;font-weight:700;white-space:nowrap;color:'+dateCol+'">'+prefix+fecha+'</td>' +
+          '<td style="padding:8px 12px;font-size:11px;color:var(--text3)">'+d.filas.length+' mov.</td>' +
+          '<td style="padding:8px 12px"></td><td></td>' +
+          '<td style="padding:8px 12px;font-family:var(--mono);font-size:13px;font-weight:800;text-align:right;color:var(--green)">'+(d.ing>0?'$ '+fmtARS(d.ing):'—')+'</td>' +
+          '<td style="padding:8px 12px;font-family:var(--mono);font-size:13px;font-weight:800;text-align:right;color:var(--red)">'+(d.egr>0?'$ '+fmtARS(d.egr):'—')+'</td>' +
+          '<td style="padding:8px 12px;font-family:var(--mono);font-size:13px;font-weight:800;text-align:right;color:'+saldoCol+'">'+(saldoDia>=0?'+':'')+fmtARS(saldoDia)+'</td>' +
+          '<td style="padding:8px 12px;font-family:var(--mono);font-size:14px;font-weight:900;text-align:right;color:'+acumCol+'">$ '+fmtARS(acum)+'</td>' +
+          '<td></td>' +
+        '</tr>';
+        d.filas.forEach(f => {
+          const empCol = f.empresa==='RS'?'#4a9fd4':f.empresa==='SC'?'#3aaa2a':'#d4920a';
+          const rowBg  = isToday ? 'rgba(74,159,212,0.04)' : '';
+          if (f._auto) {
+            rows += '<tr style="background:'+rowBg+';opacity:0.85">' +
+              '<td style="padding:5px 12px 5px 28px;font-size:10px;color:var(--text3)">↳</td>' +
+              '<td><span style="font-size:9px;font-weight:700;color:'+empCol+';padding:1px 6px;border-radius:3px;background:'+empCol+'22">'+f.empresa+'</span></td>' +
+              '<td style="padding:5px 12px;font-size:11px;color:var(--text3);font-style:italic;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+f.concepto+'</td>' +
+              '<td style="padding:5px 8px"><span style="font-size:9px;color:var(--green);background:rgba(74,222,128,0.1);padding:1px 6px;border-radius:3px">AUTO</span></td>' +
+              '<td style="padding:5px 12px;font-family:var(--mono);font-size:11px;text-align:right;color:var(--green)">$ '+fmtARS(f.importe)+'</td>' +
+              '<td></td><td></td><td></td><td></td></tr>';
+          } else {
+            const idStr = String(f.id);
+            rows += '<tr style="background:'+rowBg+'">' +
+              '<td style="padding:4px 12px 4px 28px"><input type="date" value="'+f.fecha+'" onchange="cfEditFila('+idStr+',\'fecha\',this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;font-family:var(--mono);color:var(--text);outline:none;width:128px"></td>' +
+              '<td style="padding:4px 8px"><select onchange="cfEditFila('+idStr+',\'empresa\',this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;color:var(--text);outline:none">' +
+                '<option value="RS"'+(f.empresa==='RS'?' selected':'')+'>RS</option>' +
+                '<option value="SC"'+(f.empresa==='SC'?' selected':'')+'>SC</option>' +
+              '</select></td>' +
+              '<td style="padding:4px 8px"><input type="text" value="'+f.concepto.replace(/"/g,'&quot;')+'" placeholder="Concepto..." onchange="cfEditFila('+idStr+',\'concepto\',this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);outline:none;width:180px" data-cf-id="'+idStr+'" data-cf-field="concepto"></td>' +
+              '<td style="padding:4px 8px"><select onchange="cfEditFila('+idStr+',\'tipo\',this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;color:var(--text);outline:none">' +
+                '<option value="ingreso"'+(f.tipo==='ingreso'?' selected':'')+'>Ingreso</option>' +
+                '<option value="gasto"'+(f.tipo==='gasto'?' selected':'')+'>Egreso</option>' +
+              '</select></td>' +
+              '<td style="padding:4px 8px;text-align:right">'+(f.tipo==='ingreso'?'<input type="number" value="'+f.importe+'" onchange="cfEditFila('+idStr+',\'importe\',this.value)" style="background:var(--bg3);border:1px solid rgba(74,222,128,0.4);border-radius:6px;padding:4px 8px;font-size:12px;font-family:var(--mono);color:var(--green);outline:none;width:130px;text-align:right">':'<span style="color:var(--text3)">—</span>')+'</td>' +
+              '<td style="padding:4px 8px;text-align:right">'+(f.tipo==='gasto'?'<input type="number" value="'+f.importe+'" onchange="cfEditFila('+idStr+',\'importe\',this.value)" style="background:var(--bg3);border:1px solid rgba(248,113,113,0.4);border-radius:6px;padding:4px 8px;font-size:12px;font-family:var(--mono);color:var(--red);outline:none;width:130px;text-align:right">':'<span style="color:var(--text3)">—</span>')+'</td>' +
+              '<td></td><td></td>' +
+              '<td style="padding:4px 8px;text-align:center"><button onclick="cfEliminarFila('+idStr+')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 6px">x</button></td>' +
+            '</tr>';
+          }
+        });
+      });
+      tbody.innerHTML = rows;
+    }
   }
 
-  let acum = saldoInicial;
-  const today = new Date().toISOString().slice(0,10);
-  let rows = '';
-
-  dates.forEach(fecha => {
-    const d = byDate[fecha];
-    const saldoDia = d.ing - d.egr;
-    acum += saldoDia;
-    const isPast  = fecha < today;
-    const isToday = fecha === today;
-    const prefix  = isToday ? '📍 ' : isPast ? '' : '📆 ';
-    const dateCol = isToday ? 'var(--accent)' : isPast ? 'var(--text3)' : 'var(--text)';
-    const saldoCol= saldoDia >= 0 ? 'var(--accent)' : 'var(--red)';
-    const acumCol = acum >= 0 ? 'var(--teal)' : 'var(--red)';
-
-    rows += '<tr style="background:var(--bg2);border-top:2px solid var(--border)">' +
-      '<td style="padding:8px 12px;font-family:var(--mono);font-size:12px;font-weight:700;white-space:nowrap;color:'+dateCol+'">'+prefix+fecha+'</td>' +
-      '<td style="padding:8px 12px;font-size:11px;color:var(--text3)">'+d.filas.length+' mov.</td>' +
-      '<td style="padding:8px 12px"></td><td></td>' +
-      '<td style="padding:8px 12px;font-family:var(--mono);font-size:13px;font-weight:800;text-align:right;color:var(--green)">'+(d.ing>0?'$ '+fmtARS(d.ing):'—')+'</td>' +
-      '<td style="padding:8px 12px;font-family:var(--mono);font-size:13px;font-weight:800;text-align:right;color:var(--red)">'+(d.egr>0?'$ '+fmtARS(d.egr):'—')+'</td>' +
-      '<td style="padding:8px 12px;font-family:var(--mono);font-size:13px;font-weight:800;text-align:right;color:'+saldoCol+'">'+(saldoDia>=0?'+':'')+fmtARS(saldoDia)+'</td>' +
-      '<td style="padding:8px 12px;font-family:var(--mono);font-size:14px;font-weight:900;text-align:right;color:'+acumCol+'">$ '+fmtARS(acum)+'</td>' +
-      '<td></td>' +
-    '</tr>';
-
-    d.filas.forEach(f => {
-      const empCol = f.empresa==='RS'?'#4a9fd4':f.empresa==='SC'?'#3aaa2a':'#d4920a';
-      const rowBg  = isToday ? 'rgba(74,159,212,0.04)' : '';
-      if (f._auto) {
-        rows += '<tr style="background:'+rowBg+';opacity:0.85">' +
-          '<td style="padding:5px 12px 5px 28px;font-size:10px;color:var(--text3)">↳</td>' +
-          '<td><span style="font-size:9px;font-weight:700;color:'+empCol+';padding:1px 6px;border-radius:3px;background:'+empCol+'22">'+f.empresa+'</span></td>' +
-          '<td style="padding:5px 12px;font-size:11px;color:var(--text3);font-style:italic;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+f.concepto+'</td>' +
-          '<td style="padding:5px 8px"><span style="font-size:9px;color:var(--green);background:rgba(74,222,128,0.1);padding:1px 6px;border-radius:3px">AUTO</span></td>' +
-          '<td style="padding:5px 12px;font-family:var(--mono);font-size:11px;text-align:right;color:var(--green)">$ '+fmtARS(f.importe)+'</td>' +
-          '<td></td><td></td><td></td><td></td></tr>';
-      } else {
-        const idStr = String(f.id);
-        rows += '<tr style="background:'+rowBg+'">' +
-          '<td style="padding:4px 12px 4px 28px"><input type="date" value="'+f.fecha+'" onchange="cfEditFila('+idStr+',\'fecha\',this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;font-family:var(--mono);color:var(--text);outline:none;width:128px"></td>' +
-          '<td style="padding:4px 8px"><select onchange="cfEditFila('+idStr+',\'empresa\',this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;color:var(--text);outline:none">' +
-            '<option value="RS"'+(f.empresa==='RS'?' selected':'')+'>RS</option>' +
-            '<option value="SC"'+(f.empresa==='SC'?' selected':'')+'>SC</option>' +
-          '</select></td>' +
-          '<td style="padding:4px 8px"><input type="text" value="'+f.concepto.replace(/"/g,'&quot;')+'" placeholder="Concepto..." onchange="cfEditFila('+idStr+',\'concepto\',this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);outline:none;width:180px" data-cf-id="'+idStr+'" data-cf-field="concepto"></td>' +
-          '<td style="padding:4px 8px"><select onchange="cfEditFila('+idStr+',\'tipo\',this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;color:var(--text);outline:none">' +
-            '<option value="ingreso"'+(f.tipo==='ingreso'?' selected':'')+'>Ingreso</option>' +
-            '<option value="gasto"'+(f.tipo==='gasto'?' selected':'')+'>Egreso</option>' +
-          '</select></td>' +
-          '<td style="padding:4px 8px;text-align:right">'+(f.tipo==='ingreso'?'<input type="number" value="'+f.importe+'" onchange="cfEditFila('+idStr+',\'importe\',this.value)" style="background:var(--bg3);border:1px solid rgba(74,222,128,0.4);border-radius:6px;padding:4px 8px;font-size:12px;font-family:var(--mono);color:var(--green);outline:none;width:130px;text-align:right">':'<span style="color:var(--text3)">—</span>')+'</td>' +
-          '<td style="padding:4px 8px;text-align:right">'+(f.tipo==='gasto'?'<input type="number" value="'+f.importe+'" onchange="cfEditFila('+idStr+',\'importe\',this.value)" style="background:var(--bg3);border:1px solid rgba(248,113,113,0.4);border-radius:6px;padding:4px 8px;font-size:12px;font-family:var(--mono);color:var(--red);outline:none;width:130px;text-align:right">':'<span style="color:var(--text3)">—</span>')+'</td>' +
-          '<td></td><td></td>' +
-          '<td style="padding:4px 8px;text-align:center"><button onclick="cfEliminarFila('+idStr+')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 6px">x</button></td>' +
-        '</tr>';
+  // ── New Minuta Table ──────────────────────────────────────────────
+  const minutaCard = document.getElementById('cf-minuta-card');
+  if (minutaCard) {
+    if (!hasMD) {
+      minutaCard.style.display = 'block';
+      const mc = document.getElementById('cf-minuta-table');
+      if (mc) mc.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px;font-size:13px">📂 Importá la Minuta Diaria para ver el Cash Flow detallado por categoría.</div>';
+    } else {
+      minutaCard.style.display = 'block';
+      const emps = _cfEmp === 'grupo' ? ['RS','SC'] : [_cfEmp];
+      const tmplEmp = _cfEmp === 'SC' ? 'SC' : 'RS';
+      const template = _cfGetTemplate(tmplEmp);
+      if (template) {
+        const mdDates = Object.keys(appState.cfMinutaData).sort();
+        const futureDates = _cfMakeDateRange(
+          cfDesde || (mdDates[0] || new Date().toISOString().slice(0,10)),
+          cfHasta || (() => { const d = new Date(); d.setDate(d.getDate()+14); return d.toISOString().slice(0,10); })()
+        ).filter(d => !appState.cfMinutaData[d]);
+        const allDates = [...new Set([...mdDates, ...futureDates])].sort();
+        // Apply desde/hasta filter
+        const filteredDates = allDates.filter(d => (!cfDesde || d >= cfDesde) && (!cfHasta || d <= cfHasta));
+        _renderCFMinutaTable(filteredDates.length ? filteredDates : allDates, emps, template);
       }
-    });
-  });
-  tbody.innerHTML = rows;
+    }
+  }
 }
 
 function _renderCFChart(dates, byDate, saldoInicial) {
@@ -11371,6 +11706,73 @@ function _renderCFChart(dates, byDate, saldoInicial) {
       }
     });
   } catch(e) { console.warn('CF chart:', e); }
+}
+
+function _renderCFBarPieCharts(dates, byDate) {
+  try {
+    // Bar chart: ingresos vs egresos por día
+    const barCtx = document.getElementById('chart-cf-bar');
+    if (barCtx) {
+      if (window._chCFBar) window._chCFBar.destroy();
+      if (dates.length) {
+        const labels = dates.map(d => _cfFmtDate(d));
+        const ings = dates.map(d => byDate[d].ing);
+        const egrs = dates.map(d => byDate[d].egr);
+        window._chCFBar = new Chart(barCtx.getContext('2d'), {
+          type: 'bar',
+          data: { labels, datasets: [
+            { label: 'Ingresos', data: ings, backgroundColor: 'rgba(74,222,128,0.6)', borderColor: '#4ade80', borderWidth: 1 },
+            { label: 'Egresos',  data: egrs, backgroundColor: 'rgba(248,113,113,0.6)', borderColor: '#f87171', borderWidth: 1 },
+          ]},
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 10 }, boxWidth: 10 } }, tooltip: { callbacks: { label: c => ' $ ' + fmtARS(c.raw) } } },
+            scales: {
+              x: { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 9 }, maxRotation: 45 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+              y: { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 9 }, callback: v => '$' + fmtARS(v) }, grid: { color: 'rgba(255,255,255,0.06)' } }
+            }
+          }
+        });
+      }
+    }
+  } catch(e) { console.warn('CF bar chart:', e); }
+
+  try {
+    // Pie chart: composición ingresos (from cfMinutaData latest date)
+    const pieCtx = document.getElementById('chart-cf-pie');
+    if (pieCtx) {
+      if (window._chCFPie) window._chCFPie.destroy();
+      const hasMD = appState.cfMinutaData && Object.keys(appState.cfMinutaData).length > 0;
+      if (hasMD) {
+        const empKey = _cfEmp === 'SC' ? 'SC' : 'RS';
+        const tmpl = _cfGetTemplate(empKey);
+        const mdDates = Object.keys(appState.cfMinutaData).sort();
+        const latestMD = mdDates[mdDates.length - 1];
+        const dayData = appState.cfMinutaData[latestMD] && appState.cfMinutaData[latestMD][empKey];
+        if (tmpl && dayData) {
+          const egresosIdx = tmpl.findIndex(r => /^EGRESOS/.test(r.label));
+          const pieLabels = [], pieData = [], pieColors = [
+            '#4ade80','#4a9fd4','#f5c842','#a78bfa','#2dd4bf','#fb923c','#f26b6b','#34d399','#6c8fff','#f87171'
+          ];
+          dayData.forEach((r, ri) => {
+            if (!r.label || /TOTAL/i.test(r.label) || /^EGRESOS/.test(r.label) || r.label === '') return;
+            if (egresosIdx >= 0 && ri >= egresosIdx) return; // only ingresos
+            if (r.value && r.value > 0) { pieLabels.push(r.label.slice(0, 20)); pieData.push(r.value); }
+          });
+          if (pieData.length) {
+            window._chCFPie = new Chart(pieCtx.getContext('2d'), {
+              type: 'doughnut',
+              data: { labels: pieLabels, datasets: [{ data: pieData, backgroundColor: pieColors, borderWidth: 1, borderColor: 'rgba(0,0,0,0.3)' }] },
+              options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.label + ': $' + fmtARS(c.raw) } } }
+              }
+            });
+          }
+        }
+      }
+    }
+  } catch(e) { console.warn('CF pie chart:', e); }
 }
 
 function exportCashFlowExcel() {
@@ -13049,6 +13451,12 @@ async function cacheCargarTodo() {
             break;
           case 'lector_docs':
             if (Array.isArray(val)) _lectorDocs = val;
+            break;
+          case 'cf_minuta':
+            try {
+              if (val && val.data) appState.cfMinutaData = val.data;
+              if (val && val.overrides) appState.cfOverrides = val.overrides;
+            } catch(e) {}
             break;
         }
       } catch(e) { console.warn('cacheCargarTodo parse ['+row.clave+']:', e); }
