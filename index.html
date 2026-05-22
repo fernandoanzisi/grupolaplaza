@@ -1837,44 +1837,53 @@ let _supaUser=null,_supaRol=null;
   <!-- MAPA -->
   <div class="card mb" style="border:1px solid rgba(74,159,212,0.2);padding:14px">
     <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📍 Efectivo por estación — Alto Valle RN</div>
-    <div style="background:linear-gradient(180deg,#1a2535 0%,#1a2535 65%,#1e3a5f 65%,#2a5080 100%);border-radius:10px;padding:14px 10px 8px;position:relative;height:130px;overflow:hidden">
-      <div style="position:absolute;top:66%;left:0;right:0;height:2px;background:rgba(255,255,255,0.12)"></div>
+    <div style="background:linear-gradient(180deg,#1a2535 0%,#1a2535 60%,#1e3a5f 60%,#2a5080 100%);border-radius:10px;padding:14px 10px 8px;position:relative;height:220px;overflow:visible">
+      <div style="position:absolute;top:61%;left:0;right:0;height:2px;background:rgba(255,255,255,0.12)"></div>
       <div style="position:absolute;bottom:7px;left:0;right:0;text-align:center;font-size:9px;color:rgba(100,160,220,0.5);letter-spacing:2px;font-style:italic">Río Negro</div>
-      <div style="position:absolute;left:6%;top:52%">
+      <!-- Chichinales: label arriba -->
+      <div style="position:absolute;left:5%;top:55%" title="Chichinales">
         <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;border:1.5px solid rgba(255,255,255,0.4)"></div>
-        <div style="position:absolute;bottom:13px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Chichinales<br><span id="ef-map-chichinales" style="color:#4ade80">—</span></div>
+        <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Chichinales<br><span id="ef-map-chichinales" style="color:#4ade80">—</span></div>
       </div>
-      <div style="position:absolute;left:14%;top:30%">
+      <!-- Agro Pal: label abajo -->
+      <div style="position:absolute;left:13%;top:28%" title="Agro Pal 50309">
         <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 6px rgba(251,191,36,0.5)"></div>
-        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;border:1px solid rgba(251,191,36,0.4);text-align:center">Agro Pal 50309<br><span id="ef-map-agrochoele">—</span></div>
+        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;border:1px solid rgba(251,191,36,0.4);text-align:center">Agro Pal<br><span id="ef-map-agrochoele">—</span></div>
       </div>
-      <div style="position:absolute;left:25%;top:48%">
+      <!-- Regina Centro: label arriba -->
+      <div style="position:absolute;left:22%;top:52%" title="RS Regina Centro 15814">
         <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;border:1.5px solid rgba(255,255,255,0.4)"></div>
-        <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">RS Regina Centro 15814<br><span id="ef-map-vregina" style="color:#4ade80">—</span></div>
+        <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Regina Centro<br><span id="ef-map-vregina" style="color:#4ade80">—</span></div>
       </div>
-      <div style="position:absolute;left:33%;top:58%">
+      <!-- Regina Ruta: label abajo -->
+      <div style="position:absolute;left:36%;top:64%" title="RS Regina Ruta 2016">
         <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;border:1.5px solid rgba(255,255,255,0.4)"></div>
-        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">RS Regina Ruta 2016<br><span id="ef-map-vregina2016" style="color:#4ade80">—</span></div>
+        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Regina Ruta<br><span id="ef-map-vregina2016" style="color:#4ade80">—</span></div>
       </div>
-      <div style="position:absolute;left:46%;top:36%">
+      <!-- Roca: label arriba, punto grande -->
+      <div style="position:absolute;left:47%;top:36%" title="RS Roca 11902">
         <div style="width:13px;height:13px;border-radius:50%;background:#4ade80;box-shadow:0 0 12px #4ade80;border:2px solid rgba(255,255,255,0.6)"></div>
-        <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(74,222,128,0.15);color:#4ade80;font-size:7px;font-weight:700;padding:3px 7px;border-radius:3px;white-space:nowrap;border:1px solid #4ade80;text-align:center">Roca 11902 ⭐<br><span id="ef-map-roca">—</span></div>
+        <div style="position:absolute;bottom:17px;left:50%;transform:translateX(-50%);background:rgba(74,222,128,0.15);color:#4ade80;font-size:7px;font-weight:700;padding:3px 7px;border-radius:3px;white-space:nowrap;border:1px solid #4ade80;text-align:center">Roca ⭐<br><span id="ef-map-roca">—</span></div>
       </div>
-      <div style="position:absolute;left:53%;top:56%">
+      <!-- Agro Roca: label abajo -->
+      <div style="position:absolute;left:55%;top:58%" title="Agro Roca">
         <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 6px rgba(251,191,36,0.5)"></div>
         <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;border:1px solid rgba(251,191,36,0.4);text-align:center">Agro Roca<br><span id="ef-map-agroroca">—</span></div>
       </div>
-      <div style="position:absolute;left:65%;top:36%">
+      <!-- Esmeralda: label arriba -->
+      <div style="position:absolute;left:65%;top:34%" title="SC Esmeralda 15431">
         <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;box-shadow:0 0 8px #4a9fd4;border:1.5px solid rgba(255,255,255,0.4)"></div>
-        <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Esmeralda 15431<br><span id="ef-map-cip15431" style="color:#4a9fd4">—</span></div>
+        <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Esmeralda<br><span id="ef-map-cip15431" style="color:#4a9fd4">—</span></div>
       </div>
-      <div style="position:absolute;left:73%;top:52%">
+      <!-- Pacheco: label abajo -->
+      <div style="position:absolute;left:75%;top:52%" title="SC Pacheco 1539">
         <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;box-shadow:0 0 8px #4a9fd4;border:1.5px solid rgba(255,255,255,0.4)"></div>
-        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Pacheco 1539<br><span id="ef-map-cip1539" style="color:#4a9fd4">—</span></div>
+        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">Pacheco<br><span id="ef-map-cip1539" style="color:#4a9fd4">—</span></div>
       </div>
-      <div style="position:absolute;left:86%;top:30%">
+      <!-- C.Saltos: label arriba -->
+      <div style="position:absolute;left:87%;top:30%" title="SC C.Saltos 1535">
         <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;box-shadow:0 0 8px #4a9fd4;border:1.5px solid rgba(255,255,255,0.4)"></div>
-        <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">SC C.Saltos 1535<br><span id="ef-map-csaltos" style="color:#4a9fd4">—</span></div>
+        <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);font-size:7px;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap;text-align:center;color:white">C.Saltos<br><span id="ef-map-csaltos" style="color:#4a9fd4">—</span></div>
       </div>
     </div>
     <div style="display:flex;gap:14px;margin-top:7px;font-size:10px;color:var(--text3)">
@@ -4021,82 +4030,81 @@ function renderDashboard() {
   </div>
 
   <!-- MAPA + TIMELINE -->
-  <div id="dash-mapa-timeline-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+  <div id="dash-mapa-timeline-grid" style="display:flex;flex-direction:column;gap:14px;margin-top:14px">
 
-    <!-- MAPA ESTACIONES -->
+    <!-- MAPA ESTACIONES — ancho completo -->
     <div class="card" style="padding:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase">📍 Estaciones/Agro — Alto Valle RN</div>
         <button onclick="navGo('guardia',null)" style="font-size:10px;font-weight:700;color:var(--accent);background:var(--accent)15;border:1px solid var(--accent)44;border-radius:99px;padding:3px 10px;cursor:pointer;font-family:var(--font)">📺 Panel guardia</button>
       </div>
-      <div style="background:#0d1117;border-radius:8px;position:relative;height:130px;overflow:hidden">
-        <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 300 130" preserveAspectRatio="none">
-          <rect width="300" height="130" fill="#0d1117"/>
-          <polygon points="0,55 40,28 80,42 120,22 160,36 200,18 240,30 280,22 300,32 300,130 0,130" fill="#1a2535"/>
-          <path d="M0,92 Q50,86 100,94 Q150,102 200,96 Q250,90 300,94" stroke="#3b82f6" stroke-width="3" fill="none" opacity="0.5"/>
-          <text x="150" y="120" fill="#3b82f6" font-size="8" opacity="0.4" text-anchor="middle">Río Negro</text>
-          <path d="M0,75 Q75,70 150,73 Q225,76 300,72" stroke="#fbbf24" stroke-width="1" fill="none" opacity="0.25" stroke-dasharray="5,4"/>
+      <div style="background:#0d1117;border-radius:8px;position:relative;height:210px;overflow:visible">
+        <svg style="position:absolute;inset:0;width:100%;height:100%;border-radius:8px" viewBox="0 0 300 210" preserveAspectRatio="none">
+          <rect width="300" height="210" fill="#0d1117" rx="8"/>
+          <polygon points="0,80 40,45 80,62 120,38 160,55 200,30 240,48 280,36 300,52 300,210 0,210" fill="#1a2535"/>
+          <path d="M0,150 Q50,142 100,152 Q150,162 200,154 Q250,146 300,152" stroke="#3b82f6" stroke-width="3" fill="none" opacity="0.5"/>
+          <text x="150" y="198" fill="#3b82f6" font-size="8" opacity="0.4" text-anchor="middle">Río Negro</text>
+          <path d="M0,118 Q75,112 150,116 Q225,120 300,114" stroke="#fbbf24" stroke-width="1" fill="none" opacity="0.2" stroke-dasharray="5,4"/>
         </svg>
-        <!-- Estaciones — etiquetas alternadas arriba/abajo para evitar superposición -->
-        <!-- Chichinales 1526 — ARRIBA -->
-        <div style="position:absolute;left:6%;top:46%;cursor:pointer" title="Chichinales 1526">
+        <!-- Chichinales 1526 — label ARRIBA -->
+        <div style="position:absolute;left:5%;top:52%;cursor:pointer" title="Chichinales 1526">
           <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4ade80"></div>
-          <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Chichinales 1526</div>
+          <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:white;font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap">Chichinales 1526</div>
         </div>
-        <!-- Agro Pal Choele — ABAJO -->
-        <div style="position:absolute;left:10%;top:30%;cursor:pointer" title="Agro Pal Choele 50309 — Choele Choel">
+        <!-- Agro Pal Choele — label ABAJO -->
+        <div style="position:absolute;left:12%;top:28%;cursor:pointer" title="Agro Pal Choele 50309">
           <div style="width:11px;height:11px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.5)"></div>
-          <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.6);font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Agro Base Roca 50282</div>
+          <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.6);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap">Agro Pal 50309</div>
         </div>
-        <!-- V.Regina 15814 — ARRIBA -->
-        <div style="position:absolute;left:21%;top:42%;cursor:pointer" title="V.Regina 15814">
+        <!-- V.Regina 15814 — label ARRIBA -->
+        <div style="position:absolute;left:22%;top:46%;cursor:pointer" title="V.Regina 15814">
           <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4ade80"></div>
-          <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">V.Regina 15814</div>
+          <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:white;font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap">Regina Centro 15814</div>
         </div>
-        <!-- RS Regina Ruta 2016 — ABAJO -->
-        <div style="position:absolute;left:29%;top:52%;cursor:pointer" title="RS Regina Ruta 2016">
+        <!-- RS Regina Ruta 2016 — label ABAJO -->
+        <div style="position:absolute;left:31%;top:58%;cursor:pointer" title="RS Regina Ruta 2016">
           <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4ade80"></div>
-          <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">RS Regina Ruta 2016</div>
+          <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:white;font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap">Regina Ruta 2016</div>
         </div>
-        <!-- Roca 11902 — ARRIBA (destacado) -->
-        <div style="position:absolute;left:45%;top:36%;cursor:pointer" title="Gral.Roca 11902">
-          <div style="width:12px;height:12px;border-radius:50%;background:#4ade80;border:2px solid rgba(255,255,255,0.6);box-shadow:0 0 12px #4ade80"></div>
-          <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:rgba(74,222,128,0.2);color:#4ade80;border:1px solid #4ade80;font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;white-space:nowrap">Roca 11902 ⭐</div>
+        <!-- Roca 11902 — label ARRIBA (destacado) -->
+        <div style="position:absolute;left:42%;top:38%;cursor:pointer" title="Gral.Roca 11902">
+          <div style="width:13px;height:13px;border-radius:50%;background:#4ade80;border:2px solid rgba(255,255,255,0.7);box-shadow:0 0 14px #4ade80"></div>
+          <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(74,222,128,0.2);color:#4ade80;border:1px solid #4ade80;font-size:7px;font-weight:700;padding:2px 6px;border-radius:3px;white-space:nowrap">Roca 11902 ⭐</div>
         </div>
-        <!-- Agro Base Roca — ABAJO -->
-        <div style="position:absolute;left:46%;top:52%;cursor:pointer" title="Agro Base Roca 50282 — General Roca">
+        <!-- Agro Base Roca — label ABAJO -->
+        <div style="position:absolute;left:51%;top:54%;cursor:pointer" title="Agro Base Roca 50282">
           <div style="width:11px;height:11px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.5)"></div>
-          <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.6);font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Agro Base Roca</div>
+          <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.6);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap">Agro Base Roca</div>
         </div>
-        <!-- Rotonda Ruta22/6 — ARRIBA -->
-        <div style="position:absolute;left:52%;top:38%;cursor:pointer" title="Rotonda Ruta 22 y Ruta 6 — General Roca">
+        <!-- Rotonda Ruta22/6 — label ARRIBA -->
+        <div style="position:absolute;left:59%;top:40%;cursor:pointer" title="Rotonda Ruta 22 y Ruta 6">
           <div style="width:11px;height:11px;border-radius:50%;background:#4ade80;border:2px solid #fbbf24;box-shadow:0 0 8px rgba(251,191,36,0.5)"></div>
-          <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.6);font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Rotonda Ruta22/6</div>
+          <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.6);font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap">Rotonda R22/R6</div>
         </div>
-        <!-- Cip 15431 — ARRIBA -->
-        <div style="position:absolute;left:63%;top:34%;cursor:pointer" title="Cipolletti 15431">
+        <!-- Cip 15431 — label ARRIBA -->
+        <div style="position:absolute;left:68%;top:33%;cursor:pointer" title="Cipolletti 15431">
           <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4a9fd4"></div>
-          <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Cip 15431</div>
+          <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#4a9fd4;font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap">Esmeralda 15431</div>
         </div>
-        <!-- Cip 1539 — ABAJO -->
-        <div style="position:absolute;left:71%;top:44%;cursor:pointer" title="Cipolletti 1539">
+        <!-- Cip 1539 — label ABAJO -->
+        <div style="position:absolute;left:77%;top:46%;cursor:pointer" title="Cipolletti 1539">
           <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4a9fd4"></div>
-          <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">Cip 1539</div>
+          <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#4a9fd4;font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap">Pacheco 1539</div>
         </div>
-        <!-- SC C.Saltos 1535 — ARRIBA -->
-        <div style="position:absolute;left:84%;top:28%;cursor:pointer" title="SC C.Saltos 1535">
+        <!-- SC C.Saltos 1535 — label ARRIBA -->
+        <div style="position:absolute;left:87%;top:28%;cursor:pointer" title="SC C.Saltos 1535">
           <div style="width:10px;height:10px;border-radius:50%;background:#4a9fd4;border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px #4a9fd4"></div>
-          <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap">SC C.Saltos 1535</div>
+          <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#4a9fd4;font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap">C.Saltos 1535</div>
         </div>
       </div>
-      <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
-        <div style="font-size:9px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;box-shadow:0 0 4px #4ade80"></span>Rio Salado</div>
-        <div style="font-size:9px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;background:#4a9fd4;display:inline-block;box-shadow:0 0 4px #4a9fd4"></span>Serv. Cipolletti</div>
-        <div style="font-size:9px;color:#fbbf24;display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;background:#4ade80;border:1.5px solid #fbbf24;display:inline-block"></span>Agro ✨</div>
+      <div style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap">
+        <div style="font-size:9px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;box-shadow:0 0 4px #4ade80"></span>Rio Salado</div>
+        <div style="font-size:9px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:7px;height:7px;border-radius:50%;background:#4a9fd4;display:inline-block;box-shadow:0 0 4px #4a9fd4"></span>Serv. Cipolletti</div>
+        <div style="font-size:9px;color:#fbbf24;display:flex;align-items:center;gap:4px"><span style="width:7px;height:7px;border-radius:50%;background:#4ade80;border:1.5px solid #fbbf24;display:inline-block"></span>Agro ✨</div>
       </div>
     </div>
 
-    <!-- TIMELINE VENCIMIENTOS -->
+    <!-- TIMELINE VENCIMIENTOS — debajo del mapa, ancho completo -->
     <div class="card" style="padding:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase">📅 Próximos vencimientos</div>
