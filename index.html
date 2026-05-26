@@ -19467,16 +19467,18 @@ async function rechGenerarInformeApies(apies) {
     a: apies, f: new Date().toISOString().slice(0,10),
     q: cheques.map(r => ({ n:r.nro, c:r.cliente||r.librador, i:r.importe, d:r.dias, fr:r.fRech, m:r.motivo, b:r.banco }))
   };
-  // Generar token corto de 8 chars
-  const token = Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,8).toUpperCase();
+  // Intentar token corto; si falla, usar base64 como respaldo
+  let url;
   try {
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,8).toUpperCase();
     const { error } = await supa.from('seguimiento_tokens').insert({ token, payload });
     if (error) throw error;
+    url = location.origin + location.pathname + '?t=' + token;
   } catch(e) {
-    console.error('token insert:', e);
-    showToast('❌ Error al generar link'); return;
+    console.warn('token fallback a base64:', e);
+    const enc = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+    url = location.origin + location.pathname + '?s=' + enc;
   }
-  const url = location.origin + location.pathname + '?t=' + token;
   const total = cheques.reduce((s,c)=>s+c.importe,0);
   const fechaHoy = new Date().toLocaleDateString('es-AR');
   const asunto = 'APIES '+apies+' — Seguimiento Cheques Rechazados '+fechaHoy;
