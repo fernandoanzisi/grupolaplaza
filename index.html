@@ -19457,28 +19457,17 @@ function rechRenderPorApies(filtered) {
     }).join('') + '</div></div>';
 }
 
-async function rechGenerarInformeApies(apies) {
+function rechGenerarInformeApies(apies) {
   const cheques = (appState.rechazadosData||[])
     .filter(r => r.apies===apies && (r.estado||'').toUpperCase()!=='COBRADO')
     .sort((a,b) => (b.dias||0)-(a.dias||0));
   if (!cheques.length) { showToast('Sin cheques pendientes para APIES '+apies); return; }
-  showToast('⏳ Generando link...');
   const payload = {
     a: apies, f: new Date().toISOString().slice(0,10),
     q: cheques.map(r => ({ n:r.nro, c:r.cliente||r.librador, i:r.importe, d:r.dias, fr:r.fRech, m:r.motivo, b:r.banco }))
   };
-  // Intentar token corto; si falla, usar base64 como respaldo
-  let url;
-  try {
-    const token = Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,8).toUpperCase();
-    const { error } = await supa.from('seguimiento_tokens').insert({ token, payload });
-    if (error) throw error;
-    url = location.origin + '/t/' + token;
-  } catch(e) {
-    console.warn('token fallback a base64:', e);
-    const enc = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-    url = location.origin + location.pathname + '?s=' + enc;
-  }
+  const enc = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  const url = location.origin + '/t/' + enc;
   const total = cheques.reduce((s,c)=>s+c.importe,0);
   const fechaHoy = new Date().toLocaleDateString('es-AR');
   const asunto = 'Seguimiento cheques rechazados APIES '+apies+' - '+fechaHoy;
@@ -19578,40 +19567,21 @@ async function rechVerRespuestasApies(apies) {
   modal.onclick = e => { if(e.target===modal) modal.remove(); };
 }
 
-async function rechIniciarSeguimiento(tokenOrEncoded) {
+function rechIniciarSeguimiento(encoded) {
   const overlay = document.getElementById('seguimiento-overlay');
   const segContent = document.getElementById('seg-content');
   if (overlay) { overlay.style.display='block'; document.body.style.overflow='hidden'; }
-  if (segContent) segContent.innerHTML = '<div style="text-align:center;color:#7a8399;padding:60px;font-size:13px">⏳ Cargando...</div>';
-  let data, encoded = tokenOrEncoded;
+  let data;
   try {
-    // Token corto (8 chars alfanumérico): buscar en Supabase
-    if (/^[A-Z0-9]{6,12}$/.test(tokenOrEncoded)) {
-      const supaAnon = supabase.createClient(SUPA_URL, SUPA_KEY);
-      const { data: rows, error } = await supaAnon.from('seguimiento_tokens').select('payload').eq('token', tokenOrEncoded).single();
-      if (error || !rows) throw new Error('token no encontrado');
-      const raw = rows.payload;
-      data = {
-        apies: raw.a || raw.apies,
-        fecha: raw.f || raw.fecha,
-        cheques: (raw.q || raw.cheques || []).map(x => ({
-          nro: x.n || x.nro, cliente: x.c || x.cliente, importe: x.i ?? x.importe,
-          dias: x.d ?? x.dias, fRech: x.fr || x.fRech, motivo: x.m || x.motivo, banco: x.b || x.banco
-        }))
-      };
-      encoded = tokenOrEncoded; // usamos el token como identificador en el submit
-    } else {
-      // Fallback: payload base64 en URL (links viejos)
-      const raw = JSON.parse(decodeURIComponent(escape(atob(tokenOrEncoded.replace(/-/g,'+').replace(/_/g,'/')))));
-      data = {
-        apies: raw.a || raw.apies,
-        fecha: raw.f || raw.fecha,
-        cheques: (raw.q || raw.cheques || []).map(x => ({
-          nro: x.n || x.nro, cliente: x.c || x.cliente, importe: x.i ?? x.importe,
-          dias: x.d ?? x.dias, fRech: x.fr || x.fRech, motivo: x.m || x.motivo, banco: x.b || x.banco
-        }))
-      };
-    }
+    const raw = JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')))));
+    data = {
+      apies: raw.a || raw.apies,
+      fecha: raw.f || raw.fecha,
+      cheques: (raw.q || raw.cheques || []).map(x => ({
+        nro: x.n || x.nro, cliente: x.c || x.cliente, importe: x.i ?? x.importe,
+        dias: x.d ?? x.dias, fRech: x.fr || x.fRech, motivo: x.m || x.motivo, banco: x.b || x.banco
+      }))
+    };
     const overlay = document.getElementById('seguimiento-overlay');
     if (!overlay) return;
     overlay.style.display = 'block';
@@ -19659,16 +19629,8 @@ async function rechSubmitSeguimiento(encoded) {
   if (!nombre) { if(resEl) resEl.innerHTML='<div style="color:#f87171;font-size:12px;text-align:center;padding:8px">⚠️ Por favor ingresá tu nombre</div>'; return; }
   let data;
   try {
-    if (/^[A-Z0-9]{6,12}$/.test(encoded)) {
-      const supaAnon = supabase.createClient(SUPA_URL, SUPA_KEY);
-      const { data: rows, error } = await supaAnon.from('seguimiento_tokens').select('payload').eq('token', encoded).single();
-      if (error || !rows) throw new Error('token no encontrado');
-      const raw = rows.payload;
-      data = { apies: raw.a||raw.apies, cheques: (raw.q||raw.cheques||[]).map(x=>({ nro:x.n||x.nro, cliente:x.c||x.cliente, importe:x.i??x.importe })) };
-    } else {
-      const raw = JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')))));
-      data = { apies: raw.a||raw.apies, cheques: (raw.q||raw.cheques||[]).map(x=>({ nro:x.n||x.nro, cliente:x.c||x.cliente, importe:x.i??x.importe })) };
-    }
+    const raw = JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')))));
+    data = { apies: raw.a||raw.apies, cheques: (raw.q||raw.cheques||[]).map(x=>({ nro:x.n||x.nro, cliente:x.c||x.cliente, importe:x.i??x.importe })) };
   } catch(e) { return; }
   const rows = [];
   data.cheques.forEach((c,i) => {
@@ -19699,13 +19661,15 @@ async function rechSubmitSeguimiento(encoded) {
   }
 }
 
-// Verificar si hay token de seguimiento al cargar la página
+// Detectar link de seguimiento: /t/PAYLOAD o ?s=PAYLOAD (legado)
 (function() {
   const sp = new URLSearchParams(location.search);
-  const _segParam = sp.get('t') || sp.get('s');
-  if (_segParam) {
-    window.addEventListener('DOMContentLoaded', () => rechIniciarSeguimiento(_segParam));
+  let _seg = sp.get('s');
+  if (!_seg) {
+    const m = location.pathname.match(/\/t\/([A-Za-z0-9_-]+)$/);
+    if (m) _seg = m[1];
   }
+  if (_seg) window.addEventListener('DOMContentLoaded', () => rechIniciarSeguimiento(_seg));
 })();
 
 </script>
