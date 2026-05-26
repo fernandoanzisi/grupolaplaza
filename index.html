@@ -19482,9 +19482,9 @@ async function rechGenerarInformeApies(apies) {
   const total = cheques.reduce((s,c)=>s+c.importe,0);
   const fechaHoy = new Date().toLocaleDateString('es-AR');
   const asunto = 'Seguimiento cheques rechazados APIES '+apies+' - '+fechaHoy;
-  let cuerpo = 'Estimados,\n\nLes solicitamos informar la situacion actual de los cheques rechazados pendientes de cobro en APIES '+apies+'.\n\n';
+  let cuerpo = 'Estimados,\n\nLes solicitamos informar la situacion actual de los cheques rechazados pendientes de cobro en APIES '+apies+'.\n';
+  cuerpo += 'El enlace para completar el formulario fue enviado por WhatsApp.\n\n';
   cuerpo += 'Total pendiente: $'+total.toLocaleString('es-AR',{minimumFractionDigits:2})+' ('+cheques.length+' cheque'+(cheques.length>1?'s':'')+')\n\n';
-  cuerpo += 'Para completar el formulario ingresen aqui:\n'+url+'\n\n';
   cuerpo += 'Detalle:\n';
   cheques.forEach((c,i) => {
     cuerpo += '\n'+(i+1)+'. Cheque Nro '+c.nro+' - '+(c.cliente||'—')+' - $'+(c.importe||0).toLocaleString('es-AR',{minimumFractionDigits:2})+' - '+(c.dias||0)+' dias de atraso\n';
