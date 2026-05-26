@@ -19470,16 +19470,14 @@ function rechGenerarInformeApies(apies) {
   const url = location.origin + location.pathname + '?s=' + enc;
   const total = cheques.reduce((s,c)=>s+c.importe,0);
   const fechaHoy = new Date().toLocaleDateString('es-AR');
-  const asunto = 'Seguimiento cheques rechazados APIES '+apies+' - '+fechaHoy;
-  let cuerpo = 'Estimados,\n\nLes solicitamos informar la situacion actual de los cheques rechazados pendientes de cobro en APIES '+apies+'.\n\n';
-  cuerpo += 'Total pendiente: $'+total.toLocaleString('es-AR',{minimumFractionDigits:2})+' ('+cheques.length+' cheque'+(cheques.length>1?'s':'')+')\n\n';
-  cuerpo += 'Formulario de seguimiento:\n'+url+'\n\n';
-  cuerpo += 'Detalle:\n';
-  cheques.forEach((c,i) => {
-    cuerpo += '\n'+(i+1)+'. Cheque Nro '+c.nro+' - '+(c.cliente||'—')+' - $'+(c.importe||0).toLocaleString('es-AR',{minimumFractionDigits:2})+' - '+(c.dias||0)+' dias de atraso\n';
-    cuerpo += '   Rechazo: '+_segFecha(c.fRech)+' - Banco: '+(c.banco||'—')+' - Motivo: '+(c.motivo||'—')+'\n';
-  });
-  cuerpo += '\nGracias,\nTesoreria - Grupo La Plaza';
+  const maxDias = cheques.reduce((m,c)=>Math.max(m,c.dias||0),0);
+  const asunto = 'Seguimiento APIES '+apies+' - '+cheques.length+' ch - $'+total.toLocaleString('es-AR',{minimumFractionDigits:2})+' - '+fechaHoy+' - '+url;
+  let cuerpo = 'Estimados,\n\nSe solicita informar la situacion actual de los cheques rechazados pendientes de cobro en APIES '+apies+'.\n\n';
+  cuerpo += 'Cheques pendientes: '+cheques.length+'\n';
+  cuerpo += 'Total: $'+total.toLocaleString('es-AR',{minimumFractionDigits:2})+'\n';
+  cuerpo += 'Mayor atraso: '+maxDias+' dias\n\n';
+  cuerpo += 'El formulario fue enviado por WhatsApp al responsable de la estacion.\n\n';
+  cuerpo += 'Gracias,\nFinanzas - Grupo La Plaza';
   rechMostrarModalInforme(apies, url, asunto, cuerpo);
 }
 
