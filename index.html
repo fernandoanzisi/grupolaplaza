@@ -19469,14 +19469,15 @@ function rechGenerarInformeApies(apies) {
   const enc = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
   const url = location.origin + location.pathname + '?s=' + enc;
   const total = cheques.reduce((s,c)=>s+c.importe,0);
-  const fechaHoy = new Date().toLocaleDateString('es-AR');
+  const hoy = new Date();
+  const fechaAsunto = ('0'+hoy.getDate()).slice(-2)+'-'+('0'+(hoy.getMonth()+1)).slice(-2)+'-'+hoy.getFullYear();
   const maxDias = cheques.reduce((m,c)=>Math.max(m,c.dias||0),0);
-  const asunto = 'Seguimiento APIES '+apies+' - '+cheques.length+' ch - $'+total.toLocaleString('es-AR',{minimumFractionDigits:2})+' - '+fechaHoy+' - '+url;
-  let cuerpo = 'Estimados,\n\nSe solicita informar la situacion actual de los cheques rechazados pendientes de cobro en APIES '+apies+'.\n\n';
+  const asunto = 'Cheques Rechazados APIES '+apies+' - '+cheques.length+'ch - $'+total.toLocaleString('es-AR',{minimumFractionDigits:2})+' - '+fechaAsunto;
+  let cuerpo = 'Estimados,\n\nSe solicita informar situacion actual de los cheques rechazados pendientes de cobro (APIES '+apies+').\n\n';
   cuerpo += 'Cheques pendientes: '+cheques.length+'\n';
   cuerpo += 'Total: $'+total.toLocaleString('es-AR',{minimumFractionDigits:2})+'\n';
   cuerpo += 'Mayor atraso: '+maxDias+' dias\n\n';
-  cuerpo += 'El formulario fue enviado por WhatsApp al responsable de la estacion.\n\n';
+  cuerpo += 'El formulario sera enviado por WhatsApp al lider de estacion.\n\n';
   cuerpo += 'Gracias,\nFinanzas - Grupo La Plaza';
   rechMostrarModalInforme(apies, url, asunto, cuerpo);
 }
