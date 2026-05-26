@@ -19626,6 +19626,7 @@ async function rechCargarTokenYIniciar(token) {
 }
 
 function rechIniciarSeguimiento(encoded) {
+  window._segEncoded = encoded;
   const overlay = document.getElementById('seguimiento-overlay');
   const content = document.getElementById('seg-content');
   if (overlay) { overlay.style.display='block'; document.body.style.overflow='hidden'; }
@@ -19643,7 +19644,7 @@ function rechIniciarSeguimiento(encoded) {
       '<div id="seg-cheques" style="display:flex;flex-direction:column;gap:12px"></div>' +
       '<div style="margin-top:16px"><label style="font-size:11px;color:#7a8399;display:block;margin-bottom:4px">Tu nombre *</label>' +
       '<input id="seg-nombre" type="text" placeholder="Nombre de quien informa" style="width:100%;background:#1a2535;border:1px solid #2a3a4a;border-radius:8px;padding:10px 12px;font-size:13px;color:white;outline:none;box-sizing:border-box"></div>' +
-      '<button id="seg-submit-btn" onclick="rechSubmitSeguimiento(\''+encoded+'\')" style="width:100%;margin-top:16px;padding:14px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;background:#4a9fd4;color:white;font-family:inherit">✅ Enviar informe</button>' +
+      '<button id="seg-submit-btn" onclick="rechSubmitSeguimiento()" style="width:100%;margin-top:16px;padding:14px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;background:#4a9fd4;color:white;font-family:inherit">✅ Enviar informe</button>' +
       '<div id="seg-result" style="margin-top:12px"></div>';
     const chequesDiv = document.getElementById('seg-cheques');
     chequesDiv.innerHTML = data.cheques.map((c,i) =>
@@ -19671,7 +19672,8 @@ function rechIniciarSeguimiento(encoded) {
   }
 }
 
-async function rechSubmitSeguimiento(encoded) {
+async function rechSubmitSeguimiento() {
+  const encoded = window._segEncoded;
   const nombre = (document.getElementById('seg-nombre')?.value||'').trim();
   if (!nombre) { showToast('⚠️ Ingresá tu nombre antes de enviar'); return; }
   let data;
