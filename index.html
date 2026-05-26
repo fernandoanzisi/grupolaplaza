@@ -19678,7 +19678,7 @@ async function rechSubmitSeguimiento(encoded) {
   try {
     const raw = JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')))));
     data = { apies: raw.a||raw.apies, cheques: (raw.q||raw.cheques||[]).map(x=>({ nro:x.n||x.nro, cliente:x.c||x.cliente, importe:x.i??x.importe })) };
-  } catch(e) { showToast('❌ Error al leer el formulario. Abrí el link de nuevo.'); return; }
+  } catch(e) { showToast('❌ Error A: ' + (e.message||String(e))); return; }
   const rows = [];
   data.cheques.forEach((c,i) => {
     const sit = (document.getElementById('seg-sit-'+i)?.value||'').trim();
@@ -19693,7 +19693,7 @@ async function rechSubmitSeguimiento(encoded) {
     const { error } = await supaAnon.from('seguimiento_rechazados').insert(rows);
     if (error) {
       console.error('submit error:', error);
-      showToast('❌ Error al enviar. Intentá de nuevo.');
+      showToast('❌ Error B: ' + (error.code||error.message||JSON.stringify(error)).slice(0,60));
       if(btn) { btn.disabled=false; btn.textContent='✅ Enviar informe'; }
     } else {
       const content = document.getElementById('seg-content');
@@ -19703,7 +19703,7 @@ async function rechSubmitSeguimiento(encoded) {
         '<div style="font-size:13px;color:#9aa3b2">Gracias '+nombre+'. Se registraron '+rows.length+' respuesta'+(rows.length>1?'s':'')+' para APIES '+data.apies+'.</div></div>';
     }
   } catch(e) {
-    showToast('❌ Error de conexión. Intentá de nuevo.');
+    showToast('❌ Error C: ' + (e.message||String(e)).slice(0,60));
     if(btn) { btn.disabled=false; btn.textContent='✅ Enviar informe'; }
   }
 }
