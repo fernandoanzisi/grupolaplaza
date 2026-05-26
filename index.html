@@ -19643,7 +19643,7 @@ function rechIniciarSeguimiento(encoded) {
       '<div id="seg-cheques" style="display:flex;flex-direction:column;gap:12px"></div>' +
       '<div style="margin-top:16px"><label style="font-size:11px;color:#7a8399;display:block;margin-bottom:4px">Tu nombre *</label>' +
       '<input id="seg-nombre" type="text" placeholder="Nombre de quien informa" style="width:100%;background:#1a2535;border:1px solid #2a3a4a;border-radius:8px;padding:10px 12px;font-size:13px;color:white;outline:none;box-sizing:border-box"></div>' +
-      '<button onclick="rechSubmitSeguimiento(\''+encoded+'\')" style="width:100%;margin-top:16px;padding:14px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;background:#4a9fd4;color:white;font-family:inherit">✅ Enviar informe</button>' +
+      '<button id="seg-submit-btn" onclick="rechSubmitSeguimiento(\''+encoded+'\')" style="width:100%;margin-top:16px;padding:14px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;background:#4a9fd4;color:white;font-family:inherit">✅ Enviar informe</button>' +
       '<div id="seg-result" style="margin-top:12px"></div>';
     const chequesDiv = document.getElementById('seg-cheques');
     chequesDiv.innerHTML = data.cheques.map((c,i) =>
@@ -19673,28 +19673,27 @@ function rechIniciarSeguimiento(encoded) {
 
 async function rechSubmitSeguimiento(encoded) {
   const nombre = (document.getElementById('seg-nombre')?.value||'').trim();
-  const resEl = document.getElementById('seg-result');
-  if (!nombre) { if(resEl) resEl.innerHTML='<div style="color:#f87171;font-size:12px;text-align:center;padding:8px">⚠️ Por favor ingresá tu nombre</div>'; return; }
+  if (!nombre) { showToast('⚠️ Ingresá tu nombre antes de enviar'); return; }
   let data;
   try {
     const raw = JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')))));
     data = { apies: raw.a||raw.apies, cheques: (raw.q||raw.cheques||[]).map(x=>({ nro:x.n||x.nro, cliente:x.c||x.cliente, importe:x.i??x.importe })) };
-  } catch(e) { return; }
+  } catch(e) { showToast('❌ Error al leer el formulario. Abrí el link de nuevo.'); return; }
   const rows = [];
   data.cheques.forEach((c,i) => {
     const sit = (document.getElementById('seg-sit-'+i)?.value||'').trim();
     if (!sit) return;
     rows.push({ apies:data.apies, nro_cheque:String(c.nro), importe:c.importe||0, cliente:c.cliente||'', situacion:sit, fecha_estimada:document.getElementById('seg-fecha-'+i)?.value||null, informado_por:nombre, token:encoded.slice(0,20) });
   });
-  if (!rows.length) { if(resEl) resEl.innerHTML='<div style="color:#f87171;font-size:12px;text-align:center;padding:8px">⚠️ Completá la situación de al menos un cheque</div>'; return; }
-  const btn = document.querySelector('#seguimiento-overlay button[onclick*="rechSubmitSeguimiento"]');
+  if (!rows.length) { showToast('⚠️ Completá la situación de al menos un cheque'); return; }
+  const btn = document.getElementById('seg-submit-btn');
   if (btn) { btn.disabled=true; btn.textContent='⏳ Enviando...'; }
   try {
     const supaAnon = supabase.createClient(SUPA_URL, SUPA_KEY);
     const { error } = await supaAnon.from('seguimiento_rechazados').insert(rows);
     if (error) {
       console.error('submit error:', error);
-      if(resEl) resEl.innerHTML='<div style="color:#f87171;font-size:12px;text-align:center;padding:8px">❌ Error al enviar. Intentá de nuevo.</div>';
+      showToast('❌ Error al enviar. Intentá de nuevo.');
       if(btn) { btn.disabled=false; btn.textContent='✅ Enviar informe'; }
     } else {
       const content = document.getElementById('seg-content');
@@ -19704,7 +19703,7 @@ async function rechSubmitSeguimiento(encoded) {
         '<div style="font-size:13px;color:#9aa3b2">Gracias '+nombre+'. Se registraron '+rows.length+' respuesta'+(rows.length>1?'s':'')+' para APIES '+data.apies+'.</div></div>';
     }
   } catch(e) {
-    if(resEl) resEl.innerHTML='<div style="color:#f87171;font-size:12px;text-align:center;padding:8px">❌ Error de conexión</div>';
+    showToast('❌ Error de conexión. Intentá de nuevo.');
     if(btn) { btn.disabled=false; btn.textContent='✅ Enviar informe'; }
   }
 }
