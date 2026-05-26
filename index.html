@@ -1511,6 +1511,8 @@ let _supaUser=null,_supaRol=null;
     </div>
     <button onclick="limpiarFiltrosRech()" style="font-size:11px;color:var(--text3);background:none;border:1px solid var(--border);border-radius:99px;padding:4px 12px;cursor:pointer;font-family:var(--font)">✕ Limpiar</button>
   </div>
+  <!-- Panel por APIES con botón generar informe -->
+  <div id="rech-por-apies" style="margin-bottom:14px"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px" id="rech-graficos"></div>
   <div class="card" style="padding:0;overflow:hidden">
     <div style="overflow-x:auto;max-height:500px;overflow-y:auto">
@@ -8893,6 +8895,8 @@ function renderRechazados() {
   ].map(([l,v,c])=>'<div class="stat-card" style="border-left:3px solid '+c+'"><div class="label">'+l+'</div><div class="value" style="color:'+c+';font-size:18px">'+fmtMoney(v)+'</div></div>').join('');
   const sub=document.getElementById('rech-subtitle');
   if(sub) sub.textContent=filtered.length.toLocaleString('es-AR')+' registros'+(masAntiguo?' · Más antiguo: '+masAntiguo.dias+'d ('+( masAntiguo.cliente||masAntiguo.librador||'').slice(0,25)+')':'');
+  // Panel por APIES
+  rechRenderPorApies(filtered);
   // Gráficos
   const grafDiv=document.getElementById('rech-graficos');
   if(grafDiv&&filtered.length){
@@ -19402,7 +19406,238 @@ function gastosExportCSV() {
   a.click();
   showToast('📥 CSV exportado');
 }
+
+// ── SEGUIMIENTO CHEQUES RECHAZADOS ────────────────────────────────────────
+
+function rechRenderPorApies(filtered) {
+  const el = document.getElementById('rech-por-apies');
+  if (!el) return;
+  const pendientes = filtered.filter(r => (r.estado||'').toUpperCase() !== 'COBRADO');
+  const grupos = {};
+  pendientes.forEach(r => {
+    const k = r.apies || '(sin APIES)';
+    if (!grupos[k]) grupos[k] = { apies:k, count:0, total:0, maxDias:0 };
+    grupos[k].count++;
+    grupos[k].total += r.importe||0;
+    grupos[k].maxDias = Math.max(grupos[k].maxDias, r.dias||0);
+  });
+  const sorted = Object.values(grupos).sort((a,b) => b.total - a.total);
+  if (!sorted.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="card mb" style="padding:12px 14px">' +
+    '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📍 Resumen por APIES — Pendientes de cobro</div>' +
+    '<div style="display:flex;flex-direction:column;gap:6px">' +
+    sorted.map(g => {
+      const dc = g.maxDias>180?'var(--red)':g.maxDias>90?'var(--yellow)':'var(--accent)';
+      const ap = g.apies.replace(/'/g,"\\'");
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg3);border-radius:8px;flex-wrap:wrap">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--text);min-width:70px">' + g.apies + '</div>' +
+        '<div style="font-size:11px;color:var(--red);font-family:var(--mono)">' + g.count + ' cheque' + (g.count>1?'s':'') + '</div>' +
+        '<div style="font-size:12px;font-family:var(--mono);font-weight:700;color:var(--text)">' + fmtMoney(g.total) + '</div>' +
+        '<div style="font-size:11px;color:' + dc + '">max ' + g.maxDias + 'd</div>' +
+        '<div style="display:flex;gap:6px;margin-left:auto">' +
+        '<button onclick="rechGenerarInformeApies(\'' + ap + '\')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.1);color:var(--yellow);font-family:inherit">📧 Generar informe</button>' +
+        '<button onclick="rechVerRespuestasApies(\'' + ap + '\')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(74,159,212,0.4);background:rgba(74,159,212,0.1);color:var(--accent);font-family:inherit">📋 Respuestas</button>' +
+        '</div></div>';
+    }).join('') + '</div></div>';
+}
+
+function rechGenerarInformeApies(apies) {
+  const cheques = (appState.rechazadosData||[])
+    .filter(r => r.apies===apies && (r.estado||'').toUpperCase()!=='COBRADO')
+    .sort((a,b) => (b.dias||0)-(a.dias||0));
+  if (!cheques.length) { showToast('Sin cheques pendientes para APIES '+apies); return; }
+  const payload = {
+    apies, fecha: new Date().toISOString().slice(0,10),
+    cheques: cheques.map(r => ({ nro:r.nro, cliente:r.cliente||r.librador, importe:r.importe, dias:r.dias, fRech:r.fRech, motivo:r.motivo, banco:r.banco }))
+  };
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  const url = location.origin + location.pathname + '#seguimiento?' + encoded;
+  const total = cheques.reduce((s,c)=>s+c.importe,0);
+  const fechaHoy = new Date().toLocaleDateString('es-AR');
+  let mail = 'Asunto: APIES '+apies+' — Seguimiento Cheques Rechazados '+fechaHoy+'\n\n';
+  mail += 'Estimados,\n\nLes solicitamos completar el formulario de seguimiento para los cheques rechazados pendientes:\n\n';
+  mail += '📋 Total pendiente: $'+total.toLocaleString('es-AR',{minimumFractionDigits:2})+' ('+cheques.length+' cheque'+(cheques.length>1?'s':'')+')\n\n';
+  mail += '👉 LINK PARA COMPLETAR:\n'+url+'\n\n';
+  mail += 'Detalle de cheques pendientes:\n';
+  cheques.forEach((c,i) => {
+    mail += '\n'+(i+1)+'. Cheque N°'+c.nro+' | '+(c.cliente||'—')+' | $'+(c.importe||0).toLocaleString('es-AR',{minimumFractionDigits:2})+' | '+(c.dias||0)+'d de atraso\n';
+    mail += '   Rechazo: '+(c.fRech||'—')+' | Banco: '+(c.banco||'—')+' | Motivo: '+(c.motivo||'—')+'\n';
+  });
+  mail += '\nGracias,\nTesorería — Grupo La Plaza';
+  rechMostrarModalInforme(apies, url, mail);
+}
+
+function rechMostrarModalInforme(apies, url, emailText) {
+  document.getElementById('rech-informe-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'rech-informe-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  const safeUrl = url.replace(/'/g,'%27');
+  modal.innerHTML = '<div style="background:var(--bg2);border-radius:14px;padding:20px;max-width:620px;width:100%;max-height:85vh;overflow-y:auto;border:1px solid var(--border)">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
+    '<div style="font-size:14px;font-weight:800">📧 Informe APIES '+apies+'</div>' +
+    '<button onclick="document.getElementById(\'rech-informe-modal\').remove()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1">✕</button></div>' +
+    '<div style="margin-bottom:12px"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Link del formulario</div>' +
+    '<div style="background:var(--bg3);border-radius:7px;padding:8px 10px;font-size:10px;font-family:monospace;word-break:break-all;color:var(--accent)">'+url+'</div></div>' +
+    '<div style="margin-bottom:14px"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Texto del mail (editable)</div>' +
+    '<textarea id="rech-email-text" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:10px;font-size:11px;font-family:monospace;color:var(--text);outline:none;resize:vertical;height:220px;box-sizing:border-box">'+emailText+'</textarea></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    '<button onclick="rechCopiarTextoEl(\'rech-email-text\',this)" style="padding:8px 16px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.1);color:var(--yellow);font-family:inherit">📋 Copiar mail</button>' +
+    '<button onclick="navigator.clipboard.writeText(\''+safeUrl+'\').then(()=>{this.textContent=\'✅ Copiado!\';setTimeout(()=>this.textContent=\'🔗 Copiar link\',2000)})" style="padding:8px 16px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(74,159,212,0.4);background:rgba(74,159,212,0.1);color:var(--accent);font-family:inherit">🔗 Copiar link</button>' +
+    '<button onclick="rechCopiarWspSeg(\''+apies+'\',\''+safeUrl+'\')" style="padding:8px 16px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(37,211,102,0.3);background:rgba(37,211,102,0.1);color:#25d366;font-family:inherit">📱 WhatsApp</button>' +
+    '</div></div>';
+  document.body.appendChild(modal);
+  modal.onclick = e => { if(e.target===modal) modal.remove(); };
+}
+
+function rechCopiarTextoEl(elId, btn) {
+  const text = document.getElementById(elId)?.value || '';
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent; btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+function rechCopiarWspSeg(apies, url) {
+  const cheques = (appState.rechazadosData||[]).filter(r=>r.apies===apies&&(r.estado||'').toUpperCase()!=='COBRADO');
+  const total = cheques.reduce((s,r)=>s+r.importe,0);
+  const msg = '🔴 APIES '+apies+' — Cheques Rechazados Pendientes\n'+'$'+total.toLocaleString('es-AR',{minimumFractionDigits:2})+' · '+cheques.length+' cheque'+(cheques.length>1?'s':'')+'\n\n'+'👉 Completar situación de cada cheque:\n'+url;
+  navigator.clipboard.writeText(msg).then(() => showToast('✅ Copiado para WhatsApp'));
+}
+
+async function rechVerRespuestasApies(apies) {
+  if (!_supaUser) { showToast('Necesitás estar logueado'); return; }
+  showToast('⏳ Cargando respuestas...');
+  const { data, error } = await supa.from('seguimiento_rechazados').select('*').eq('apies',apies).order('created_at',{ascending:false});
+  if (error) { showToast('❌ Error al cargar'); return; }
+  document.getElementById('rech-respuestas-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'rech-respuestas-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  const rows = data||[];
+  const byNro = {};
+  rows.forEach(r => { if(!byNro[r.nro_cheque]) byNro[r.nro_cheque]=[]; byNro[r.nro_cheque].push(r); });
+  modal.innerHTML = '<div style="background:var(--bg2);border-radius:14px;padding:20px;max-width:660px;width:100%;max-height:85vh;overflow-y:auto;border:1px solid var(--border)">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
+    '<div><div style="font-size:14px;font-weight:800">📋 Respuestas — APIES '+apies+'</div>' +
+    '<div style="font-size:11px;color:var(--text3);margin-top:2px">'+rows.length+' respuesta'+(rows.length!==1?'s':'')+' registrada'+(rows.length!==1?'s':'')+'</div></div>' +
+    '<button onclick="document.getElementById(\'rech-respuestas-modal\').remove()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button></div>' +
+    (rows.length===0 ? '<div style="color:var(--text3);text-align:center;padding:40px;font-size:13px">Sin respuestas aún.<br><span style="font-size:11px">Enviá el informe a la estación para recibir actualizaciones.</span></div>' :
+    Object.entries(byNro).map(([nro, resp]) =>
+      '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--yellow);margin-bottom:6px">Cheque N°'+nro+' · '+resp[0].cliente+'</div>' +
+      resp.map(r => '<div style="background:var(--bg3);border-radius:8px;padding:10px 12px;margin-bottom:5px;border-left:3px solid var(--accent)">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
+        '<div style="font-size:11px;color:var(--text2)">'+r.situacion+'</div>' +
+        '<div style="font-size:10px;color:var(--text3);white-space:nowrap;margin-left:8px">'+new Date(r.created_at).toLocaleDateString('es-AR')+' '+new Date(r.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</div></div>' +
+        (r.fecha_estimada?'<div style="font-size:10px;color:var(--green)">📅 Fecha estimada: '+r.fecha_estimada+'</div>':'')+
+        '<div style="font-size:10px;color:var(--text3);margin-top:3px">— '+r.informado_por+'</div></div>'
+      ).join('') + '</div>'
+    ).join('')) +
+    '</div>';
+  document.body.appendChild(modal);
+  modal.onclick = e => { if(e.target===modal) modal.remove(); };
+}
+
+function rechIniciarSeguimiento(encoded) {
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+    const overlay = document.getElementById('seguimiento-overlay');
+    if (!overlay) return;
+    overlay.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    const total = data.cheques.reduce((s,c)=>s+(c.importe||0),0);
+    const content = document.getElementById('seg-content');
+    content.innerHTML = '<div style="background:#1a2535;border-radius:12px;padding:16px;margin-bottom:16px">' +
+      '<div style="font-size:16px;font-weight:800;color:white;margin-bottom:4px">APIES '+data.apies+'</div>' +
+      '<div style="font-size:12px;color:#7a8399">Solicitado el '+new Date(data.fecha+'T12:00:00').toLocaleDateString('es-AR')+' · '+data.cheques.length+' cheque'+(data.cheques.length>1?'s':'')+' · $'+total.toLocaleString('es-AR',{minimumFractionDigits:2})+'</div></div>' +
+      '<div style="font-size:12px;color:#9aa3b2;margin-bottom:14px">Completá la situación actual de cada cheque y presioná Enviar:</div>' +
+      '<div id="seg-cheques" style="display:flex;flex-direction:column;gap:12px"></div>' +
+      '<div style="margin-top:16px"><label style="font-size:11px;color:#7a8399;display:block;margin-bottom:4px">Tu nombre *</label>' +
+      '<input id="seg-nombre" type="text" placeholder="Nombre de quien informa" style="width:100%;background:#1a2535;border:1px solid #2a3a4a;border-radius:8px;padding:10px 12px;font-size:13px;color:white;outline:none;box-sizing:border-box"></div>' +
+      '<button onclick="rechSubmitSeguimiento(\''+encoded+'\')" style="width:100%;margin-top:16px;padding:14px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;background:#4a9fd4;color:white;font-family:inherit">✅ Enviar informe</button>' +
+      '<div id="seg-result" style="margin-top:12px"></div>';
+    const chequesDiv = document.getElementById('seg-cheques');
+    chequesDiv.innerHTML = data.cheques.map((c,i) =>
+      '<div style="background:#1a2535;border-radius:10px;padding:14px;border-left:3px solid #f87171">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">' +
+      '<div><div style="font-size:13px;font-weight:700;color:white">Cheque N°'+c.nro+'</div>' +
+      '<div style="font-size:11px;color:#9aa3b2">'+(c.cliente||'—')+' · '+(c.banco||'—')+'</div></div>' +
+      '<div style="text-align:right"><div style="font-size:13px;font-weight:700;color:#f87171">$'+(c.importe||0).toLocaleString('es-AR',{minimumFractionDigits:2})+'</div>' +
+      '<div style="font-size:10px;color:#f87171">'+(c.dias||0)+'d de atraso</div></div></div>' +
+      '<div style="font-size:10px;color:#7a8399;margin-bottom:8px">Rechazo: '+(c.fRech||'—')+' · Motivo: '+(c.motivo||'—')+'</div>' +
+      '<label style="font-size:11px;color:#9aa3b2;display:block;margin-bottom:4px">Situación actual *</label>' +
+      '<textarea id="seg-sit-'+i+'" placeholder="Ej: Hablamos con el cliente, promete pagar el 15/06..." style="width:100%;background:#0d1117;border:1px solid #2a3a4a;border-radius:7px;padding:8px 10px;font-size:12px;color:white;outline:none;resize:vertical;min-height:60px;box-sizing:border-box;font-family:inherit"></textarea>' +
+      '<div style="margin-top:8px;display:flex;align-items:center;gap:8px"><label style="font-size:11px;color:#9aa3b2;white-space:nowrap">📅 Fecha estimada de cobro:</label>' +
+      '<input id="seg-fecha-'+i+'" type="date" style="background:#0d1117;border:1px solid #2a3a4a;border-radius:6px;padding:6px 8px;font-size:12px;color:white;outline:none"></div>' +
+      '</div>'
+    ).join('');
+  } catch(e) {
+    console.error('rechIniciarSeguimiento:', e);
+    const overlay = document.getElementById('seguimiento-overlay');
+    if (overlay) {
+      overlay.style.display = 'block';
+      const c = document.getElementById('seg-content');
+      if (c) c.innerHTML = '<div style="text-align:center;color:#f87171;padding:40px">❌ Link inválido o expirado</div>';
+    }
+  }
+}
+
+async function rechSubmitSeguimiento(encoded) {
+  const nombre = (document.getElementById('seg-nombre')?.value||'').trim();
+  const resEl = document.getElementById('seg-result');
+  if (!nombre) { if(resEl) resEl.innerHTML='<div style="color:#f87171;font-size:12px;text-align:center;padding:8px">⚠️ Por favor ingresá tu nombre</div>'; return; }
+  let data;
+  try { data = JSON.parse(decodeURIComponent(escape(atob(encoded)))); } catch(e) { return; }
+  const rows = [];
+  data.cheques.forEach((c,i) => {
+    const sit = (document.getElementById('seg-sit-'+i)?.value||'').trim();
+    if (!sit) return;
+    rows.push({ apies:data.apies, nro_cheque:String(c.nro), importe:c.importe||0, cliente:c.cliente||'', situacion:sit, fecha_estimada:document.getElementById('seg-fecha-'+i)?.value||null, informado_por:nombre, token:encoded.slice(0,20) });
+  });
+  if (!rows.length) { if(resEl) resEl.innerHTML='<div style="color:#f87171;font-size:12px;text-align:center;padding:8px">⚠️ Completá la situación de al menos un cheque</div>'; return; }
+  const btn = document.querySelector('#seguimiento-overlay button[onclick*="rechSubmitSeguimiento"]');
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Enviando...'; }
+  try {
+    const supaAnon = supabase.createClient(SUPA_URL, SUPA_KEY);
+    const { error } = await supaAnon.from('seguimiento_rechazados').insert(rows);
+    if (error) {
+      console.error('submit error:', error);
+      if(resEl) resEl.innerHTML='<div style="color:#f87171;font-size:12px;text-align:center;padding:8px">❌ Error al enviar. Intentá de nuevo.</div>';
+      if(btn) { btn.disabled=false; btn.textContent='✅ Enviar informe'; }
+    } else {
+      const content = document.getElementById('seg-content');
+      if(content) content.innerHTML='<div style="text-align:center;padding:50px 20px">' +
+        '<div style="font-size:56px;margin-bottom:16px">✅</div>' +
+        '<div style="font-size:20px;font-weight:700;color:white;margin-bottom:10px">¡Informe enviado!</div>' +
+        '<div style="font-size:13px;color:#9aa3b2">Gracias '+nombre+'. Se registraron '+rows.length+' respuesta'+(rows.length>1?'s':'')+' para APIES '+data.apies+'.</div></div>';
+    }
+  } catch(e) {
+    if(resEl) resEl.innerHTML='<div style="color:#f87171;font-size:12px;text-align:center;padding:8px">❌ Error de conexión</div>';
+    if(btn) { btn.disabled=false; btn.textContent='✅ Enviar informe'; }
+  }
+}
+
+// Verificar si hay hash de seguimiento al cargar la página
+(function() {
+  const h = location.hash;
+  if (h.startsWith('#seguimiento?')) {
+    window.addEventListener('DOMContentLoaded', () => rechIniciarSeguimiento(h.slice('#seguimiento?'.length)));
+  }
+})();
+
 </script>
+
+<!-- SEGUIMIENTO PÚBLICO — overlay full screen -->
+<div id="seguimiento-overlay" style="display:none;position:fixed;inset:0;background:#0d1117;z-index:99999;overflow-y:auto">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px 40px">
+    <div style="text-align:center;padding:20px 0;margin-bottom:20px;border-bottom:1px solid #1e2a3a">
+      <div style="font-size:28px;margin-bottom:8px">🏦</div>
+      <div style="font-size:18px;font-weight:800;color:white">Grupo La Plaza</div>
+      <div style="font-size:12px;color:#7a8399;margin-top:4px">Seguimiento de cheques rechazados</div>
+    </div>
+    <div id="seg-content"></div>
+  </div>
+</div>
 
 </body>
 </html>
