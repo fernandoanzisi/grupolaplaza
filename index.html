@@ -19454,7 +19454,7 @@ function rechGenerarInformeApies(apies) {
     apies, fecha: new Date().toISOString().slice(0,10),
     cheques: cheques.map(r => ({ nro:r.nro, cliente:r.cliente||r.librador, importe:r.importe, dias:r.dias, fRech:r.fRech, motivo:r.motivo, banco:r.banco }))
   };
-  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
   const url = location.origin + location.pathname + '#seguimiento?' + encoded;
   const total = cheques.reduce((s,c)=>s+c.importe,0);
   const fechaHoy = new Date().toLocaleDateString('es-AR');
@@ -19544,7 +19544,7 @@ async function rechVerRespuestasApies(apies) {
 
 function rechIniciarSeguimiento(encoded) {
   try {
-    const data = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+    const data = JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')))));
     const overlay = document.getElementById('seguimiento-overlay');
     if (!overlay) return;
     overlay.style.display = 'block';
@@ -19591,7 +19591,7 @@ async function rechSubmitSeguimiento(encoded) {
   const resEl = document.getElementById('seg-result');
   if (!nombre) { if(resEl) resEl.innerHTML='<div style="color:#f87171;font-size:12px;text-align:center;padding:8px">⚠️ Por favor ingresá tu nombre</div>'; return; }
   let data;
-  try { data = JSON.parse(decodeURIComponent(escape(atob(encoded)))); } catch(e) { return; }
+  try { data = JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g,'+').replace(/_/g,'/'))))); } catch(e) { return; }
   const rows = [];
   data.cheques.forEach((c,i) => {
     const sit = (document.getElementById('seg-sit-'+i)?.value||'').trim();
