@@ -19413,6 +19413,18 @@ function gastosExportCSV() {
 
 // ── SEGUIMIENTO CHEQUES RECHAZADOS ────────────────────────────────────────
 
+function _segFecha(v) {
+  if (!v) return '—';
+  const s = String(v);
+  // Ya es YYYY-MM-DD
+  const m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[3]+'/'+m[2]+'/'+m[1];
+  // Fecha en otro formato (ej: "Wed Jan 29 2025...")
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  return s;
+}
+
 function rechRenderPorApies(filtered) {
   const el = document.getElementById('rech-por-apies');
   if (!el) return;
@@ -19451,8 +19463,8 @@ function rechGenerarInformeApies(apies) {
     .sort((a,b) => (b.dias||0)-(a.dias||0));
   if (!cheques.length) { showToast('Sin cheques pendientes para APIES '+apies); return; }
   const payload = {
-    apies, fecha: new Date().toISOString().slice(0,10),
-    cheques: cheques.map(r => ({ nro:r.nro, cliente:r.cliente||r.librador, importe:r.importe, dias:r.dias, fRech:r.fRech, motivo:r.motivo, banco:r.banco }))
+    a: apies, f: new Date().toISOString().slice(0,10),
+    q: cheques.map(r => ({ n:r.nro, c:r.cliente||r.librador, i:r.importe, d:r.dias, fr:r.fRech, m:r.motivo, b:r.banco }))
   };
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
   const url = location.origin + location.pathname + '#seguimiento?' + encoded;
@@ -19465,7 +19477,7 @@ function rechGenerarInformeApies(apies) {
   mail += 'Detalle de cheques pendientes:\n';
   cheques.forEach((c,i) => {
     mail += '\n'+(i+1)+'. Cheque N°'+c.nro+' | '+(c.cliente||'—')+' | $'+(c.importe||0).toLocaleString('es-AR',{minimumFractionDigits:2})+' | '+(c.dias||0)+'d de atraso\n';
-    mail += '   Rechazo: '+(c.fRech||'—')+' | Banco: '+(c.banco||'—')+' | Motivo: '+(c.motivo||'—')+'\n';
+    mail += '   Rechazo: '+_segFecha(c.fRech)+' | Banco: '+(c.banco||'—')+' | Motivo: '+(c.motivo||'—')+'\n';
   });
   mail += '\nGracias,\nTesorería — Grupo La Plaza';
   rechMostrarModalInforme(apies, url, mail);
@@ -19544,7 +19556,16 @@ async function rechVerRespuestasApies(apies) {
 
 function rechIniciarSeguimiento(encoded) {
   try {
-    const data = JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')))));
+    const raw = JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')))));
+    // soporte claves abreviadas (a/f/q/n/c/i/d/fr/m/b) y claves largas (retrocompatibilidad)
+    const data = {
+      apies: raw.a || raw.apies,
+      fecha: raw.f || raw.fecha,
+      cheques: (raw.q || raw.cheques || []).map(x => ({
+        nro: x.n || x.nro, cliente: x.c || x.cliente, importe: x.i ?? x.importe,
+        dias: x.d ?? x.dias, fRech: x.fr || x.fRech, motivo: x.m || x.motivo, banco: x.b || x.banco
+      }))
+    };
     const overlay = document.getElementById('seguimiento-overlay');
     if (!overlay) return;
     overlay.style.display = 'block';
@@ -19568,7 +19589,7 @@ function rechIniciarSeguimiento(encoded) {
       '<div style="font-size:11px;color:#9aa3b2">'+(c.cliente||'—')+' · '+(c.banco||'—')+'</div></div>' +
       '<div style="text-align:right"><div style="font-size:13px;font-weight:700;color:#f87171">$'+(c.importe||0).toLocaleString('es-AR',{minimumFractionDigits:2})+'</div>' +
       '<div style="font-size:10px;color:#f87171">'+(c.dias||0)+'d de atraso</div></div></div>' +
-      '<div style="font-size:10px;color:#7a8399;margin-bottom:8px">Rechazo: '+(c.fRech||'—')+' · Motivo: '+(c.motivo||'—')+'</div>' +
+      '<div style="font-size:10px;color:#7a8399;margin-bottom:8px">Rechazo: '+_segFecha(c.fRech)+' · Motivo: '+(c.motivo||'—')+'</div>' +
       '<label style="font-size:11px;color:#9aa3b2;display:block;margin-bottom:4px">Situación actual *</label>' +
       '<textarea id="seg-sit-'+i+'" placeholder="Ej: Hablamos con el cliente, promete pagar el 15/06..." style="width:100%;background:#0d1117;border:1px solid #2a3a4a;border-radius:7px;padding:8px 10px;font-size:12px;color:white;outline:none;resize:vertical;min-height:60px;box-sizing:border-box;font-family:inherit"></textarea>' +
       '<div style="margin-top:8px;display:flex;align-items:center;gap:8px"><label style="font-size:11px;color:#9aa3b2;white-space:nowrap">📅 Fecha estimada de cobro:</label>' +
@@ -19591,7 +19612,15 @@ async function rechSubmitSeguimiento(encoded) {
   const resEl = document.getElementById('seg-result');
   if (!nombre) { if(resEl) resEl.innerHTML='<div style="color:#f87171;font-size:12px;text-align:center;padding:8px">⚠️ Por favor ingresá tu nombre</div>'; return; }
   let data;
-  try { data = JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g,'+').replace(/_/g,'/'))))); } catch(e) { return; }
+  try {
+    const raw = JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')))));
+    data = {
+      apies: raw.a || raw.apies,
+      cheques: (raw.q || raw.cheques || []).map(x => ({
+        nro: x.n || x.nro, cliente: x.c || x.cliente, importe: x.i ?? x.importe
+      }))
+    };
+  } catch(e) { return; }
   const rows = [];
   data.cheques.forEach((c,i) => {
     const sit = (document.getElementById('seg-sit-'+i)?.value||'').trim();
