@@ -19545,18 +19545,22 @@ async function rechVerRespuestasApies(apies) {
   const rows = data||[];
   const byNro = {};
   rows.forEach(r => { if(!byNro[r.nro_cheque]) byNro[r.nro_cheque]=[]; byNro[r.nro_cheque].push(r); });
-  modal.innerHTML = '<div style="background:var(--bg2);border-radius:14px;padding:20px;max-width:660px;width:100%;max-height:85vh;overflow-y:auto;border:1px solid var(--border)">' +
+  modal.innerHTML = '<div style="background:var(--bg2);border-radius:14px;padding:20px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;border:1px solid var(--border)">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
     '<div><div style="font-size:14px;font-weight:800">📋 Respuestas — APIES '+apies+'</div>' +
     '<div style="font-size:11px;color:var(--text3);margin-top:2px">'+rows.length+' respuesta'+(rows.length!==1?'s':'')+' registrada'+(rows.length!==1?'s':'')+'</div></div>' +
-    '<button onclick="document.getElementById(\'rech-respuestas-modal\').remove()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button></div>' +
+    '<div style="display:flex;gap:8px;align-items:center">' +
+    (rows.length>0?'<button onclick="rechExportarRespuestas(\''+apies+'\','+JSON.stringify(rows)+')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.1);color:#22c55e;font-family:inherit">⬇ Excel</button>':'') +
+    '<button onclick="document.getElementById(\'rech-respuestas-modal\').remove()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1">✕</button></div></div>' +
     (rows.length===0 ? '<div style="color:var(--text3);text-align:center;padding:40px;font-size:13px">Sin respuestas aún.<br><span style="font-size:11px">Enviá el informe a la estación para recibir actualizaciones.</span></div>' :
     Object.entries(byNro).map(([nro, resp]) =>
       '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--yellow);margin-bottom:6px">Cheque N°'+nro+' · '+resp[0].cliente+'</div>' +
       resp.map(r => '<div style="background:var(--bg3);border-radius:8px;padding:10px 12px;margin-bottom:5px;border-left:3px solid var(--accent)">' +
-        '<div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
-        '<div style="font-size:11px;color:var(--text2)">'+r.situacion+'</div>' +
-        '<div style="font-size:10px;color:var(--text3);white-space:nowrap;margin-left:8px">'+new Date(r.created_at).toLocaleDateString('es-AR')+' '+new Date(r.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</div></div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">' +
+        '<div style="font-size:11px;color:var(--text2);flex:1;margin-right:8px">'+r.situacion+'</div>' +
+        '<div style="display:flex;align-items:center;gap:6px;white-space:nowrap">' +
+        '<div style="font-size:10px;color:var(--text3)">'+new Date(r.created_at).toLocaleDateString('es-AR')+' '+new Date(r.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</div>' +
+        '<button onclick="rechEliminarRespuesta('+r.id+',\''+apies+'\')" title="Eliminar" style="background:none;border:none;color:var(--red);font-size:14px;cursor:pointer;padding:0;line-height:1">🗑</button></div></div>' +
         (r.fecha_estimada?'<div style="font-size:10px;color:var(--green)">📅 Fecha estimada: '+r.fecha_estimada+'</div>':'')+
         '<div style="font-size:10px;color:var(--text3);margin-top:3px">— '+r.informado_por+'</div></div>'
       ).join('') + '</div>'
@@ -19564,6 +19568,30 @@ async function rechVerRespuestasApies(apies) {
     '</div>';
   document.body.appendChild(modal);
   modal.onclick = e => { if(e.target===modal) modal.remove(); };
+}
+
+async function rechEliminarRespuesta(id, apies) {
+  if (!confirm('¿Eliminar esta respuesta?')) return;
+  const { error } = await supa.from('seguimiento_rechazados').delete().eq('id', id);
+  if (error) { showToast('❌ Error al eliminar'); return; }
+  showToast('✅ Respuesta eliminada');
+  rechVerRespuestasApies(apies);
+}
+
+function rechExportarRespuestas(apies, rows) {
+  const wsData = [
+    ['Cheque N°','Cliente','Importe','Situacion','Fecha estimada cobro','Informado por','Fecha respuesta']
+  ];
+  rows.forEach(r => wsData.push([
+    r.nro_cheque, r.cliente||'', r.importe||0, r.situacion,
+    r.fecha_estimada||'', r.informado_por,
+    new Date(r.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
+  ]));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:14},{wch:28},{wch:14},{wch:45},{wch:20},{wch:22},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, ws, 'APIES '+apies);
+  XLSX.writeFile(wb, 'Respuestas_APIES_'+apies+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
 function rechIniciarSeguimiento(encoded) {
