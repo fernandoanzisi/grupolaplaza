@@ -8830,8 +8830,12 @@ function parseRechazadosXls(wb) {
   const iInt=ci('int no')>=0?ci('int no'):ci('int.no');
   const fmtD = v => {
     if (!v) return '';
+    if (v instanceof Date) return v.toISOString().slice(0,10);
     if (typeof v==='number'&&v>40000) return new Date(Math.round((v-25569)*86400*1000)).toISOString().slice(0,10);
-    const s=String(v); return s.match(/\d{4}-\d{2}-\d{2}/)?s.slice(0,10):s;
+    const s=String(v);
+    if (s.match(/\d{4}-\d{2}-\d{2}/)) return s.slice(0,10);
+    const d=new Date(s); if(!isNaN(d.getTime())) return d.toISOString().slice(0,10);
+    return s;
   };
   const pn = v => { if (!v) return 0; if (typeof v==='number') return v; return parseFloat(String(v).replace(/[^0-9.,-]/g,'').replace(',','.')) || 0; };
   rows.slice(hdrRow+1).forEach(row => {
