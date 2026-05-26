@@ -19543,6 +19543,7 @@ async function rechVerRespuestasApies(apies) {
   modal.id = 'rech-respuestas-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
   const rows = data||[];
+  window._rechRespuestasRows = rows;
   const byNro = {};
   rows.forEach(r => { if(!byNro[r.nro_cheque]) byNro[r.nro_cheque]=[]; byNro[r.nro_cheque].push(r); });
   modal.innerHTML = '<div style="background:var(--bg2);border-radius:14px;padding:20px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;border:1px solid var(--border)">' +
@@ -19550,7 +19551,7 @@ async function rechVerRespuestasApies(apies) {
     '<div><div style="font-size:14px;font-weight:800">📋 Respuestas — APIES '+apies+'</div>' +
     '<div style="font-size:11px;color:var(--text3);margin-top:2px">'+rows.length+' respuesta'+(rows.length!==1?'s':'')+' registrada'+(rows.length!==1?'s':'')+'</div></div>' +
     '<div style="display:flex;gap:8px;align-items:center">' +
-    (rows.length>0?'<button onclick="rechExportarRespuestas(\''+apies+'\','+JSON.stringify(rows)+')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.1);color:#22c55e;font-family:inherit">⬇ Excel</button>':'') +
+    (rows.length>0?'<button onclick="rechExportarRespuestas(\''+apies+'\',window._rechRespuestasRows)" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.1);color:#22c55e;font-family:inherit">⬇ Excel</button>':'') +
     '<button onclick="document.getElementById(\'rech-respuestas-modal\').remove()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1">✕</button></div></div>' +
     (rows.length===0 ? '<div style="color:var(--text3);text-align:center;padding:40px;font-size:13px">Sin respuestas aún.<br><span style="font-size:11px">Enviá el informe a la estación para recibir actualizaciones.</span></div>' :
     Object.entries(byNro).map(([nro, resp]) =>
