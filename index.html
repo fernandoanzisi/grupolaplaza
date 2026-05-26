@@ -19479,35 +19479,48 @@ async function rechGenerarInformeApies(apies) {
   const url = location.origin + location.pathname + '?t=' + token;
   const total = cheques.reduce((s,c)=>s+c.importe,0);
   const fechaHoy = new Date().toLocaleDateString('es-AR');
-  let mail = 'Asunto: APIES '+apies+' — Seguimiento Cheques Rechazados '+fechaHoy+'\n\n';
-  mail += 'Estimados,\n\nLes solicitamos completar el formulario de seguimiento para los cheques rechazados pendientes:\n\n';
-  mail += '📋 Total pendiente: $'+total.toLocaleString('es-AR',{minimumFractionDigits:2})+' ('+cheques.length+' cheque'+(cheques.length>1?'s':'')+')\n\n';
-  mail += '👉 LINK PARA COMPLETAR:\n'+url+'\n\n';
-  mail += 'Detalle de cheques pendientes:\n';
+  const asunto = 'APIES '+apies+' — Seguimiento Cheques Rechazados '+fechaHoy;
+  let cuerpo = 'Estimados,\n\nLes solicitamos completar el formulario de seguimiento para los cheques rechazados pendientes:\n\n';
+  cuerpo += '📋 Total pendiente: $'+total.toLocaleString('es-AR',{minimumFractionDigits:2})+' ('+cheques.length+' cheque'+(cheques.length>1?'s':'')+')\n\n';
+  cuerpo += '👉 LINK PARA COMPLETAR:\n'+url+'\n\n';
+  cuerpo += 'Detalle de cheques pendientes:\n';
   cheques.forEach((c,i) => {
-    mail += '\n'+(i+1)+'. Cheque N°'+c.nro+' | '+(c.cliente||'—')+' | $'+(c.importe||0).toLocaleString('es-AR',{minimumFractionDigits:2})+' | '+(c.dias||0)+'d de atraso\n';
-    mail += '   Rechazo: '+_segFecha(c.fRech)+' | Banco: '+(c.banco||'—')+' | Motivo: '+(c.motivo||'—')+'\n';
+    cuerpo += '\n'+(i+1)+'. Cheque N°'+c.nro+' | '+(c.cliente||'—')+' | $'+(c.importe||0).toLocaleString('es-AR',{minimumFractionDigits:2})+' | '+(c.dias||0)+'d de atraso\n';
+    cuerpo += '   Rechazo: '+_segFecha(c.fRech)+' | Banco: '+(c.banco||'—')+' | Motivo: '+(c.motivo||'—')+'\n';
   });
-  mail += '\nGracias,\nTesorería — Grupo La Plaza';
-  rechMostrarModalInforme(apies, url, mail);
+  cuerpo += '\nGracias,\nTesorería — Grupo La Plaza';
+  rechMostrarModalInforme(apies, url, asunto, cuerpo);
 }
 
-function rechMostrarModalInforme(apies, url, emailText) {
+function rechMostrarModalInforme(apies, url, asunto, cuerpo) {
   document.getElementById('rech-informe-modal')?.remove();
   const modal = document.createElement('div');
   modal.id = 'rech-informe-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
   const safeUrl = url.replace(/'/g,'%27');
+  const safeAsunto = asunto.replace(/'/g,'&apos;');
   modal.innerHTML = '<div style="background:var(--bg2);border-radius:14px;padding:20px;max-width:620px;width:100%;max-height:85vh;overflow-y:auto;border:1px solid var(--border)">' +
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
     '<div style="font-size:14px;font-weight:800">📧 Informe APIES '+apies+'</div>' +
     '<button onclick="document.getElementById(\'rech-informe-modal\').remove()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1">✕</button></div>' +
-    '<div style="margin-bottom:12px"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Link del formulario</div>' +
-    '<div style="background:var(--bg3);border-radius:7px;padding:8px 10px;font-size:10px;font-family:monospace;word-break:break-all;color:var(--accent)">'+url+'</div></div>' +
-    '<div style="margin-bottom:14px"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Texto del mail (editable)</div>' +
-    '<textarea id="rech-email-text" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:10px;font-size:11px;font-family:monospace;color:var(--text);outline:none;resize:vertical;height:220px;box-sizing:border-box">'+emailText+'</textarea></div>' +
+    // Instrucciones
+    '<div style="background:#1a2535;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:11px;color:#9aa3b2;line-height:1.6">' +
+    '1️⃣ Copiá el <b style="color:white">Asunto</b> y pegalo en el campo Asunto del mail<br>' +
+    '2️⃣ Copiá el <b style="color:white">Cuerpo</b> y pegalo en el cuerpo del mail</div>' +
+    // Asunto
+    '<div style="margin-bottom:12px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+    '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Asunto del mail</div>' +
+    '<button onclick="navigator.clipboard.writeText(\''+safeAsunto+'\').then(()=>{this.textContent=\'✅ Copiado!\';setTimeout(()=>this.textContent=\'📋 Copiar asunto\',2000)})" style="padding:4px 10px;border-radius:99px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.1);color:var(--yellow);font-family:inherit">📋 Copiar asunto</button></div>' +
+    '<div style="background:var(--bg3);border-radius:7px;padding:8px 10px;font-size:12px;color:white;font-family:monospace">'+asunto+'</div></div>' +
+    // Cuerpo
+    '<div style="margin-bottom:14px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+    '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Cuerpo del mail</div>' +
+    '<button onclick="rechCopiarTextoEl(\'rech-email-body\',this)" style="padding:4px 10px;border-radius:99px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.1);color:var(--yellow);font-family:inherit">📋 Copiar cuerpo</button></div>' +
+    '<textarea id="rech-email-body" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:10px;font-size:11px;font-family:monospace;color:var(--text);outline:none;resize:vertical;height:200px;box-sizing:border-box">'+cuerpo+'</textarea></div>' +
+    // Botones secundarios
     '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-    '<button onclick="rechCopiarTextoEl(\'rech-email-text\',this)" style="padding:8px 16px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.1);color:var(--yellow);font-family:inherit">📋 Copiar mail</button>' +
     '<button onclick="navigator.clipboard.writeText(\''+safeUrl+'\').then(()=>{this.textContent=\'✅ Copiado!\';setTimeout(()=>this.textContent=\'🔗 Copiar link\',2000)})" style="padding:8px 16px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(74,159,212,0.4);background:rgba(74,159,212,0.1);color:var(--accent);font-family:inherit">🔗 Copiar link</button>' +
     '<button onclick="rechCopiarWspSeg(\''+apies+'\',\''+safeUrl+'\')" style="padding:8px 16px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(37,211,102,0.3);background:rgba(37,211,102,0.1);color:#25d366;font-family:inherit">📱 WhatsApp</button>' +
     '</div></div>';
