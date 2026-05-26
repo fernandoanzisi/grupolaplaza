@@ -19473,7 +19473,7 @@ async function rechGenerarInformeApies(apies) {
     const token = Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,8).toUpperCase();
     const { error } = await supa.from('seguimiento_tokens').insert({ token, payload });
     if (error) throw error;
-    url = location.origin + location.pathname + '?t=' + token;
+    url = location.origin + '/t/' + token;
   } catch(e) {
     console.warn('token fallback a base64:', e);
     const enc = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
@@ -19482,9 +19482,9 @@ async function rechGenerarInformeApies(apies) {
   const total = cheques.reduce((s,c)=>s+c.importe,0);
   const fechaHoy = new Date().toLocaleDateString('es-AR');
   const asunto = 'Seguimiento cheques rechazados APIES '+apies+' - '+fechaHoy;
-  let cuerpo = 'Estimados,\n\nLes solicitamos informar la situacion actual de los cheques rechazados pendientes de cobro en APIES '+apies+'.\n';
-  cuerpo += 'El enlace para completar el formulario fue enviado por WhatsApp.\n\n';
+  let cuerpo = 'Estimados,\n\nLes solicitamos informar la situacion actual de los cheques rechazados pendientes de cobro en APIES '+apies+'.\n\n';
   cuerpo += 'Total pendiente: $'+total.toLocaleString('es-AR',{minimumFractionDigits:2})+' ('+cheques.length+' cheque'+(cheques.length>1?'s':'')+')\n\n';
+  cuerpo += 'Formulario de seguimiento:\n'+url+'\n\n';
   cuerpo += 'Detalle:\n';
   cheques.forEach((c,i) => {
     cuerpo += '\n'+(i+1)+'. Cheque Nro '+c.nro+' - '+(c.cliente||'—')+' - $'+(c.importe||0).toLocaleString('es-AR',{minimumFractionDigits:2})+' - '+(c.dias||0)+' dias de atraso\n';
