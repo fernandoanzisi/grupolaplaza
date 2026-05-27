@@ -426,6 +426,7 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('recordatorios',this)"  data-page="recordatorios">🔔 Recordatorios</button>
           <button class="nav-dd-item" onclick="navGo('metas',this)"          data-page="metas">🏆 Metas</button>
           <button class="nav-dd-item" onclick="navGo('lector_doc',this)"    data-page="lector_doc">🔍 Lector de Documentos</button>
+          <button class="nav-dd-item" onclick="navGo('planillas',this)"     data-page="planillas">📊 Analizador de Planillas</button>
           <hr style="border:none;border-top:1px solid var(--border);margin:4px 0">
           <button class="nav-dd-item" onclick="window.open('https://bancogalicia.com.ar','_blank')" style="color:#e30613">🏦 Galicia</button>
           <button class="nav-dd-item" onclick="window.open('https://interbanking.com.ar','_blank')" style="color:#4a9fd4">🔗 Interbanking</button>
@@ -3309,6 +3310,43 @@ let _supaUser=null,_supaRol=null;
         </thead>
         <tbody id="lector-tbody"></tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-planillas">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-size:18px;font-weight:700;color:var(--text)">📊 Analizador de Planillas Inteligente</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">Importá cualquier Excel · Tabla interactiva · Gráficos · Análisis IA completo · Historial sincronizado</div>
+    </div>
+    <label style="padding:7px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);cursor:pointer;font-family:var(--font)">
+      ＋ Importar planilla
+      <input type="file" id="api-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="apiPlHandleFile(this.files[0]);this.value=''">
+    </label>
+  </div>
+
+  <div id="api-drop-zone"
+    ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+    ondragleave="this.style.borderColor='rgba(74,159,212,0.3)'"
+    ondrop="event.preventDefault();this.style.borderColor='rgba(74,159,212,0.3)';apiPlHandleFile(event.dataTransfer.files[0])"
+    onclick="document.getElementById('api-file-input').click()"
+    style="border:2px dashed rgba(74,159,212,0.3);border-radius:14px;padding:32px;text-align:center;background:rgba(74,159,212,0.03);cursor:pointer;margin-bottom:16px;transition:border-color 0.2s">
+    <div style="font-size:40px;margin-bottom:10px">📊</div>
+    <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px">Arrastrá tu Excel aquí o hacé clic para seleccionar</div>
+    <div style="font-size:11px;color:var(--text3)">.xlsx · .xls · .csv — el archivo nunca sale de tu navegador · todo se procesa localmente</div>
+  </div>
+
+  <div style="display:flex;gap:16px;align-items:start;flex-wrap:wrap">
+    <div style="width:210px;flex-shrink:0">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:10px">📁 Historial de planillas</div>
+      <div id="api-hist-list"></div>
+    </div>
+    <div id="api-viewer" style="display:none;flex:1;min-width:0">
+      <div id="api-top-bar"></div>
+      <div id="api-sheet-tabs" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+      <div id="api-tab-bar" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:12px"></div>
+      <div id="api-content"></div>
     </div>
   </div>
 </div>
@@ -10238,6 +10276,7 @@ const _origSheetMap = null; // markerashSetView
   <button class="more-item" onclick="navGo('recordatorios',this);closeMoreMenu()">🔔 Recordatorios</button>
   <button class="more-item" onclick="navGo('metas',this);closeMoreMenu()">🏆 Metas</button>
   <button class="more-item" onclick="navGo('lector_doc',this);closeMoreMenu()">🔍 Lector Doc.</button>
+  <button class="more-item" onclick="navGo('planillas',this);closeMoreMenu()">📊 Planillas</button>
   <div style="width:100%;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:4px">💰 Finanzas</div>
   <button class="more-item" onclick="navGo('inversiones',this);closeMoreMenu()">📈 Inversiones</button>
   <button class="more-item" onclick="navGo('cartera',this);closeMoreMenu()">💼 Cartera</button>
@@ -10487,6 +10526,7 @@ function navGo(page, triggerEl) {
     'pasivos':      ()=>pasivosRender(),
     'gastos':       ()=>gastosRender(),
     'lector_doc':   ()=>lectorRender(),
+    'planillas':    ()=>apiPlRender(),
     'flota':        ()=>flotaRender(),
     'tarjetas':     ()=>renderTarjetas(),
     'guardia':      ()=>renderGuardia(),
@@ -13630,6 +13670,9 @@ async function cacheCargarTodo() {
             break;
           case 'lector_docs':
             if (Array.isArray(val)) _lectorDocs = val;
+            break;
+          case 'planillas_hist':
+            if (Array.isArray(val)) _apiPlState.hist = val;
             break;
           case 'cf_minuta':
             try {
@@ -19580,6 +19623,612 @@ function lectorExportarCSV() {
   const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download='lector_documentos_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
   showToast('📥 CSV exportado');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ANALIZADOR DE PLANILLAS INTELIGENTE
+// ══════════════════════════════════════════════════════════════════
+let _apiPlState = {
+  hist: null,
+  selId: null, selSheet: null, tab: 'resumen',
+  sortCol: null, sortDir: 1,
+  filters: {}, busqueda: '', pagina: 0, pageSize: 50,
+  fDesde: 1, chartType: 'barras', chartX: null, chartY: null,
+  analisis: {}, analizando: {},
+};
+
+function _apiPlHist()    { return _apiPlState.hist || []; }
+function _apiPlCurrent() { return _apiPlHist().find(f => f.id === _apiPlState.selId) || null; }
+function _apiPlSheet()   {
+  const f = _apiPlCurrent();
+  if (!f || !f.sheets) return null;
+  const sn = _apiPlState.selSheet || (f.sheetNames && f.sheetNames[0]) || '';
+  return f.sheets[sn] || null;
+}
+
+// ─── HELPERS para event handlers (evita problemas con comillas en nombres de columnas) ────
+function apiPlSetFilter(idx, val)           { const sh=_apiPlSheet(); if(!sh)return; _apiPlState.filters[sh.cols[idx]]=val; _apiPlState.pagina=0; _apiPlRefreshTabla(); }
+function apiPlSetFilterRange(idx, which, v) { const sh=_apiPlSheet(); if(!sh)return; const c=sh.cols[idx]; if(!Array.isArray(_apiPlState.filters[c]))_apiPlState.filters[c]=['','']; _apiPlState.filters[c][which]=v; _apiPlState.pagina=0; _apiPlRefreshTabla(); }
+function apiPlSetSort(idx)                  { const sh=_apiPlSheet(); if(!sh)return; const c=sh.cols[idx]; _apiPlState.sortDir=_apiPlState.sortCol===c?-_apiPlState.sortDir:1; _apiPlState.sortCol=c; _apiPlRefreshTabla(); }
+function apiPlSetPage(p)                    { _apiPlState.pagina=p; _apiPlRefreshTabla(); }
+function apiPlSetPageSize(n)                { _apiPlState.pageSize=parseInt(n); _apiPlState.pagina=0; _apiPlRefreshTabla(); }
+function apiPlSetSearch(v)                  { _apiPlState.busqueda=v; _apiPlState.pagina=0; _apiPlRefreshTabla(); }
+function apiPlClearFilters()                { _apiPlState.filters={}; _apiPlState.busqueda=''; _apiPlState.pagina=0; const s=document.getElementById('api-search'); if(s)s.value=''; _apiPlRefreshTabla(); }
+function apiPlSetChartType(t)               { _apiPlState.chartType=t; _apiPlRefreshContent(); }
+function apiPlSetChartX(idx)                { const sh=_apiPlSheet(); if(!sh)return; _apiPlState.chartX=sh.cols[idx]; _apiPlRefreshContent(); }
+function apiPlSetChartY(idx)                { const sh=_apiPlSheet(); if(!sh)return; _apiPlState.chartY=sh.cols[idx]; _apiPlRefreshContent(); }
+function _apiPlRefreshTabla()               { const el=document.getElementById('api-content'); if(el)el.innerHTML=apiPlRenderTabla(_apiPlSheet()); }
+function _apiPlRefreshContent()             { apiPlRenderContent(); }
+
+// ─── RENDER PRINCIPAL ─────────────────────────────────────────
+function apiPlRender() {
+  const hist = _apiPlHist();
+  const histEl = document.getElementById('api-hist-list');
+  if (histEl) {
+    if (!hist.length) {
+      histEl.innerHTML = '<div style="text-align:center;padding:20px 10px;color:var(--text3);font-size:11px;border:1px dashed var(--border);border-radius:10px">Sin planillas importadas aún</div>';
+    } else {
+      histEl.innerHTML = hist.slice().reverse().map(f => {
+        const sel = f.id === _apiPlState.selId;
+        return `<div onclick="apiPlSelectFile('${f.id}')" style="padding:10px 12px;border-radius:10px;cursor:pointer;margin-bottom:6px;border:1px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'rgba(74,159,212,0.08)':'var(--bg3)'};display:flex;align-items:center;gap:8px;transition:all 0.15s">
+          <div style="font-size:18px">📊</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:700;color:${sel?'var(--accent)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.nombre}</div>
+            <div style="font-size:9px;color:var(--text3);margin-top:1px">${f.fecha} · ${(f.filas||0).toLocaleString('es-AR')} filas · ${(f.sheetNames||[]).length} hoja${(f.sheetNames||[]).length!==1?'s':''}</div>
+          </div>
+          <button onclick="event.stopPropagation();apiPlDeleteFile('${f.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px" title="Eliminar">🗑</button>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  const dz = document.getElementById('api-drop-zone');
+  const viewer = document.getElementById('api-viewer');
+
+  if (!_apiPlState.selId) {
+    if (dz) dz.style.display = '';
+    if (viewer) viewer.style.display = 'none';
+    return;
+  }
+  if (dz) dz.style.display = 'none';
+  if (viewer) viewer.style.display = '';
+
+  const file = _apiPlCurrent();
+  if (!file) return;
+
+  const topBar = document.getElementById('api-top-bar');
+  if (topBar) {
+    topBar.innerHTML = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:12px 14px;background:var(--bg2);border-radius:12px;border:1px solid var(--border)">
+      <div style="font-size:24px">📊</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${file.nombre}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">${(file.filas||0).toLocaleString('es-AR')} filas · ${file.cols||0} columnas · ${(file.sheetNames||[]).length} hoja${(file.sheetNames||[]).length!==1?'s':''} · ${file.fecha}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:10px;color:var(--text3)">Datos desde fila:</span>
+        <input type="number" id="api-fdesde" value="${_apiPlState.fDesde}" min="1" max="20"
+          style="width:44px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:3px 6px;font-size:12px;font-family:var(--mono);text-align:center"
+          title="Si el Excel tiene un título arriba, ponele 2 o 3 para que los encabezados reales sean la fila de datos">
+        <button onclick="showToast('ℹ️ Re-importá el archivo con el botón + para aplicar el nuevo número de fila')" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:10px;cursor:pointer">↺ Info</button>
+        <button onclick="apiPlExportarFiltrado()" style="padding:5px 12px;border-radius:7px;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.08);color:var(--green);font-size:11px;font-weight:700;cursor:pointer">📥 Exportar vista</button>
+        <button onclick="apiPlSelectFile(null)" style="padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text3);font-size:11px;cursor:pointer">✕ Cerrar</button>
+      </div>
+    </div>`;
+  }
+
+  const sheetTabs = document.getElementById('api-sheet-tabs');
+  if (sheetTabs && file.sheetNames && file.sheetNames.length > 1) {
+    sheetTabs.innerHTML = file.sheetNames.map(sn => {
+      const sel = sn === (_apiPlState.selSheet || file.sheetNames[0]);
+      return `<button onclick="apiPlSetSheet('${sn.replace(/\\/g,'\\\\').replace(/'/g,'\\\'')}')" style="padding:5px 14px;border-radius:99px;border:1px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'var(--accent)':'var(--bg3)'};color:${sel?'white':'var(--text2)'};font-size:11px;font-weight:${sel?700:400};cursor:pointer;font-family:var(--font)">${sn}</button>`;
+    }).join('');
+    sheetTabs.style.display = 'flex';
+  } else if (sheetTabs) {
+    sheetTabs.innerHTML = '';
+  }
+
+  const tabBar = document.getElementById('api-tab-bar');
+  if (tabBar) {
+    tabBar.innerHTML = [['resumen','📋 Resumen'],['tabla','🗂 Tabla'],['graficos','📈 Gráficos'],['analisis','🤖 Análisis IA']].map(([id,label]) => {
+      const sel = _apiPlState.tab === id;
+      return `<button onclick="apiPlSetTab('${id}')" style="padding:7px 18px;border-radius:8px;border:1px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'rgba(74,159,212,0.15)':'transparent'};color:${sel?'var(--accent)':'var(--text2)'};font-size:12px;font-weight:${sel?700:400};cursor:pointer;font-family:var(--font)">${label}</button>`;
+    }).join('');
+  }
+
+  apiPlRenderContent();
+}
+
+function apiPlSelectFile(id) {
+  _apiPlState.selId = id; _apiPlState.selSheet = null; _apiPlState.tab = 'resumen';
+  _apiPlState.pagina = 0; _apiPlState.filters = {}; _apiPlState.busqueda = '';
+  _apiPlState.sortCol = null; _apiPlState.chartX = null; _apiPlState.chartY = null;
+  apiPlRender();
+}
+
+function apiPlSetSheet(sn) {
+  _apiPlState.selSheet = sn; _apiPlState.pagina = 0; _apiPlState.sortCol = null;
+  _apiPlState.filters = {}; _apiPlState.busqueda = ''; _apiPlState.chartX = null; _apiPlState.chartY = null;
+  apiPlRender();
+}
+
+function apiPlSetTab(tab) {
+  _apiPlState.tab = tab;
+  const tabBar = document.getElementById('api-tab-bar');
+  if (tabBar) {
+    tabBar.innerHTML = [['resumen','📋 Resumen'],['tabla','🗂 Tabla'],['graficos','📈 Gráficos'],['analisis','🤖 Análisis IA']].map(([id,label]) => {
+      const sel = id === tab;
+      return `<button onclick="apiPlSetTab('${id}')" style="padding:7px 18px;border-radius:8px;border:1px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'rgba(74,159,212,0.15)':'transparent'};color:${sel?'var(--accent)':'var(--text2)'};font-size:12px;font-weight:${sel?700:400};cursor:pointer;font-family:var(--font)">${label}</button>`;
+    }).join('');
+  }
+  apiPlRenderContent();
+}
+
+function apiPlDeleteFile(id) {
+  if (!confirm('¿Eliminar esta planilla del historial?')) return;
+  _apiPlState.hist = (_apiPlState.hist||[]).filter(f => f.id !== id);
+  if (_apiPlState.selId === id) _apiPlState.selId = null;
+  cacheGuardar('planillas_hist', _apiPlState.hist);
+  apiPlRender();
+  showToast('🗑 Planilla eliminada');
+}
+
+// ─── PARSEO ───────────────────────────────────────────────────
+function apiPlHandleFile(file) {
+  if (!file) return;
+  const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+  if (!['.xlsx','.xls','.csv'].includes(ext)) { showToast('⚠️ Solo Excel (.xlsx, .xls) o CSV'); return; }
+  const dz = document.getElementById('api-drop-zone');
+  if (dz) dz.innerHTML = '<div style="font-size:36px;margin-bottom:12px">⏳</div><div style="font-weight:700;color:var(--text);font-size:14px">Leyendo '+file.name+'...</div>';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', cellDates:true, dateNF:'dd/mm/yyyy'});
+      const sheetNames = wb.SheetNames;
+      const sheets = {};
+      let maxFilas = 0, maxCols = 0;
+      const fDesde = parseInt((document.getElementById('api-fdesde')||{}).value) || _apiPlState.fDesde || 1;
+      sheetNames.forEach(sn => {
+        const parsed = apiPlParseSheet(wb.Sheets[sn], fDesde);
+        sheets[sn] = parsed;
+        if (parsed.rows.length > maxFilas) maxFilas = parsed.rows.length;
+        if (parsed.cols.length > maxCols)  maxCols  = parsed.cols.length;
+      });
+      const id = 'pl_'+Date.now();
+      const entry = { id, nombre: file.name, fecha: new Date().toLocaleDateString('es-AR'), sheetNames, sheets, filas: maxFilas, cols: maxCols };
+      if (!_apiPlState.hist) _apiPlState.hist = [];
+      const idx = _apiPlState.hist.findIndex(f => f.nombre === file.name);
+      if (idx >= 0) _apiPlState.hist[idx] = entry; else _apiPlState.hist.push(entry);
+      cacheGuardar('planillas_hist', _apiPlState.hist);
+      _apiPlState.selId = id; _apiPlState.selSheet = sheetNames[0]; _apiPlState.tab = 'resumen';
+      _apiPlState.pagina = 0; _apiPlState.filters = {}; _apiPlState.busqueda = ''; _apiPlState.sortCol = null; _apiPlState.chartX = null; _apiPlState.chartY = null;
+      if (dz) dz.innerHTML = '<div style="font-size:40px;margin-bottom:10px">📊</div><div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px">Arrastrá tu Excel aquí o hacé clic para seleccionar</div><div style="font-size:11px;color:var(--text3)">.xlsx · .xls · .csv — el archivo nunca sale de tu navegador · todo se procesa localmente</div>';
+      apiPlRender();
+      showToast('✅ '+file.name+' importada — '+maxFilas.toLocaleString('es-AR')+' filas');
+    } catch(err) {
+      console.error(err);
+      showToast('⚠️ Error al leer: '+err.message);
+      if (dz) dz.innerHTML = '<div style="font-size:40px;margin-bottom:10px">📊</div><div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px">Arrastrá tu Excel aquí o hacé clic para seleccionar</div><div style="font-size:11px;color:var(--text3)">.xlsx · .xls · .csv</div>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function apiPlParseSheet(ws, fDesde) {
+  const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', blankrows:false});
+  if (!raw.length || raw.length < fDesde) return {cols:[], rows:[], types:{}};
+  const headerRow = raw[fDesde-1] || [];
+  const cols = headerRow.map((h,i) => (h!==''&&h!==null&&h!==undefined)?String(h).trim():'Col'+(i+1));
+  const rows = raw.slice(fDesde).map(r => {
+    const obj = {};
+    cols.forEach((col,i) => {
+      let v = r[i]!==undefined ? r[i] : '';
+      if (v instanceof Date) v = v.toLocaleDateString('es-AR');
+      obj[col] = v;
+    });
+    return obj;
+  }).filter(r => Object.values(r).some(v => v!==''&&v!==null&&v!==undefined));
+  return {cols, rows: rows.slice(0,5000), types: apiPlDetectTypes(cols, rows)};
+}
+
+function apiPlDetectTypes(cols, rows) {
+  const types = {};
+  cols.forEach(col => {
+    const vals = rows.map(r=>r[col]).filter(v=>v!==''&&v!==null&&v!==undefined);
+    if (!vals.length) { types[col]='text'; return; }
+    const numPct = vals.filter(v=>typeof v==='number'||(typeof v==='string'&&v.trim()!==''&&!isNaN(parseFloat(v.replace(/[$,.% ]/g,'')))&&isFinite(parseFloat(v.replace(/[$,.% ]/g,''))))).length / vals.length;
+    const datePct = vals.filter(v=>typeof v==='string'&&(/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(v.trim())||/^\d{4}-\d{2}-\d{2}/.test(v.trim()))).length / vals.length;
+    types[col] = numPct>0.6?'numeric':datePct>0.5?'date':'text';
+  });
+  return types;
+}
+
+function apiPlToNum(v) {
+  if (typeof v==='number') return v;
+  if (typeof v==='string') { const n=parseFloat(v.replace(/[$,. ]/g,'').replace(',','.')); return isNaN(n)?null:n; }
+  return null;
+}
+
+// ─── RENDER CONTENT ───────────────────────────────────────────
+function apiPlRenderContent() {
+  const el = document.getElementById('api-content');
+  if (!el) return;
+  const sh = _apiPlSheet();
+  if (!sh) { el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)">Sin datos en esta hoja</div>'; return; }
+  switch (_apiPlState.tab) {
+    case 'resumen':  el.innerHTML = apiPlRenderResumen(sh); break;
+    case 'tabla':    el.innerHTML = apiPlRenderTabla(sh);   break;
+    case 'graficos': el.innerHTML = apiPlRenderGraficos(sh);break;
+    case 'analisis': apiPlRenderAnalisisPanel(sh);           break;
+    default:         el.innerHTML = apiPlRenderResumen(sh);
+  }
+}
+
+// ─── RESUMEN ──────────────────────────────────────────────────
+function apiPlRenderResumen(sh) {
+  const {cols, rows, types} = sh;
+  if (!rows.length) return '<div style="padding:40px;text-align:center;color:var(--text3)">La hoja no tiene datos</div>';
+  const numCols = cols.filter(c=>types[c]==='numeric');
+  const txtCols = cols.filter(c=>types[c]==='text');
+  const nullCount = cols.reduce((s,c)=>s+rows.filter(r=>r[c]===''||r[c]===null||r[c]===undefined).length,0);
+  const completitud = Math.round((1-(nullCount/(rows.length*cols.length||1)))*100);
+
+  const kpiCards = numCols.slice(0,6).map(col => {
+    const vals = rows.map(r=>apiPlToNum(r[col])).filter(v=>v!==null);
+    if (!vals.length) return '';
+    const sum=vals.reduce((a,b)=>a+b,0), avg=sum/vals.length, mx=Math.max(...vals), mn=Math.min(...vals);
+    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-left:3px solid var(--accent)">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${col}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><div style="font-size:9px;color:var(--text3)">TOTAL</div><div style="font-family:var(--mono);font-size:13px;font-weight:800;color:var(--green)">$ ${fmtARS(sum)}</div></div>
+        <div><div style="font-size:9px;color:var(--text3)">PROMEDIO</div><div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent)">$ ${fmtARS(avg)}</div></div>
+        <div><div style="font-size:9px;color:var(--text3)">MÁXIMO</div><div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--yellow)">$ ${fmtARS(mx)}</div></div>
+        <div><div style="font-size:9px;color:var(--text3)">MÍNIMO</div><div style="font-family:var(--mono);font-size:11px;color:var(--text2)">$ ${fmtARS(mn)}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const topCats = txtCols.slice(0,4).map(col => {
+    const freq = {}; rows.forEach(r=>{const v=String(r[col]||'').trim(); if(v) freq[v]=(freq[v]||0)+1;});
+    const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,7);
+    if (!top.length) return '';
+    const totalFreq = top.reduce((s,[,n])=>s+n,0);
+    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:10px">${col} — top valores</div>
+      ${top.map(([v,n],i) => {
+        const pct = Math.round(n/rows.length*100);
+        const colors = ['var(--accent)','var(--green)','var(--yellow)','#f472b6','#a78bfa','#fb923c','#34d399'];
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <div style="font-size:11px;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${v}">${v||'(vacío)'}</div>
+          <div style="flex:2;background:var(--bg3);border-radius:99px;height:5px;overflow:hidden"><div style="height:100%;background:${colors[i%colors.length]};border-radius:99px;width:${pct}%"></div></div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--mono);white-space:nowrap">${n} · ${pct}%</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-left:3px solid var(--green)">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3)">Filas de datos</div>
+      <div style="font-family:var(--mono);font-size:24px;font-weight:900;color:var(--green);margin-top:4px">${rows.length.toLocaleString('es-AR')}</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-left:3px solid var(--accent)">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3)">Columnas</div>
+      <div style="font-family:var(--mono);font-size:24px;font-weight:900;color:var(--accent);margin-top:4px">${cols.length}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">${numCols.length} numéricas · ${txtCols.length} texto</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-left:3px solid ${completitud>=90?'var(--green)':completitud>=70?'var(--yellow)':'var(--red)'}">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3)">Completitud</div>
+      <div style="font-family:var(--mono);font-size:24px;font-weight:900;color:${completitud>=90?'var(--green)':completitud>=70?'var(--yellow)':'var(--red)'};margin-top:4px">${completitud}%</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">${nullCount.toLocaleString('es-AR')} celdas vacías</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-left:3px solid var(--yellow)">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3)">Valores únicos</div>
+      <div style="font-family:var(--mono);font-size:24px;font-weight:900;color:var(--yellow);margin-top:4px">${txtCols.length?[...new Set(rows.map(r=>String(r[txtCols[0]]||'')).filter(v=>v))].length.toLocaleString('es-AR'):'—'}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">${txtCols[0]||'—'}</div>
+    </div>
+  </div>
+  ${numCols.length?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:16px">'+kpiCards+'</div>':''}
+  ${topCats?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">'+topCats+'</div>':''}`;
+}
+
+// ─── TABLA ────────────────────────────────────────────────────
+function apiPlGetFiltered(sh) {
+  let rows = [...(sh.rows||[])];
+  const bus = (_apiPlState.busqueda||'').toLowerCase();
+  Object.entries(_apiPlState.filters).forEach(([col,val]) => {
+    if (!val && val!==0) return;
+    if (sh.types[col]==='numeric'&&Array.isArray(val)) {
+      const [mn,mx]=val;
+      rows=rows.filter(r=>{const n=apiPlToNum(r[col]);return n!==null&&(mn===''||n>=parseFloat(mn))&&(mx===''||n<=parseFloat(mx));});
+    } else if (typeof val==='string'&&val) {
+      rows=rows.filter(r=>String(r[col]||'').toLowerCase().includes(val.toLowerCase()));
+    }
+  });
+  if (bus) rows=rows.filter(r=>Object.values(r).some(v=>String(v).toLowerCase().includes(bus)));
+  if (_apiPlState.sortCol) {
+    const col=_apiPlState.sortCol, dir=_apiPlState.sortDir, isNum=sh.types[col]==='numeric';
+    rows.sort((a,b)=>{const va=isNum?(apiPlToNum(a[col])??-Infinity):String(a[col]||''),vb=isNum?(apiPlToNum(b[col])??-Infinity):String(b[col]||'');return va<vb?-dir:va>vb?dir:0;});
+  }
+  return rows;
+}
+
+function apiPlRenderTabla(sh) {
+  if (!sh) return '';
+  const {cols,types} = sh;
+  const allRows = apiPlGetFiltered(sh);
+  const total=allRows.length, p=_apiPlState.pagina, ps=_apiPlState.pageSize;
+  const pageRows=allRows.slice(p*ps,(p+1)*ps), totalPags=Math.ceil(total/ps)||1;
+  const numCols=cols.filter(c=>types[c]==='numeric');
+  const hasFilters=Object.values(_apiPlState.filters).some(v=>v&&v!=='')||_apiPlState.busqueda;
+
+  const totales={};
+  numCols.forEach(col=>{const vals=allRows.map(r=>apiPlToNum(r[col])).filter(v=>v!==null);totales[col]=vals.reduce((a,b)=>a+b,0);});
+
+  const headers=cols.map((col,idx)=>{
+    const sel=_apiPlState.sortCol===col;
+    const dir=sel?(_apiPlState.sortDir===1?'↑':'↓'):'';
+    return `<th onclick="apiPlSetSort(${idx})" style="padding:8px 10px;text-align:${types[col]==='numeric'?'right':'left'};font-size:10px;font-weight:700;color:${sel?'var(--accent)':'var(--text3)'};text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;white-space:nowrap;user-select:none">${col} ${dir}</th>`;
+  }).join('');
+
+  const filterRow='<tr style="background:var(--bg3)">'+cols.map((col,idx)=>{
+    if (types[col]==='numeric') {
+      const fv=Array.isArray(_apiPlState.filters[col])?_apiPlState.filters[col]:['',''];
+      return `<th style="padding:3px 6px;font-weight:400"><div style="display:flex;gap:3px"><input type="number" placeholder="min" value="${fv[0]}" oninput="apiPlSetFilterRange(${idx},0,this.value)" style="width:52px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:9px;padding:2px 4px"><input type="number" placeholder="max" value="${fv[1]}" oninput="apiPlSetFilterRange(${idx},1,this.value)" style="width:52px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:9px;padding:2px 4px"></div></th>`;
+    }
+    const uniques=[...new Set(sh.rows.map(r=>String(r[col]||'')).filter(v=>v))].sort().slice(0,25);
+    if (uniques.length<=25&&uniques.length>1) {
+      return `<th style="padding:3px 6px;font-weight:400"><select onchange="apiPlSetFilter(${idx},this.value)" style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:9px;padding:2px 4px;width:100%;max-width:110px"><option value="">Todos</option>${uniques.map(u=>`<option value="${u.replace(/"/g,'&quot;')}" ${_apiPlState.filters[col]===u?'selected':''}>${u}</option>`).join('')}</select></th>`;
+    }
+    return `<th style="padding:3px 6px;font-weight:400"><input type="text" placeholder="Filtrar..." value="${String(_apiPlState.filters[col]||'').replace(/"/g,'&quot;')}" oninput="apiPlSetFilter(${idx},this.value)" style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:9px;padding:2px 4px;width:100%;max-width:110px"></th>`;
+  }).join('')+'</tr>';
+
+  const dataRows=pageRows.map((row,ri)=>
+    `<tr style="border-bottom:1px solid rgba(255,255,255,0.04);${ri%2===1?'background:rgba(255,255,255,0.015)':''}">` +
+    cols.map(col=>{
+      const v=row[col]; const isNum=types[col]==='numeric'; const n=isNum?apiPlToNum(v):null;
+      const disp=n!==null?'$ '+fmtARS(n):(v===''||v===null?'<span style="color:var(--border)">—</span>':String(v));
+      return `<td style="padding:6px 10px;font-size:11px;${isNum?'text-align:right;font-family:var(--mono);font-weight:600;color:var(--text)':'color:var(--text2)'};max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${String(v).replace(/"/g,'&quot;')}">${disp}</td>`;
+    }).join('')+'</tr>'
+  ).join('');
+
+  const totalsRow=numCols.length?'<tr style="border-top:2px solid var(--border);background:rgba(74,222,128,0.05)">'+cols.map(col=>
+    types[col]==='numeric'?`<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:800;color:var(--green)">$ ${fmtARS(totales[col])}</td>`:`<td style="padding:7px 10px;font-size:10px;color:var(--text3);font-weight:700;white-space:nowrap">${col===cols[0]?'TOTALES':''}</td>`
+  ).join('')+'</tr>':'';
+
+  const nav=`<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:11px;color:var(--text3)">Mostrando <strong style="color:var(--text)">${pageRows.length}</strong> de <strong style="color:var(--text)">${total.toLocaleString('es-AR')}</strong> filas${hasFilters?' <button onclick="apiPlClearFilters()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;padding:0;margin-left:4px">✕ Limpiar filtros</button>':''}</div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <button onclick="apiPlSetPage(0)" ${p===0?'disabled':''} style="padding:4px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:${p===0?'var(--border)':'var(--text)'};cursor:${p===0?'default':'pointer'}">«</button>
+      <button onclick="apiPlSetPage(${Math.max(0,p-1)})" ${p===0?'disabled':''} style="padding:4px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:${p===0?'var(--border)':'var(--text)'};cursor:${p===0?'default':'pointer'}">‹</button>
+      <span style="font-size:11px;color:var(--text2);padding:0 4px">${p+1} / ${totalPags}</span>
+      <button onclick="apiPlSetPage(${Math.min(totalPags-1,p+1)})" ${p>=totalPags-1?'disabled':''} style="padding:4px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:${p>=totalPags-1?'var(--border)':'var(--text)'};cursor:${p>=totalPags-1?'default':'pointer'}">›</button>
+      <button onclick="apiPlSetPage(${totalPags-1})" ${p>=totalPags-1?'disabled':''} style="padding:4px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:${p>=totalPags-1?'var(--border)':'var(--text)'};cursor:${p>=totalPags-1?'default':'pointer'}">»</button>
+      <select onchange="apiPlSetPageSize(this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 6px;font-size:11px;margin-left:6px">${[25,50,100,200].map(n=>`<option value="${n}" ${n===ps?'selected':''}>${n}/pág</option>`).join('')}</select>
+    </div>
+  </div>`;
+
+  return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+    <input id="api-search" type="text" placeholder="🔍 Buscar en toda la tabla..." value="${(_apiPlState.busqueda||'').replace(/"/g,'&quot;')}" oninput="apiPlSetSearch(this.value)" style="flex:1;min-width:180px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-size:12px;outline:none">
+  </div>
+  <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="background:var(--bg2)">${headers}</tr>${filterRow}</thead>
+      <tbody>${dataRows}</tbody>
+      <tfoot>${totalsRow}</tfoot>
+    </table>
+  </div>${nav}`;
+}
+
+// ─── GRÁFICOS ─────────────────────────────────────────────────
+function apiPlRenderGraficos(sh) {
+  const {cols,types} = sh;
+  const numCols=cols.filter(c=>types[c]==='numeric');
+  const catCols=cols.filter(c=>types[c]!=='numeric');
+  if (!_apiPlState.chartX) _apiPlState.chartX=catCols[0]||cols[0];
+  if (!_apiPlState.chartY) _apiPlState.chartY=numCols[0]||cols[1]||cols[0];
+
+  const controls=`<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px;padding:12px 14px;background:var(--bg2);border-radius:10px;border:1px solid var(--border)">
+    <div style="display:flex;gap:5px">${[['barras','📊 Barras'],['linea','📈 Línea'],['torta','🥧 Torta']].map(([t,l])=>
+      `<button onclick="apiPlSetChartType('${t}')" style="padding:5px 12px;border-radius:7px;border:1px solid ${_apiPlState.chartType===t?'var(--accent)':'var(--border)'};background:${_apiPlState.chartType===t?'rgba(74,159,212,0.15)':'transparent'};color:${_apiPlState.chartType===t?'var(--accent)':'var(--text2)'};font-size:11px;font-weight:${_apiPlState.chartType===t?700:400};cursor:pointer">${l}</button>`
+    ).join('')}</div>
+    <div style="display:flex;align-items:center;gap:6px"><span style="font-size:10px;color:var(--text3)">Eje X:</span>
+      <select onchange="apiPlSetChartX(this.selectedIndex)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 7px;font-size:11px">
+        ${cols.map((c,i)=>`<option value="${i}" ${c===_apiPlState.chartX?'selected':''}>${c}</option>`).join('')}
+      </select></div>
+    <div style="display:flex;align-items:center;gap:6px"><span style="font-size:10px;color:var(--text3)">Eje Y:</span>
+      <select onchange="apiPlSetChartY(this.selectedIndex)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 7px;font-size:11px">
+        ${cols.map((c,i)=>`<option value="${i}" ${c===_apiPlState.chartY?'selected':''}>${c}</option>`).join('')}
+      </select></div>
+  </div>`;
+  return controls + apiPlDrawChart(sh,_apiPlState.chartType,_apiPlState.chartX,_apiPlState.chartY);
+}
+
+function apiPlDrawChart(sh,type,colX,colY) {
+  const rows=apiPlGetFiltered(sh);
+  if (!rows.length) return '<div style="padding:40px;text-align:center;color:var(--text3)">Sin datos para graficar. Limpiá los filtros o elegí otra columna.</div>';
+  const agg={};
+  rows.forEach(r=>{const x=String(r[colX]||'(vacío)').trim(); agg[x]=(agg[x]||0)+(apiPlToNum(r[colY])||0);});
+  let entries=Object.entries(agg).sort((a,b)=>b[1]-a[1]);
+  const truncated=entries.length>25; if(truncated)entries=entries.slice(0,25);
+  if (type==='torta') return apiPlDrawPie(entries,colX,colY);
+  if (type==='linea') return apiPlDrawLine(rows,colX,colY);
+  return apiPlDrawBars(entries,colX,colY,truncated);
+}
+
+function apiPlDrawBars(entries,colX,colY,truncated) {
+  if (!entries.length) return '';
+  const max=Math.max(...entries.map(([,v])=>Math.abs(v)))||1;
+  const W=700,LPAD=150,RPAD=90,barH=26,gap=6;
+  const H=entries.length*(barH+gap)+50;
+  const barW=W-LPAD-RPAD;
+  const COLORS=['#4a9fd4','#4ade80','#fbbf24','#f472b6','#a78bfa','#fb923c','#34d399','#60a5fa','#e879f9','#2dd4bf','#f87171','#818cf8'];
+  const bars=entries.map(([label,val],i)=>{
+    const w=Math.max(3,(Math.abs(val)/max)*barW), y=i*(barH+gap)+30;
+    const c=COLORS[i%COLORS.length];
+    const disp=Math.abs(val)>=1000?'$ '+fmtARS(val):val.toLocaleString('es-AR');
+    return `<g><text x="${LPAD-6}" y="${y+barH/2+4}" text-anchor="end" font-size="10" fill="#8899aa" font-family="sans-serif">${label.length>18?label.slice(0,17)+'…':label}</text>
+      <rect x="${LPAD}" y="${y}" width="${w}" height="${barH}" rx="4" fill="${c}" opacity="0.82"/>
+      <text x="${LPAD+w+5}" y="${y+barH/2+4}" font-size="10" fill="${c}" font-weight="700" font-family="monospace">${disp}</text></g>`;
+  }).join('');
+  return `<div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:${H}px;display:block">
+    <text x="${W/2}" y="18" text-anchor="middle" font-size="11" fill="#667788" font-family="sans-serif">${colY} por ${colX}</text>
+    <line x1="${LPAD}" y1="25" x2="${LPAD}" y2="${H-10}" stroke="#334455" stroke-width="1"/>
+    ${bars}</svg>${truncated?'<div style="text-align:center;font-size:10px;color:var(--text3);margin-top:6px">Mostrando top 25 por valor — filtrá para ver más detalle</div>':''}</div>`;
+}
+
+function apiPlDrawLine(rows,colX,colY) {
+  const agg={};
+  rows.forEach(r=>{const x=String(r[colX]||'').trim(); agg[x]=(agg[x]||0)+(apiPlToNum(r[colY])||0);});
+  const entries=Object.entries(agg).sort((a,b)=>{
+    const da=new Date(a[0].split('/').reverse().join('-')), db=new Date(b[0].split('/').reverse().join('-'));
+    if (!isNaN(da)&&!isNaN(db)) return da-db; return a[0].localeCompare(b[0]);
+  }).slice(0,50);
+  if (entries.length<2) return '<div style="padding:30px;text-align:center;color:var(--text3);font-size:12px">Se necesitan al menos 2 puntos para el gráfico de línea. Probá con el gráfico de barras.</div>';
+  const W=700,PT={t:30,r:30,b:55,l:75},CH=280;
+  const vals=entries.map(([,v])=>v), minV=Math.min(...vals), maxV=Math.max(...vals), rangeV=maxV-minV||1;
+  const stepX=(W-PT.l-PT.r)/(entries.length-1);
+  const pts=entries.map(([,v],i)=>({x:PT.l+i*stepX,y:PT.t+(1-(v-minV)/rangeV)*(CH-PT.t-PT.b)}));
+  const path='M'+pts.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L');
+  const area=path+`L${pts[pts.length-1].x.toFixed(1)},${CH-PT.b} L${pts[0].x.toFixed(1)},${CH-PT.b} Z`;
+  const labels=entries.map(([k],i)=>{
+    if (entries.length>10&&i%Math.ceil(entries.length/10)!==0) return '';
+    return `<text x="${pts[i].x.toFixed(1)}" y="${CH-PT.b+14}" text-anchor="middle" font-size="9" fill="#667788" font-family="sans-serif" transform="rotate(-35,${pts[i].x.toFixed(1)},${CH-PT.b+14})">${k.length>12?k.slice(0,10)+'…':k}</text>`;
+  }).join('');
+  const yTicks=[0,.25,.5,.75,1].map(t=>{
+    const v=minV+t*rangeV, y=PT.t+(1-t)*(CH-PT.t-PT.b);
+    return `<text x="${PT.l-6}" y="${y+3}" text-anchor="end" font-size="9" fill="#667788" font-family="monospace">${fmtARS(v)}</text><line x1="${PT.l}" y1="${y}" x2="${W-PT.r}" y2="${y}" stroke="#223344" stroke-width="0.5"/>`;
+  }).join('');
+  const dots=pts.map((p,i)=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="#4a9fd4" stroke="#111827" stroke-width="1.5"><title>${entries[i][0]}: $ ${fmtARS(vals[i])}</title></circle>`).join('');
+  return `<div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${CH}" style="width:100%;max-width:${W}px;height:${CH}px;display:block">
+    <text x="${W/2}" y="18" text-anchor="middle" font-size="11" fill="#667788" font-family="sans-serif">${colY} — evolución por ${colX}</text>
+    <defs><linearGradient id="aplGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4a9fd4" stop-opacity="0.3"/><stop offset="100%" stop-color="#4a9fd4" stop-opacity="0"/></linearGradient></defs>
+    ${yTicks}<path d="${area}" fill="url(#aplGrad)"/><path d="${path}" fill="none" stroke="#4a9fd4" stroke-width="2.5" stroke-linejoin="round"/>${dots}${labels}
+  </svg></div>`;
+}
+
+function apiPlDrawPie(entries,colX,colY) {
+  const pos=entries.filter(([,v])=>v>0);
+  if (!pos.length) return '<div style="padding:30px;text-align:center;color:var(--text3)">Todos los valores son 0 o negativos</div>';
+  const total=pos.reduce((s,[,v])=>s+v,0);
+  const cx=150,cy=140,r=115;
+  const COLORS=['#4a9fd4','#4ade80','#fbbf24','#f472b6','#a78bfa','#fb923c','#34d399','#60a5fa','#e879f9','#2dd4bf','#f87171','#818cf8'];
+  let angle=-Math.PI/2;
+  const slices=pos.map(([label,val],i)=>{
+    const pct=val/total, a=pct*2*Math.PI, end=angle+a;
+    const x1=cx+r*Math.cos(angle),y1=cy+r*Math.sin(angle),x2=cx+r*Math.cos(end),y2=cy+r*Math.sin(end);
+    const mid=angle+a/2, lx=cx+(r+20)*Math.cos(mid), ly=cy+(r+20)*Math.sin(mid);
+    const c=COLORS[i%COLORS.length];
+    const s=`<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${a>Math.PI?1:0},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${c}" opacity="0.85" stroke="#111827" stroke-width="1.5"><title>${label}: $ ${fmtARS(val)} (${(pct*100).toFixed(1)}%)</title></path>`;
+    const lbl=pct>0.04?`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" font-size="9" fill="white" font-weight="700" font-family="sans-serif">${(pct*100).toFixed(0)}%</text>`:'';
+    angle=end; return s+lbl;
+  }).join('');
+  const legend=pos.slice(0,12).map(([label,val],i)=>`<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px"><div style="width:10px;height:10px;border-radius:2px;background:${COLORS[i%COLORS.length]};flex-shrink:0"></div><div style="font-size:10px;color:var(--text2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${label}">${label}</div><div style="font-size:10px;font-family:monospace;color:var(--text3);white-space:nowrap">${(val/total*100).toFixed(1)}%</div></div>`).join('');
+  return `<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+    <svg viewBox="0 0 ${cx*2} ${cy*2+10}" style="width:300px;height:290px;flex-shrink:0">${slices}</svg>
+    <div style="flex:1;min-width:180px">${legend}</div></div>`;
+}
+
+// ─── ANÁLISIS IA ──────────────────────────────────────────────
+function apiPlRenderAnalisisPanel(sh) {
+  const el = document.getElementById('api-content');
+  if (!el) return;
+  const file=_apiPlCurrent();
+  const sn=_apiPlState.selSheet||(file&&file.sheetNames&&file.sheetNames[0])||'';
+  const key=(_apiPlState.selId||'')+'_'+sn;
+  const cached=_apiPlState.analisis[key], loading=_apiPlState.analizando[key];
+  if (loading) {
+    el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:70px;gap:16px"><div style="width:44px;height:44px;border:3px solid rgba(74,159,212,0.2);border-top-color:var(--accent);border-radius:50%;animation:spin-dash 0.9s linear infinite"></div><div style="font-size:13px;color:var(--text2);font-weight:700">Claude está analizando la planilla...</div><div style="font-size:11px;color:var(--text3)">Esto puede tomar 20-40 segundos según el tamaño</div></div>`;
+    return;
+  }
+  if (cached) {
+    el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button onclick="delete _apiPlState.analisis['${key.replace(/'/g,"\\'")}'];apiPlRenderAnalisisPanel(_apiPlSheet())" style="padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text3);font-size:11px;cursor:pointer">↺ Re-analizar</button></div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px 24px;line-height:1.75;font-size:13px;color:var(--text2)">${apiPlMd(cached)}</div>`;
+    return;
+  }
+  el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:70px;gap:14px;text-align:center">
+    <div style="font-size:52px">🤖</div>
+    <div style="font-size:16px;font-weight:800;color:var(--text)">Análisis completo con Claude IA</div>
+    <div style="font-size:12px;color:var(--text3);max-width:420px;line-height:1.6">Claude va a leer todos los datos, detectar patrones, calcular estadísticas, buscar anomalías y darte recomendaciones concretas basadas en los números.</div>
+    <button onclick="apiPlAnalizar()" style="margin-top:8px;padding:13px 32px;border-radius:10px;border:none;background:var(--accent);color:white;font-size:14px;font-weight:800;cursor:pointer;font-family:var(--font)">🚀 Analizar ahora</button>
+    <div style="font-size:10px;color:var(--text3)">Costo estimado: centavos por análisis · usa tu ANTHROPIC_API_KEY</div>
+  </div>`;
+}
+
+async function apiPlAnalizar() {
+  const sh=_apiPlSheet(), file=_apiPlCurrent();
+  if (!sh||!file) return;
+  const sn=_apiPlState.selSheet||(file.sheetNames&&file.sheetNames[0])||'';
+  const key=(_apiPlState.selId||'')+'_'+sn;
+  _apiPlState.analizando[key]=true;
+  apiPlRenderAnalisisPanel(sh);
+  try {
+    const {cols,rows,types}=sh;
+    const sample=rows.slice(0,400);
+    const csv=[cols.join('\t'),...sample.map(r=>cols.map(c=>String(r[c]??'')).join('\t'))].join('\n');
+    const truncNote=rows.length>400?`\n\n[Datos truncados: se analizan ${sample.length} de ${rows.length} filas totales]`:'';
+    const system=`Sos un analista de datos y consultor financiero experto de Argentina. Analizarás una planilla de Excel y harás un informe completo, específico y útil en español argentino.
+
+Tu informe DEBE tener estas secciones con encabezados ##:
+
+## Resumen ejecutivo
+Qué contiene esta planilla, de qué trata, cuántos registros, período si aplica. 2-4 oraciones claras.
+
+## Hallazgos principales
+Lista de 6-10 hallazgos concretos y específicos con los números exactos que encontrás en los datos. Cada uno empieza con -.
+
+## Análisis numérico
+Para cada columna numérica importante: total, promedio, máximo, mínimo, rango. Usá formato **negrita** para los números clave.
+
+## Patrones y tendencias
+Qué patrones repetidos, distribuciones o tendencias ves. Si hay concentración en ciertos valores, si hay estacionalidad, si hay crecimiento/caída.
+
+## Anomalías y valores atípicos
+Registros que se destacan, valores fuera de lo normal, celdas vacías importantes, posibles errores de carga.
+
+## Conclusiones y recomendaciones
+3-5 recomendaciones concretas y accionables basadas en los datos. Qué debería hacer la persona con esta información.
+
+Usá números específicos siempre. Formato argentino: punto para miles, coma para decimales. Sé directo y profesional.`;
+    const userMsg=`Planilla: "${file.nombre}" | Hoja: "${sn}"
+Columnas (${cols.length}): ${cols.join(', ')}
+Tipos: ${Object.entries(types).map(([c,t])=>`${c}→${t}`).join(', ')}
+Total filas: ${rows.length.toLocaleString('es-AR')}
+
+DATOS:
+${csv}${truncNote}`;
+    const resp=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2500,system,messages:[{role:'user',content:userMsg}]})});
+    if (!resp.ok) { const e=await resp.text(); throw new Error('API '+resp.status+': '+e.slice(0,200)); }
+    const data=await resp.json();
+    _apiPlState.analisis[key]=data.content?.find(b=>b.type==='text')?.text||'Sin respuesta';
+  } catch(e) {
+    _apiPlState.analisis[key]='⚠️ Error al analizar: '+e.message;
+  } finally {
+    _apiPlState.analizando[key]=false;
+    apiPlRenderAnalisisPanel(_apiPlSheet());
+  }
+}
+
+function apiPlMd(md) {
+  return md
+    .replace(/^## (.+)$/gm,'<h3 style="font-size:14px;font-weight:800;color:var(--text);margin:20px 0 8px;border-bottom:1px solid var(--border);padding-bottom:5px">$1</h3>')
+    .replace(/^### (.+)$/gm,'<h4 style="font-size:13px;font-weight:700;color:var(--accent);margin:14px 0 6px">$1</h4>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--text);font-weight:800">$1</strong>')
+    .replace(/^- (.+)$/gm,'<div style="display:flex;gap:9px;margin-bottom:6px;align-items:flex-start"><span style="color:var(--accent);font-weight:800;flex-shrink:0;margin-top:1px">•</span><span>$1</span></div>')
+    .replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+}
+
+// ─── EXPORTAR ─────────────────────────────────────────────────
+function apiPlExportarFiltrado() {
+  const sh=_apiPlSheet();
+  if (!sh) { showToast('⚠️ No hay datos para exportar'); return; }
+  const rows=apiPlGetFiltered(sh);
+  if (!rows.length) { showToast('⚠️ No hay filas con los filtros actuales'); return; }
+  const ws=XLSX.utils.json_to_sheet(rows,{header:sh.cols});
+  const wb=XLSX.utils.book_new();
+  const file=_apiPlCurrent();
+  XLSX.utils.book_append_sheet(wb,ws,(_apiPlState.selSheet||'Datos').slice(0,31));
+  XLSX.writeFile(wb,(file?file.nombre.replace(/\.\w+$/,''):'planilla')+'_filtrada_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  showToast('📥 Excel exportado — '+rows.length.toLocaleString('es-AR')+' filas');
 }
 </script>
 
