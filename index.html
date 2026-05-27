@@ -19636,12 +19636,16 @@ function renderControlGestion() {
     '<button id="cg-btn-clientes" onclick="cgTab(\'clientes\')" style="'+btnStyle(false)+'">👥 Clientes en riesgo</button>' +
     '<button id="cg-btn-seguimiento" onclick="cgTab(\'seguimiento\')" style="'+btnStyle(false)+'">📋 Seguimiento</button>' +
     '<button id="cg-btn-evolucion" onclick="cgTab(\'evolucion\')" style="'+btnStyle(false)+'">📈 Evolución</button>' +
+    '<button id="cg-btn-apies360" onclick="cgTab(\'apies360\')" style="'+btnStyle(false)+'">🏢 APIES 360°</button>' +
+    '<button id="cg-btn-alertas" onclick="cgTab(\'alertas\')" style="'+btnStyle(false)+'">⚠️ Alertas</button>' +
+    '<button id="cg-btn-cartera" onclick="cgTab(\'cartera\')" style="'+btnStyle(false)+'">📂 Cartera</button>' +
+    '<button id="cg-btn-creditories" onclick="cgTab(\'creditories\')" style="'+btnStyle(false)+'">💳 Crédito & Riesgo</button>' +
     '</div><div id="cg-content"></div>';
   cgTab('dashboard');
 }
 
 function cgTab(tab) {
-  const tabs = ['dashboard','ranking','clientes','seguimiento','evolucion'];
+  const tabs = ['dashboard','ranking','clientes','seguimiento','evolucion','apies360','alertas','cartera','creditories'];
   tabs.forEach(t => {
     const btn = document.getElementById('cg-btn-'+t);
     if (!btn) return;
@@ -19657,6 +19661,10 @@ function cgTab(tab) {
   else if (tab==='clientes') cgRenderClientes(c);
   else if (tab==='seguimiento') cgRenderSeguimiento(c);
   else if (tab==='evolucion') cgRenderEvolucion(c);
+  else if (tab==='apies360') cgRenderApies360(c);
+  else if (tab==='alertas') cgRenderAlertas(c);
+  else if (tab==='cartera') cgRenderCartera(c);
+  else if (tab==='creditories') cgRenderCreditoRiesgo(c);
 }
 
 function _cgFmt(n) { return '$'+(n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0}); }
@@ -19859,6 +19867,233 @@ function cgRenderEvolucion(content) {
         '<td style="padding:9px 12px;text-align:right;color:#4ade80">'+_cgFmt(m.totalCob)+'</td>' +
         '<td style="padding:9px 12px;text-align:center;font-weight:700;color:'+pc+'">'+pct+'%</td></tr>';
     }).join('')+'</tbody></table></div>';
+  content.innerHTML = h;
+}
+function _cgNorm(s) { return String(s||'').trim().toUpperCase().replace(/\s+/g,' '); }
+
+function cgRenderApies360(content) {
+  const rech = window._cgActivos||[];
+  const clis = appState.clientesDebo||[];
+  const apiesSet = new Set([...rech.map(r=>r.apies), ...clis.map(c=>c.apies)].filter(Boolean));
+  const apies = [...apiesSet].sort();
+  if (!apies.length) { content.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)">Sin datos de APIES disponibles. Cargá el Excel de Cheques Rechazados y el de Clientes.</div>'; return; }
+
+  let h = '<div style="font-size:11px;color:var(--text3);margin-bottom:12px">Vista consolidada por APIES: cheques rechazados activos + saldo de clientes de la estación.</div>' +
+    '<div style="background:var(--bg2);border-radius:10px;overflow:hidden;border:1px solid var(--border)"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px">' +
+    _cgThead(['APIES'],['Ch. rechazados','center'],['Monto rechazado','right'],['Clientes activos','center'],['Saldo clientes','right'],['Exposición neta','right'],['','center']) +
+    '<tbody>';
+  apies.forEach(ap => {
+    const rs = rech.filter(r=>r.apies===ap);
+    const cs = clis.filter(c=>c.apies===ap);
+    const mRech = rs.reduce((s,r)=>s+(r.importe||0),0);
+    const mCli = cs.reduce((s,c)=>s+(c.saldo||0),0);
+    const neta = mRech + mCli;
+    const maxD = rs.reduce((m,r)=>Math.max(m,r.dias||0),0);
+    const sem = _cgSem(mRech, maxD);
+    h += '<tr style="border-top:1px solid var(--border)">' +
+      '<td style="padding:9px 12px;font-weight:700">'+ap+'</td>' +
+      '<td style="padding:9px 12px;text-align:center;color:var(--text2)">'+rs.length+'</td>' +
+      '<td style="padding:9px 12px;text-align:right;color:#f87171;font-weight:700">'+_cgFmt(mRech)+'</td>' +
+      '<td style="padding:9px 12px;text-align:center;color:var(--text2)">'+cs.length+'</td>' +
+      '<td style="padding:9px 12px;text-align:right;color:var(--accent)">'+_cgFmt(mCli)+'</td>' +
+      '<td style="padding:9px 12px;text-align:right;font-weight:700;color:'+(neta>0?'#f87171':'#4ade80')+'">'+_cgFmt(neta)+'</td>' +
+      '<td style="padding:9px 12px;text-align:center">'+sem.ic+'</td></tr>';
+  });
+  h += '</tbody></table></div></div>';
+  content.innerHTML = h;
+}
+
+function cgRenderAlertas(content) {
+  const rech = window._cgActivos||[];
+  const cartera = appState.cartDebo||[];
+  const clis = appState.clientesDebo||[];
+  const lc = appState.lcData||[];
+  const riesgo = appState.riesgoData||[];
+  let alertas = [];
+
+  // Alerta 1: Clientes con cartera Y rechazados
+  const rechNombres = new Set(rech.map(r=>_cgNorm(r.cliente||r.librador)));
+  const cartProbl = cartera.filter(c=>rechNombres.has(_cgNorm(c.cliente||c.librador)));
+  const cartByCliente = {};
+  cartProbl.forEach(c=>{
+    const k=_cgNorm(c.cliente||c.librador);
+    if(!cartByCliente[k]) cartByCliente[k]={nombre:c.cliente||c.librador,totalCart:0,count:0};
+    cartByCliente[k].totalCart+=c.importe||0; cartByCliente[k].count++;
+  });
+  Object.values(cartByCliente).forEach(c=>{
+    const rechCliente = rech.filter(r=>_cgNorm(r.cliente||r.librador)===_cgNorm(c.nombre));
+    const totalRech = rechCliente.reduce((s,r)=>s+(r.importe||0),0);
+    alertas.push({tipo:'DOBLE RIESGO',nivel:'🔴',cliente:c.nombre,
+      detalle:'Cartera activa: '+_cgFmt(c.totalCart)+' ('+c.count+' ch) + Rechazados: '+_cgFmt(totalRech),
+      total:c.totalCart+totalRech});
+  });
+
+  // Alerta 2: Clientes sobre límite de crédito autorizado (autCC)
+  clis.filter(c=>(c.autCC||0)>0 && (c.saldo||0)>(c.autCC||0)).forEach(c=>{
+    alertas.push({tipo:'SOBRE LÍMITE',nivel:'🟠',cliente:c.nombre,
+      detalle:'Saldo: '+_cgFmt(c.saldo)+' — Límite autCC: '+_cgFmt(c.autCC)+' — Exceso: '+_cgFmt(c.saldo-c.autCC),
+      total:c.saldo-c.autCC});
+  });
+
+  // Alerta 3: Divisiones sobre límite de crédito (lcData)
+  lc.filter(l=>(l.riesgoOtorgado||0)>0 && (l.totalConsumo||0)>(l.riesgoOtorgado||0)).forEach(l=>{
+    alertas.push({tipo:'LÍMITE CRÉDITO',nivel:'🟠',cliente:l.division,
+      detalle:'Consumo: '+_cgFmt(l.totalConsumo)+' — Riesgo otorgado: '+_cgFmt(l.riesgoOtorgado)+' — Exceso: '+_cgFmt(l.totalConsumo-l.riesgoOtorgado),
+      total:l.totalConsumo-l.riesgoOtorgado});
+  });
+
+  // Alerta 4: Clientes con rechazados y perfil de riesgo ALTO o CRÍTICO
+  const PERFILES_ALTO = ['ALTO','CRITICO','CRÍTICO','MUY ALTO'];
+  riesgo.filter(r=>PERFILES_ALTO.some(p=>String(r.perfil||'').toUpperCase().includes(p))).forEach(r=>{
+    const rechCliente = rech.filter(rc=>_cgNorm(rc.cliente||rc.librador)===_cgNorm(r.nombre));
+    if(rechCliente.length) {
+      const total = rechCliente.reduce((s,rc)=>s+(rc.importe||0),0);
+      alertas.push({tipo:'RIESGO ALTO',nivel:'🔴',cliente:r.nombre,
+        detalle:'Perfil: '+r.perfil+' — Score: '+(r.score||'—')+' — Rechazados: '+_cgFmt(total),
+        total});
+    }
+  });
+
+  alertas.sort((a,b)=>b.total-a.total);
+
+  if (!alertas.length) {
+    content.innerHTML='<div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:20px;text-align:center;color:#4ade80;font-size:13px">✅ Sin alertas críticas detectadas con los datos cargados.</div>';
+    return;
+  }
+
+  let h = '<div style="font-size:11px;color:var(--text3);margin-bottom:12px">'+alertas.length+' alertas detectadas cruzando rechazados, cartera, clientes y límites de crédito.</div>' +
+    '<div style="display:flex;flex-direction:column;gap:8px">';
+  alertas.forEach(a=>{
+    const bg = a.nivel==='🔴'?'rgba(248,113,113,0.08)':'rgba(251,191,36,0.08)';
+    const bc = a.nivel==='🔴'?'rgba(248,113,113,0.25)':'rgba(251,191,36,0.25)';
+    h += '<div style="background:'+bg+';border:1px solid '+bc+';border-radius:10px;padding:12px 14px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">' +
+      '<div><div style="font-size:11px;font-weight:700;margin-bottom:3px">'+a.nivel+' <span style="background:var(--bg3);border-radius:4px;padding:1px 6px;font-size:9px;letter-spacing:0.5px">'+a.tipo+'</span> '+a.cliente+'</div>' +
+      '<div style="font-size:11px;color:var(--text2)">'+a.detalle+'</div></div>' +
+      '<div style="font-size:14px;font-weight:800;color:#f87171;white-space:nowrap">'+_cgFmt(a.total)+'</div></div></div>';
+  });
+  h += '</div>';
+  content.innerHTML = h;
+}
+
+function cgRenderCartera(content) {
+  const cartera = appState.cartDebo||[];
+  const rech = window._cgActivos||[];
+  if (!cartera.length) { content.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)">Sin datos de cartera. Cargá el Excel de Cartera de Valores.</div>'; return; }
+
+  const rechNombres = new Set(rech.map(r=>_cgNorm(r.cliente||r.librador)));
+  const franjas = [{label:'0 - 30 días',min:0,max:30},{label:'31 - 60 días',min:31,max:60},{label:'61 - 90 días',min:61,max:90},{label:'Más de 90 días',min:91,max:99999}];
+  const totalCart = cartera.reduce((s,c)=>s+(c.importe||0),0);
+
+  let h = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px">';
+  franjas.forEach(f=>{
+    const items = cartera.filter(c=>(c.dias||0)>=f.min&&(c.dias||0)<=f.max);
+    const total = items.reduce((s,c)=>s+(c.importe||0),0);
+    const pct = totalCart ? Math.round(total/totalCart*100) : 0;
+    const color = f.min>=91?'#f87171':f.min>=61?'#fbbf24':f.min>=31?'#fb923c':'#4ade80';
+    h += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px">' +
+      '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">'+f.label+'</div>' +
+      '<div style="font-size:16px;font-weight:800;color:'+color+'">'+_cgFmt(total)+'</div>' +
+      '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+items.length+' ch · '+pct+'%</div></div>';
+  });
+  h += '</div>';
+
+  // Tabla detalle con alerta si el cliente también tiene rechazados
+  const conRech = cartera.filter(c=>rechNombres.has(_cgNorm(c.cliente||c.librador)));
+  if (conRech.length) {
+    h += '<div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:8px">⚠️ Cheques en cartera de clientes con rechazados ('+conRech.length+')</div>' +
+      '<div style="background:var(--bg2);border-radius:10px;overflow:hidden;border:1px solid rgba(248,113,113,0.3);margin-bottom:20px"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:500px">' +
+      _cgThead(['Cliente/Librador'],['Banco'],['Importe','right'],['Días','center'],['Vence']) +
+      '<tbody>'+conRech.sort((a,b)=>(b.dias||0)-(a.dias||0)).slice(0,20).map(c=>
+        '<tr style="border-top:1px solid var(--border)">' +
+        '<td style="padding:8px 12px;color:var(--text)">'+( c.cliente||c.librador||'—')+'</td>' +
+        '<td style="padding:8px 12px;color:var(--text2)">'+c.banco+'</td>' +
+        '<td style="padding:8px 12px;text-align:right;font-weight:700;color:#fbbf24">'+_cgFmt(c.importe)+'</td>' +
+        '<td style="padding:8px 12px;text-align:center;color:'+(( c.dias||0)>60?'#f87171':'var(--text2)')+'">'+( c.dias||0)+'d</td>' +
+        '<td style="padding:8px 12px;color:var(--text3)">'+( c.fPres||'—')+'</td></tr>'
+      ).join('')+'</tbody></table></div></div>';
+  }
+
+  const resto = cartera.filter(c=>!rechNombres.has(_cgNorm(c.cliente||c.librador))).sort((a,b)=>(b.dias||0)-(a.dias||0));
+  h += '<div style="font-size:12px;font-weight:700;margin-bottom:8px">Cartera sin rechazados ('+resto.length+' cheques)</div>' +
+    '<div style="background:var(--bg2);border-radius:10px;overflow:hidden;border:1px solid var(--border)"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:500px">' +
+    _cgThead(['Cliente/Librador'],['Banco'],['Importe','right'],['Días','center'],['Vence']) +
+    '<tbody>'+resto.slice(0,30).map(c=>
+      '<tr style="border-top:1px solid var(--border)">' +
+      '<td style="padding:8px 12px;color:var(--text)">'+( c.cliente||c.librador||'—')+'</td>' +
+      '<td style="padding:8px 12px;color:var(--text2)">'+c.banco+'</td>' +
+      '<td style="padding:8px 12px;text-align:right;font-weight:700;color:var(--accent)">'+_cgFmt(c.importe)+'</td>' +
+      '<td style="padding:8px 12px;text-align:center;color:'+(( c.dias||0)>60?'#fbbf24':'var(--text2)')+'">'+( c.dias||0)+'d</td>' +
+      '<td style="padding:8px 12px;color:var(--text3)">'+( c.fPres||'—')+'</td></tr>'
+    ).join('')+'</tbody></table></div></div>';
+  content.innerHTML = h;
+}
+
+function cgRenderCreditoRiesgo(content) {
+  const lc = appState.lcData||[];
+  const riesgo = appState.riesgoData||[];
+  const rech = window._cgActivos||[];
+  let h = '';
+
+  // Límites de crédito
+  if (lc.length) {
+    const sobre = lc.filter(l=>(l.totalConsumo||0)>(l.riesgoOtorgado||0));
+    const dentro = lc.filter(l=>(l.totalConsumo||0)<=(l.riesgoOtorgado||0));
+    h += '<div style="font-size:12px;font-weight:700;margin-bottom:10px">💳 Límites de Crédito por División</div>';
+    if (sobre.length) h += '<div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#f87171;font-weight:700">⚠️ '+sobre.length+' división'+(sobre.length>1?'es':'')+ ' sobre el límite otorgado</div>';
+    h += '<div style="background:var(--bg2);border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-bottom:24px"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:560px">' +
+      _cgThead(['División'],['Riesgo otorgado','right'],['Consumo actual','right'],['Saldo disp.','right'],['Uso','center'],['Estado','center']) +
+      '<tbody>'+lc.sort((a,b)=>((b.totalConsumo||0)/(b.riesgoOtorgado||1))-((a.totalConsumo||0)/(a.riesgoOtorgado||1))).map(l=>{
+        const uso = l.riesgoOtorgado ? Math.round((l.totalConsumo||0)/l.riesgoOtorgado*100) : 0;
+        const sobrePaso = (l.totalConsumo||0)>(l.riesgoOtorgado||0);
+        const usoColor = uso>=100?'#f87171':uso>=80?'#fbbf24':'#4ade80';
+        return '<tr style="border-top:1px solid var(--border)">' +
+          '<td style="padding:9px 12px;font-weight:600;color:var(--text)">'+l.division+'</td>' +
+          '<td style="padding:9px 12px;text-align:right;color:var(--text2)">'+_cgFmt(l.riesgoOtorgado)+'</td>' +
+          '<td style="padding:9px 12px;text-align:right;font-weight:700;color:'+(sobrePaso?'#f87171':'var(--text)')+'">'+_cgFmt(l.totalConsumo)+'</td>' +
+          '<td style="padding:9px 12px;text-align:right;color:'+(sobrePaso?'#f87171':'#4ade80')+'">'+_cgFmt(l.saldo)+'</td>' +
+          '<td style="padding:9px 12px;text-align:center;font-weight:700;color:'+usoColor+'">'+uso+'%</td>' +
+          '<td style="padding:9px 12px;text-align:center">'+(sobrePaso?'<span style="color:#f87171;font-size:10px;font-weight:700">⛔ EXCEDIDO</span>':'<span style="color:#4ade80;font-size:10px;font-weight:700">✅ OK</span>')+'</td></tr>';
+      }).join('')+'</tbody></table></div></div>';
+  } else {
+    h += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:20px;color:var(--text3);font-size:12px">Sin datos de Límite de Crédito cargados.</div>';
+  }
+
+  // Riesgo crediticio cruzado con rechazados
+  if (riesgo.length) {
+    const PERFILES_ALTO = ['ALTO','CRITICO','CRÍTICO','MUY ALTO'];
+    const rechNombres = {};
+    rech.forEach(r=>{ const k=_cgNorm(r.cliente||r.librador); if(!rechNombres[k]) rechNombres[k]=0; rechNombres[k]+=r.importe||0; });
+    const conRech = riesgo.filter(r=>rechNombres[_cgNorm(r.nombre)]>0).sort((a,b)=>(b.score||0)-(a.score||0));
+    const altoRiesgo = conRech.filter(r=>PERFILES_ALTO.some(p=>String(r.perfil||'').toUpperCase().includes(p)));
+
+    h += '<div style="font-size:12px;font-weight:700;margin-bottom:10px">🎯 Riesgo Crediticio — Clientes con Rechazados</div>';
+    if (!conRech.length) {
+      h += '<div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:8px;padding:14px;color:#4ade80;font-size:12px">✅ Ningún cliente con rechazados aparece en la base de riesgo crediticio.</div>';
+    } else {
+      if (altoRiesgo.length) h += '<div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#f87171;font-weight:700">⚠️ '+altoRiesgo.length+' cliente'+(altoRiesgo.length>1?'s con perfil de riesgo ALTO/CRÍTICO tienen cheques rechazados':' con perfil de riesgo ALTO/CRÍTICO tiene cheques rechazados')+'</div>';
+      h += '<div style="background:var(--bg2);border-radius:10px;overflow:hidden;border:1px solid var(--border)"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:520px">' +
+        _cgThead(['Cliente'],['Perfil riesgo'],['Score','center'],['Rechazados','right'],['Estado','center']) +
+        '<tbody>'+conRech.slice(0,20).map(r=>{
+          const monto = rechNombres[_cgNorm(r.nombre)]||0;
+          const esAlto = PERFILES_ALTO.some(p=>String(r.perfil||'').toUpperCase().includes(p));
+          const pc = esAlto?'#f87171':'#fbbf24';
+          return '<tr style="border-top:1px solid var(--border)">' +
+            '<td style="padding:9px 12px;color:var(--text)">'+r.nombre+'</td>' +
+            '<td style="padding:9px 12px"><span style="background:'+(esAlto?'rgba(248,113,113,0.1)':'rgba(251,191,36,0.1)')+';color:'+pc+';border-radius:99px;padding:2px 8px;font-size:10px;font-weight:700">'+r.perfil+'</span></td>' +
+            '<td style="padding:9px 12px;text-align:center;color:'+pc+';font-weight:700">'+(r.score||'—')+'</td>' +
+            '<td style="padding:9px 12px;text-align:right;color:#f87171;font-weight:700">'+_cgFmt(monto)+'</td>' +
+            '<td style="padding:9px 12px;text-align:center">'+(esAlto?'🔴 CRÍTICO':'🟡 ATENCIÓN')+'</td></tr>';
+        }).join('')+'</tbody></table></div></div>';
+    }
+  } else {
+    h += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;color:var(--text3);font-size:12px">Sin datos de Riesgo Crediticio cargados.</div>';
+  }
+
+  if (!lc.length && !riesgo.length) {
+    content.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)">Cargá el Excel de Límite de Crédito y/o Riesgo Crediticio para ver este análisis.</div>';
+    return;
+  }
   content.innerHTML = h;
 }
 // ─── Fin Control de Gestión ───────────────────────────────────────
