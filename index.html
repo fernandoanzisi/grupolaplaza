@@ -412,6 +412,7 @@ let _supaUser=null,_supaRol=null;
           <button class="nav-dd-item" onclick="navGo('efectivo',this)"  data-page="efectivo">💵 Efectivo</button>
           <button class="nav-dd-item" onclick="navGo('cheques',this)"   data-page="cheques">📋 Cheques</button>
           <button class="nav-dd-item" onclick="navGo('cheques_rech',this)" data-page="cheques_rech">🔴 Cheques Rechazados</button>
+          <button class="nav-dd-item" onclick="navGo('control_gestion',this)" data-page="control_gestion">📊 Control de Gestión</button>
         </div>
       </div>
       <button class="nav-tab" onclick="navGo('subempresas',this)" data-page="subempresas"><span class="ni">🏢</span><span class="nl">Unidades de negocio</span></button>
@@ -3296,6 +3297,8 @@ let _supaUser=null,_supaRol=null;
     </div>
   </div>
 </div>
+
+<div class="page" id="page-control_gestion"></div>
 
 </div><!-- /main -->
 </div><!-- /app -->
@@ -10474,6 +10477,7 @@ function navGo(page, triggerEl) {
     'guardia':      ()=>renderGuardia(),
     'cashflow':     ()=>renderCashFlow(),
     'obras':        ()=>renderObras(),
+    'control_gestion': ()=>renderControlGestion(),
     'riesgo':       ()=>renderRiesgo(),
     'mercados':     ()=>{ renderMercados(); actualizarMercados(); },
     'cartera':      ()=>renderCarteraDebo(),
@@ -19608,6 +19612,256 @@ function rechExportarRespuestas(apies, rows) {
   XLSX.utils.book_append_sheet(wb, ws, 'APIES '+apies);
   XLSX.writeFile(wb, 'Respuestas_APIES_'+apies+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
+
+// ─── Control de Gestión ───────────────────────────────────────────
+function renderControlGestion() {
+  const pg = document.getElementById('page-control_gestion');
+  if (!pg) return;
+  const data = appState.rechazadosData || [];
+  if (!data.length) {
+    pg.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--text3);font-size:14px">📂 Cargá el Excel de Cheques Rechazados para ver el análisis.</div>';
+    return;
+  }
+  window._cgData = data;
+  window._cgActivos = data.filter(r => (r.estado||'').toUpperCase() !== 'COBRADO');
+  const btnStyle = (active) => active
+    ? 'padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid rgba(108,143,255,0.4);background:rgba(108,143,255,0.12);color:var(--accent);font-family:var(--font)'
+    : 'padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:var(--font)';
+  pg.innerHTML =
+    '<div style="margin-bottom:18px"><div style="font-size:18px;font-weight:700">📊 Control de Gestión</div>' +
+    '<div style="font-size:11px;color:var(--text3);margin-top:2px">Análisis integral — cheques rechazados del grupo</div></div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">' +
+    '<button id="cg-btn-dashboard" onclick="cgTab(\'dashboard\')" style="'+btnStyle(true)+'">📊 Dashboard</button>' +
+    '<button id="cg-btn-ranking" onclick="cgTab(\'ranking\')" style="'+btnStyle(false)+'">🏆 Ranking APIES</button>' +
+    '<button id="cg-btn-clientes" onclick="cgTab(\'clientes\')" style="'+btnStyle(false)+'">👥 Clientes en riesgo</button>' +
+    '<button id="cg-btn-seguimiento" onclick="cgTab(\'seguimiento\')" style="'+btnStyle(false)+'">📋 Seguimiento</button>' +
+    '<button id="cg-btn-evolucion" onclick="cgTab(\'evolucion\')" style="'+btnStyle(false)+'">📈 Evolución</button>' +
+    '</div><div id="cg-content"></div>';
+  cgTab('dashboard');
+}
+
+function cgTab(tab) {
+  const tabs = ['dashboard','ranking','clientes','seguimiento','evolucion'];
+  tabs.forEach(t => {
+    const btn = document.getElementById('cg-btn-'+t);
+    if (!btn) return;
+    const on = t === tab;
+    btn.style.border = on ? '1px solid rgba(108,143,255,0.4)' : '1px solid var(--border)';
+    btn.style.background = on ? 'rgba(108,143,255,0.12)' : 'var(--bg2)';
+    btn.style.color = on ? 'var(--accent)' : 'var(--text2)';
+  });
+  const c = document.getElementById('cg-content');
+  if (!c) return;
+  if (tab==='dashboard') cgRenderDashboard(c);
+  else if (tab==='ranking') cgRenderRanking(c);
+  else if (tab==='clientes') cgRenderClientes(c);
+  else if (tab==='seguimiento') cgRenderSeguimiento(c);
+  else if (tab==='evolucion') cgRenderEvolucion(c);
+}
+
+function _cgFmt(n) { return '$'+(n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function _cgSem(total, maxDias) {
+  if (total>2000000||maxDias>90) return {c:'#f87171',bg:'rgba(248,113,113,0.1)',ic:'🔴'};
+  if (total>500000||maxDias>30)  return {c:'#fbbf24',bg:'rgba(251,191,36,0.1)',ic:'🟡'};
+  return {c:'#4ade80',bg:'rgba(74,222,128,0.1)',ic:'🟢'};
+}
+function _cgByApies(rows) {
+  const m = {};
+  rows.forEach(r => {
+    const k = r.apies||'—';
+    if (!m[k]) m[k] = {apies:k,total:0,count:0,maxDias:0,cobrados:0};
+    m[k].total += r.importe||0;
+    m[k].count++;
+    if ((r.estado||'').toUpperCase()==='COBRADO') m[k].cobrados++;
+    else m[k].maxDias = Math.max(m[k].maxDias, r.dias||0);
+  });
+  return Object.values(m).sort((a,b)=>b.total-a.total);
+}
+function _cgKpi(label, value, color) {
+  return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px">' +
+    '<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">'+label+'</div>' +
+    '<div style="font-size:20px;font-weight:800;color:'+color+'">'+value+'</div></div>';
+}
+function _cgThead(...cols) {
+  return '<thead><tr style="background:var(--bg3)">'+cols.map(([label,align])=>
+    '<th style="padding:9px 12px;text-align:'+(align||'left')+';font-size:10px;color:var(--text3);font-weight:600">'+label+'</th>'
+  ).join('')+'</tr></thead>';
+}
+
+function cgRenderDashboard(content) {
+  const activos = window._cgActivos||[], data = window._cgData||[];
+  const totalRiesgo = activos.reduce((s,r)=>s+(r.importe||0),0);
+  const apiesSet = new Set(activos.map(r=>r.apies));
+  const cobrados = data.filter(r=>(r.estado||'').toUpperCase()==='COBRADO').length;
+  const pct = data.length ? Math.round(cobrados/data.length*100) : 0;
+  const activosByApies = _cgByApies(activos);
+
+  let h = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px">' +
+    _cgKpi('Total en riesgo', _cgFmt(totalRiesgo), '#f87171') +
+    _cgKpi('Cheques activos', activos.length+' cheques', 'var(--accent)') +
+    _cgKpi('APIES afectados', apiesSet.size+' estaciones', 'var(--yellow)') +
+    _cgKpi('Tasa de recupero', pct+'% cobrado', '#4ade80') +
+    '</div>';
+
+  h += '<div style="font-size:12px;font-weight:700;margin-bottom:10px">Estado por APIES</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-bottom:20px">';
+  activosByApies.forEach(a => {
+    const s = _cgSem(a.total, a.maxDias);
+    h += '<div style="background:'+s.bg+';border:1px solid '+s.c+'44;border-radius:10px;padding:10px 14px">' +
+      '<div style="display:flex;justify-content:space-between"><div style="font-size:12px;font-weight:700;color:'+s.c+'">'+s.ic+' APIES '+a.apies+'</div>' +
+      '<div style="font-size:10px;color:var(--text3)">'+(a.count-a.cobrados)+' ch</div></div>' +
+      '<div style="font-size:15px;font-weight:800;margin-top:4px">'+_cgFmt(a.total)+'</div>' +
+      '<div style="font-size:10px;color:var(--text3);margin-top:2px">Máx '+a.maxDias+' días</div></div>';
+  });
+  h += '</div>';
+
+  const clienteMap = {};
+  activos.forEach(r => {
+    const k = (r.cliente||r.librador||'—').trim().toUpperCase();
+    if (!clienteMap[k]) clienteMap[k] = {nombre:r.cliente||r.librador||'—',total:0,apies:new Set()};
+    clienteMap[k].total += r.importe||0; clienteMap[k].apies.add(r.apies);
+  });
+  const top5 = Object.values(clienteMap).sort((a,b)=>b.total-a.total).slice(0,5);
+  h += '<div style="font-size:12px;font-weight:700;margin-bottom:10px">Top 5 deudores</div>' +
+    '<div style="background:var(--bg2);border-radius:10px;overflow:hidden;border:1px solid var(--border)"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+    _cgThead(['#','center'],['Cliente'],['Total','right'],['APIES','center']) +
+    '<tbody>'+top5.map((c,i)=>'<tr style="border-top:1px solid var(--border)">' +
+      '<td style="padding:9px 12px;text-align:center;color:var(--text3)">'+(i+1)+'</td>' +
+      '<td style="padding:9px 12px;color:var(--text)">'+c.nombre+'</td>' +
+      '<td style="padding:9px 12px;text-align:right;font-weight:700;color:#f87171">'+_cgFmt(c.total)+'</td>' +
+      '<td style="padding:9px 12px;text-align:center;color:var(--text3)">'+(c.apies.size>1?'<span style="color:#f87171;font-weight:700">'+[...c.apies].join(', ')+'</span>':[...c.apies].join(', '))+'</td></tr>'
+    ).join('')+'</tbody></table></div>';
+  content.innerHTML = h;
+}
+
+function cgRenderRanking(content) {
+  const data = window._cgData||[];
+  const byApies = _cgByApies(data);
+  let h = '<div style="background:var(--bg2);border-radius:10px;overflow:hidden;border:1px solid var(--border)"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+    _cgThead(['#','center'],['APIES'],['Total riesgo','right'],['Activos / Total','center'],['Días máx','center'],['Cobrados','center'],['','center']) +
+    '<tbody>'+byApies.map((a,i) => {
+      const s = _cgSem(a.total, a.maxDias);
+      return '<tr style="border-top:1px solid var(--border)">' +
+        '<td style="padding:9px 12px;text-align:center;color:var(--text3)">'+(i+1)+'</td>' +
+        '<td style="padding:9px 12px;font-weight:700">'+a.apies+'</td>' +
+        '<td style="padding:9px 12px;text-align:right;font-weight:700;color:#f87171">'+_cgFmt(a.total)+'</td>' +
+        '<td style="padding:9px 12px;text-align:center;color:var(--text2)">'+(a.count-a.cobrados)+' / '+a.count+'</td>' +
+        '<td style="padding:9px 12px;text-align:center;color:var(--text2)">'+a.maxDias+'d</td>' +
+        '<td style="padding:9px 12px;text-align:center;color:#4ade80">'+a.cobrados+'</td>' +
+        '<td style="padding:9px 12px;text-align:center">'+s.ic+'</td></tr>';
+    }).join('')+'</tbody></table></div>';
+  content.innerHTML = h;
+}
+
+function cgRenderClientes(content) {
+  const activos = window._cgActivos||[];
+  const cm = {};
+  activos.forEach(r => {
+    const k = (r.cliente||r.librador||'—').trim().toUpperCase();
+    if (!cm[k]) cm[k] = {nombre:r.cliente||r.librador||'—',total:0,apies:new Set(),count:0,maxDias:0};
+    cm[k].total += r.importe||0; cm[k].apies.add(r.apies);
+    cm[k].count++; cm[k].maxDias = Math.max(cm[k].maxDias, r.dias||0);
+  });
+  const todos = Object.values(cm).sort((a,b)=>b.total-a.total);
+  const multi = todos.filter(c=>c.apies.size>1);
+  const top10 = todos.filter(c=>c.apies.size===1).slice(0,10);
+
+  let h = '';
+  if (multi.length) {
+    h += '<div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:10px">⚠️ Clientes con deuda en múltiples estaciones ('+multi.length+')</div>' +
+      '<div style="background:var(--bg2);border-radius:10px;overflow:hidden;border:1px solid rgba(248,113,113,0.3);margin-bottom:20px"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+      _cgThead(['Cliente'],['Total','right'],['Cheques','center'],['APIES afectados'],['Días máx','center']) +
+      '<tbody>'+multi.map(c=>'<tr style="border-top:1px solid var(--border)">' +
+        '<td style="padding:9px 12px;font-weight:700;color:var(--text)">'+c.nombre+'</td>' +
+        '<td style="padding:9px 12px;text-align:right;font-weight:700;color:#f87171">'+_cgFmt(c.total)+'</td>' +
+        '<td style="padding:9px 12px;text-align:center;color:var(--text2)">'+c.count+'</td>' +
+        '<td style="padding:9px 12px;color:var(--accent)">'+[...c.apies].join(', ')+'</td>' +
+        '<td style="padding:9px 12px;text-align:center;color:var(--text2)">'+c.maxDias+'d</td></tr>'
+      ).join('')+'</tbody></table></div>';
+  } else {
+    h += '<div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:14px 16px;margin-bottom:20px;color:#4ade80;font-size:13px">✅ Ningún cliente tiene cheques en múltiples estaciones.</div>';
+  }
+  h += '<div style="font-size:12px;font-weight:700;margin-bottom:10px">Top 10 deudores individuales</div>' +
+    '<div style="background:var(--bg2);border-radius:10px;overflow:hidden;border:1px solid var(--border)"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+    _cgThead(['Cliente'],['Total','right'],['APIES','center'],['Días máx','center']) +
+    '<tbody>'+top10.map(c=>'<tr style="border-top:1px solid var(--border)">' +
+      '<td style="padding:9px 12px;color:var(--text)">'+c.nombre+'</td>' +
+      '<td style="padding:9px 12px;text-align:right;font-weight:700;color:#f87171">'+_cgFmt(c.total)+'</td>' +
+      '<td style="padding:9px 12px;text-align:center;color:var(--text3)">'+[...c.apies].join(', ')+'</td>' +
+      '<td style="padding:9px 12px;text-align:center;color:var(--text2)">'+c.maxDias+'d</td></tr>'
+    ).join('')+'</tbody></table></div>';
+  content.innerHTML = h;
+}
+
+async function cgRenderSeguimiento(content) {
+  content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)">⏳ Cargando...</div>';
+  const { data, error } = await supa.from('seguimiento_rechazados').select('apies,nro_cheque,informado_por,created_at').order('created_at',{ascending:false});
+  if (error) { content.innerHTML = '<div style="color:#f87171;padding:20px">❌ Error al cargar.</div>'; return; }
+  const rows = data||[];
+  const activos = window._cgActivos||[];
+  const apiesActivos = [...new Set(activos.map(r=>r.apies))].sort();
+  const byApies = {};
+  rows.forEach(r => {
+    if (!byApies[r.apies]) byApies[r.apies] = {count:0,ultima:null,informantes:new Set()};
+    byApies[r.apies].count++;
+    if (!byApies[r.apies].ultima) byApies[r.apies].ultima = r.created_at;
+    byApies[r.apies].informantes.add(r.informado_por);
+  });
+  let h = '<div style="background:var(--bg2);border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-bottom:12px"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+    _cgThead(['APIES'],['Respuestas','center'],['Última respuesta'],['Informó'],['Estado','center']) +
+    '<tbody>'+apiesActivos.map(apies => {
+      const info = byApies[apies];
+      if (info) {
+        return '<tr style="border-top:1px solid var(--border)">' +
+          '<td style="padding:9px 12px;font-weight:700">'+apies+'</td>' +
+          '<td style="padding:9px 12px;text-align:center;color:var(--accent)">'+info.count+'</td>' +
+          '<td style="padding:9px 12px;color:var(--text2)">'+new Date(info.ultima).toLocaleDateString('es-AR')+'</td>' +
+          '<td style="padding:9px 12px;color:var(--text2)">'+[...info.informantes].join(', ')+'</td>' +
+          '<td style="padding:9px 12px;text-align:center"><span style="background:rgba(74,222,128,0.1);color:#4ade80;border-radius:99px;padding:2px 10px;font-size:10px;font-weight:700">✅ Respondió</span></td></tr>';
+      }
+      return '<tr style="border-top:1px solid var(--border)">' +
+        '<td style="padding:9px 12px;font-weight:700">'+apies+'</td>' +
+        '<td style="padding:9px 12px;text-align:center;color:var(--text3)">—</td>' +
+        '<td style="padding:9px 12px;color:var(--text3)">—</td>' +
+        '<td style="padding:9px 12px;color:var(--text3)">—</td>' +
+        '<td style="padding:9px 12px;text-align:center"><span style="background:rgba(248,113,113,0.1);color:#f87171;border-radius:99px;padding:2px 10px;font-size:10px;font-weight:700">⏳ Sin respuesta</span></td></tr>';
+    }).join('')+'</tbody></table></div>' +
+    '<div style="font-size:10px;color:var(--text3);text-align:right">'+rows.length+' respuestas totales registradas</div>';
+  content.innerHTML = h;
+}
+
+function cgRenderEvolucion(content) {
+  const data = window._cgData||[];
+  const byMes = {};
+  data.forEach(r => {
+    if (!r.fRech) return;
+    const p = r.fRech.split('/');
+    if (p.length<3) return;
+    const key = p[2]+p[1];
+    const label = p[1]+'/'+p[2];
+    if (!byMes[key]) byMes[key] = {label,count:0,total:0,cobrados:0,totalCob:0};
+    byMes[key].count++; byMes[key].total += r.importe||0;
+    if ((r.estado||'').toUpperCase()==='COBRADO') { byMes[key].cobrados++; byMes[key].totalCob += r.importe||0; }
+  });
+  const meses = Object.entries(byMes).sort((a,b)=>b[0].localeCompare(a[0]));
+  if (!meses.length) { content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">Sin datos de fechas de rechazo.</div>'; return; }
+  let h = '<div style="font-size:11px;color:var(--text3);margin-bottom:12px">Rechazos agrupados por mes de rechazo original. "% Rec." indica qué porcentaje de esa camada fue cobrado.</div>' +
+    '<div style="background:var(--bg2);border-radius:10px;overflow:hidden;border:1px solid var(--border)"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+    _cgThead(['Mes'],['Rechazados','right'],['Monto','right'],['Cobrados','center'],['Recuperado','right'],['% Rec.','center']) +
+    '<tbody>'+meses.map(([,m]) => {
+      const pct = m.count ? Math.round(m.cobrados/m.count*100) : 0;
+      const pc = pct>=70?'#4ade80':pct>=30?'#fbbf24':'#f87171';
+      return '<tr style="border-top:1px solid var(--border)">' +
+        '<td style="padding:9px 12px;font-weight:600">'+m.label+'</td>' +
+        '<td style="padding:9px 12px;text-align:right;color:var(--text2)">'+m.count+'</td>' +
+        '<td style="padding:9px 12px;text-align:right;color:#f87171;font-weight:700">'+_cgFmt(m.total)+'</td>' +
+        '<td style="padding:9px 12px;text-align:center;color:#4ade80">'+m.cobrados+'</td>' +
+        '<td style="padding:9px 12px;text-align:right;color:#4ade80">'+_cgFmt(m.totalCob)+'</td>' +
+        '<td style="padding:9px 12px;text-align:center;font-weight:700;color:'+pc+'">'+pct+'%</td></tr>';
+    }).join('')+'</tbody></table></div>';
+  content.innerHTML = h;
+}
+// ─── Fin Control de Gestión ───────────────────────────────────────
 
 async function rechCargarTokenYIniciar(token) {
   const overlay = document.getElementById('seguimiento-overlay');
