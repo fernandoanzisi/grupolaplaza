@@ -13888,7 +13888,7 @@ let _obObraId = null; // obra actualmente abierta en modal
 
 const OB_TIPOS = ['Construcción','Refacción','Instalación','Reparación','Mantenimiento','Demolición','Pintura','Paisajismo','Otro'];
 const OB_ESTADOS = ['Planificación','Licitación','En ejecución','Pausada','Finalizada','Cancelada'];
-const OB_RUBROS = ['Estructura','Mampostería','Cubierta/Techo','Electricidad','Plomería','Gas','Carpintería','Pintura','Revestimientos','Instalaciones especiales','Mano de obra general','Honorarios profesionales','Materiales varios','Equipos/Maquinaria','Imprevistos'];
+const OB_RUBROS = ['Estructura','Mampostería','Cubierta/Techo','Electricidad','Plomería','Gas','Carpintería','Pintura','Revestimientos','Instalaciones especiales','Mano de obra general','Honorarios profesionales','Materiales varios','Equipos/Maquinaria','Flete','Imprevistos','Otros','Libre (ver nota)'];
 const OB_ESTADOS_COLORS = {
   'Planificación':'#a78bfa','Licitación':'#4a9fd4','En ejecución':'#4ade80',
   'Pausada':'#fbbf24','Finalizada':'#3aaa2a','Cancelada':'#f87171'
@@ -14013,7 +14013,13 @@ function renderObras() {
         '<div style="display:flex;flex-direction:column;align-items:center;gap:4px">' +
           '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Avance físico</div>' +
           obCirculo(avanceFis, circColor) +
-          '<div style="font-size:10px;color:var(--text3)">'+etapasCount+' etapa'+(etapasCount!==1?'s':'')+'</div>' +
+          (etapasCount === 0
+            ? '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:4px">' +
+                '<input type="range" min="0" max="100" value="'+avanceFis+'" oninput="document.getElementById(\'avtxt-'+o.id+'\').textContent=this.value+\'%\'" onchange="obUpdateAvance(\''+o.id+'\',this.value)" style="width:88px;accent-color:'+circColor+'">' +
+                '<div id="avtxt-'+o.id+'" style="font-size:9px;color:var(--text3)">'+avanceFis+'%</div>' +
+              '</div>'
+            : '<div style="font-size:10px;color:var(--text3)">'+etapasCount+' etapa'+(etapasCount!==1?'s':'')+'</div>'
+          ) +
         '</div>' +
 
         // Presupuesto vs gastado
@@ -14056,12 +14062,52 @@ function renderObras() {
         '</div>' +
 
       '</div>' +
+      (o.facturas && o.facturas.length > 0
+        ? '<div style="padding:0 18px 16px;border-top:1px solid var(--border)">' + obChartRubros(o.facturas) + '</div>'
+        : '') +
     '</div>';
   }).join('');
 }
 
 function obGastado(o) {
   return (o.facturas||[]).reduce((s,f) => s + (f.importe||0), 0);
+}
+
+function obUpdateAvance(id, val) {
+  const o = appState.obras ? appState.obras.find(ob => ob.id === id) : null;
+  if (!o) return;
+  o.avanceFisico = parseInt(val) || 0;
+  saveState();
+  cacheGuardar('obras', appState.obras);
+  renderObras();
+}
+
+function obChartRubros(facturas) {
+  if (!facturas || !facturas.length) return '';
+  const rubros = {};
+  facturas.forEach(f => {
+    const r = f.rubro || 'Otros';
+    rubros[r] = (rubros[r] || 0) + (f.importe || 0);
+  });
+  const entries = Object.entries(rubros).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+  if (!entries.length) return '';
+  const max = entries[0][1];
+  const colors = ['var(--accent)','var(--green)','var(--yellow)','#f472b6','#a78bfa','#fb923c','#34d399','#60a5fa'];
+  return '<div style="margin-top:12px">' +
+    '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📊 Distribución por Rubro</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px">' +
+    entries.map(([r,v], i) => {
+      const pct = max > 0 ? (v / max) * 100 : 0;
+      return '<div style="background:var(--bg2);border-radius:8px;padding:8px 10px">' +
+        '<div style="font-size:9px;color:var(--text3);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+r+'">'+r+'</div>' +
+        '<div style="background:var(--bg3);border-radius:99px;height:5px;overflow:hidden;margin-bottom:4px">' +
+          '<div style="height:100%;border-radius:99px;background:'+colors[i%colors.length]+';width:'+pct.toFixed(1)+'%"></div>' +
+        '</div>' +
+        '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+colors[i%colors.length]+'">$ '+fmtARS(v)+'</div>' +
+      '</div>';
+    }).join('') +
+    '</div>' +
+  '</div>';
 }
 
 // ─── MODAL OBRA ───────────────────────────────────────────────
@@ -14306,6 +14352,7 @@ function obRenderFacturas(facturas) {
     '<th style="padding:6px 8px;text-align:left;font-size:9px;color:var(--text3)">Concepto</th>' +
     '<th style="padding:6px 8px;text-align:right;font-size:9px;color:var(--green);font-weight:700">$ Importe</th>' +
     '<th style="padding:6px 8px;text-align:left;font-size:9px;color:var(--text3)">Rubro</th>' +
+    '<th style="padding:6px 8px;text-align:left;font-size:9px;color:var(--text3)">Nota</th>' +
     '<th style="padding:6px 8px;text-align:left;font-size:9px;color:var(--text3)">Nº FC</th>' +
     '<th style="padding:6px 8px;text-align:center;font-size:9px;color:var(--text3)">Pago</th>' +
     '<th style="padding:6px 4px;width:24px"></th>' +
@@ -14318,6 +14365,7 @@ function obRenderFacturas(facturas) {
 
         '<td style="padding:6px 8px;text-align:right"><input type="number" value="'+(f.importe||0)+'" onchange="window._obFacturasTemp['+i+'].importe=parseFloat(this.value)||0" style="background:var(--bg3);border:1px solid rgba(74,222,128,0.4);border-radius:6px;color:var(--green);font-family:var(--mono);font-size:13px;font-weight:800;outline:none;width:130px;text-align:right;padding:4px 8px" placeholder="0" oninput="window._obFacturasTemp['+i+'].importe=parseFloat(this.value)||0;obRefreshSubtotal()"></td>' +
         '<td style="padding:6px 8px"><select onchange="window._obFacturasTemp['+i+'].rubro=this.value" style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:10px;color:var(--text);outline:none">'+OB_RUBROS.map(r=>'<option value="'+r+'"'+(r===f.rubro?' selected':'')+'>'+r+'</option>').join('')+'</select></td>' +
+        '<td style="padding:6px 8px"><input type="text" value="'+(f.nota||'')+'" onchange="window._obFacturasTemp['+i+'].nota=this.value" placeholder="'+(f.rubro==='Libre (ver nota)'?'Requerido...':'Nota...')+'" style="background:none;border:none;border-bottom:1px solid '+(f.rubro==='Libre (ver nota)'?'var(--yellow)':'var(--border)')+';color:var(--text);font-size:11px;outline:none;width:110px"></td>' +
         '<td style="padding:6px 8px"><input type="text" value="'+(f.nroFC||'')+'" onchange="window._obFacturasTemp['+i+'].nroFC=this.value" placeholder="FC-0001" style="background:none;border:none;color:var(--text);font-size:11px;font-family:var(--mono);outline:none;width:80px"></td>' +
         '<td style="padding:6px 8px;text-align:center"><select onchange="window._obFacturasTemp['+i+'].estadoPago=this.value" style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:10px;color:var(--text);outline:none">'+['Pendiente','Pagado','Parcial'].map(s=>'<option value="'+s+'"'+(s===f.estadoPago?' selected':'')+'>'+s+'</option>').join('')+'</select></td>' +
         '<td style="padding:6px 4px;text-align:center"><button onclick="window._obFacturasTemp.splice('+i+',1);obRefreshFacturas()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px">✕</button></td>' +
@@ -14329,7 +14377,7 @@ function obRenderFacturas(facturas) {
 function obAgregarFactura() {
   if (!window._obFacturasTemp) window._obFacturasTemp = [];
   const today = new Date().toISOString().slice(0,10);
-  window._obFacturasTemp.push({fecha:today,proveedor:'',concepto:'',rubro:'Materiales varios',nroFC:'',importe:0,estadoPago:'Pendiente'});
+  window._obFacturasTemp.push({fecha:today,proveedor:'',concepto:'',rubro:'Materiales varios',nota:'',nroFC:'',importe:0,estadoPago:'Pendiente'});
   obRefreshFacturas();
 }
 
@@ -14365,7 +14413,13 @@ function guardarObra() {
     presupuesto:parseFloat(get('ob-presupuesto'))||0,
     avanceFisico: (() => {
       const etapas = window._obEtapasTemp || [];
-      if (!etapas.length) return 0;
+      if (!etapas.length) {
+        if (_obObraId) {
+          const existing = (appState.obras||[]).find(o=>o.id===_obObraId);
+          if (existing) return existing.avanceFisico || 0;
+        }
+        return 0;
+      }
       const completadas = etapas.filter(e => e.estado === 'Completada').length;
       return Math.round((completadas / etapas.length) * 100);
     })(),
