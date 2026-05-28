@@ -10334,11 +10334,11 @@ const M = {
     {src:'icon-512.png',sizes:'512x512',type:'image/png',purpose:'any'},
     {src:'icon-512.png',sizes:'512x512',type:'image/png',purpose:'maskable'}
   ],
-  shortcuts:[
-    {name:'Dashboard',url:'./?p=dashboard',icons:[{src:'icon-192.png',sizes:'192x192'}]},
-    {name:'Inversiones',url:'./?p=inversiones',icons:[{src:'icon-192.png',sizes:'192x192'}]},
-    {name:'Excel',url:'./?p=importar',icons:[{src:'icon-192.png',sizes:'192x192'}]}
-  ]
+  shortcuts:(function(){const b=location.origin+location.pathname;return[
+    {name:'Dashboard',url:b+'?p=dashboard',icons:[{src:'icon-192.png',sizes:'192x192'}]},
+    {name:'Inversiones',url:b+'?p=inversiones',icons:[{src:'icon-192.png',sizes:'192x192'}]},
+    {name:'Excel',url:b+'?p=importar',icons:[{src:'icon-192.png',sizes:'192x192'}]}
+  ];})()
 };
 try {
   const mb = new Blob([JSON.stringify(M)],{type:'application/manifest+json'});
@@ -10356,33 +10356,20 @@ if ('serviceWorker' in navigator) {
   if (proto === 'file:' || proto === 'chrome-extension:' || proto === 'moz-extension:') {
     _c.info('[PWA] SW desactivado en file:// — subí a Netlify para activarlo');
 
-  // HTTPS real (Netlify u otro host) → intentar /sw.js primero, base64 como fallback
+  // HTTPS → registrar sw.js desde la misma carpeta (path relativo)
   } else if (proto === 'https:') {
-    const registerB64 = () => {
-      // SW embebido como base64 — funciona en HTTPS aunque no haya /sw.js
-      const swSrc = 'data:application/javascript;base64,CmNvbnN0IENBQ0hFID0gJ2ZpbmFuemFzYXBwLWdsYS12MSc7CmNvbnN0IENETiA9IFsKICAnaHR0cHM6Ly9jZG5qcy5jbG91ZGZsYXJlLmNvbS9hamF4L2xpYnMvQ2hhcnQuanMvNC40LjEvY2hhcnQudW1kLm1pbi5qcycsCiAgJ2h0dHBzOi8vY2RuanMuY2xvdWRmbGFyZS5jb20vYWpheC9saWJzL3hsc3gvMC4xOC41L3hsc3guZnVsbC5taW4uanMnLAogICdodHRwczovL2ZvbnRzLmdvb2dsZWFwaXMuY29tL2NzczI/ZmFtaWx5PURNK1NhbnM6d2dodEAzMDA7NDAwOzUwMDs2MDAmZmFtaWx5PURNK01vbm86d2dodEA0MDA7NTAwJmRpc3BsYXk9c3dhcCcKXTsKc2VsZi5hZGRFdmVudExpc3RlbmVyKCdpbnN0YWxsJywgZSA9PiB7CiAgc2VsZi5za2lwV2FpdGluZygpOwogIGUud2FpdFVudGlsKGNhY2hlcy5vcGVuKENBQ0hFKS50aGVuKGMgPT4KICAgIFByb21pc2UuYWxsU2V0dGxlZChDRE4ubWFwKHUgPT4gYy5hZGQodSkuY2F0Y2goKCk9Pnt9KSkpCiAgKSk7Cn0pOwpzZWxmLmFkZEV2ZW50TGlzdGVuZXIoJ2FjdGl2YXRlJywgZSA9PiB7CiAgZS53YWl0VW50aWwoCiAgICBjYWNoZXMua2V5cygpCiAgICAgIC50aGVuKGtzID0+IFByb21pc2UuYWxsKGtzLmZpbHRlcihrPT5rIT09Q0FDSEUpLm1hcChrPT5jYWNoZXMuZGVsZXRlKGspKSkpCiAgICAgIC50aGVuKCgpID0+IHNlbGYuY2xpZW50cy5jbGFpbSgpKQogICk7Cn0pOwpzZWxmLmFkZEV2ZW50TGlzdGVuZXIoJ2ZldGNoJywgZSA9PiB7CiAgaWYgKGUucmVxdWVzdC5tZXRob2QgIT09ICdHRVQnKSByZXR1cm47CiAgY29uc3QgdSA9IG5ldyBVUkwoZS5yZXF1ZXN0LnVybCk7CiAgY29uc3QgaXNDRE4gPSB1Lmhvc3RuYW1lLmluY2x1ZGVzKCdjZG5qcycpIHx8IHUuaG9zdG5hbWUuaW5jbHVkZXMoJ2ZvbnRzLmcnKTsKICBjb25zdCBpc0FQSSA9IHUuaG9zdG5hbWUuaW5jbHVkZXMoJ2RvbGFyYXBpJykgfHwgdS5ob3N0bmFtZS5pbmNsdWRlcygnYmFuY29nYWxpY2lhJykgfHwgdS5ob3N0bmFtZS5pbmNsdWRlcygnYWxsb3JpZ2lucycpOwogIGlmIChpc0FQSSkgewogICAgZS5yZXNwb25kV2l0aChmZXRjaChlLnJlcXVlc3QpLmNhdGNoKCgpID0+CiAgICAgIG5ldyBSZXNwb25zZSgneyJlcnJvciI6Im9mZmxpbmUifScsIHtoZWFkZXJzOnsnQ29udGVudC1UeXBlJzonYXBwbGljYXRpb24vanNvbid9fSkKICAgICkpOwogICAgcmV0dXJuOwogIH0KICBpZiAoaXNDRE4pIHsKICAgIGUucmVzcG9uZFdpdGgoCiAgICAgIGNhY2hlcy5tYXRjaChlLnJlcXVlc3QpLnRoZW4oY2FjaGVkID0+IGNhY2hlZCB8fCBmZXRjaChlLnJlcXVlc3QpLnRoZW4ociA9PiB7CiAgICAgICAgaWYgKHIgJiYgci5zdGF0dXM9PT0yMDApIHsKICAgICAgICAgIGNvbnN0IGNsID0gci5jbG9uZSgpOwogICAgICAgICAgY2FjaGVzLm9wZW4oQ0FDSEUpLnRoZW4oYyA9PiBjLnB1dChlLnJlcXVlc3QsIGNsKSk7CiAgICAgICAgfQogICAgICAgIHJldHVybiByOwogICAgICB9KSkKICAgICk7CiAgICByZXR1cm47CiAgfQogIGUucmVzcG9uZFdpdGgoCiAgICBjYWNoZXMubWF0Y2goZS5yZXF1ZXN0KS50aGVuKGNhY2hlZCA9PiB7CiAgICAgIGNvbnN0IG5ldCA9IGZldGNoKGUucmVxdWVzdCkudGhlbihyID0+IHsKICAgICAgICBpZiAociAmJiByLnN0YXR1cz09PTIwMCAmJiByLnR5cGUhPT0nb3BhcXVlJykgewogICAgICAgICAgY2FjaGVzLm9wZW4oQ0FDSEUpLnRoZW4oYyA9PiBjLnB1dChlLnJlcXVlc3QsIHIuY2xvbmUoKSkpOwogICAgICAgIH0KICAgICAgICByZXR1cm4gcjsKICAgICAgfSkuY2F0Y2goKCkgPT4gY2FjaGVkKTsKICAgICAgcmV0dXJuIGNhY2hlZCB8fCBuZXQ7CiAgICB9KQogICk7Cn0pOwo=';
-      navigator.serviceWorker.register(swSrc)
-        .then(r => _c.info('[PWA] SW base64 registrado ✓'))
-        .catch(e => _c.warn('[PWA] SW base64 falló:', e.message));
-    };
-
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('./sw.js', {scope: './'})
       .then(r => {
-        _c.info('[PWA] SW /sw.js registrado ✓ scope:', r.scope);
+        _c.info('[PWA] SW registrado ✓ scope:', r.scope);
         r.addEventListener('updatefound', () => {
           const nw = r.installing;
           nw && nw.addEventListener('statechange', () => {
-            if (nw.state==='installed' && navigator.serviceWorker.controller)
+            if (nw.state === 'installed' && navigator.serviceWorker.controller)
               showToast('🔄 Nueva versión — recargá para actualizar');
           });
         });
       })
-      .catch(() => registerB64());
-
-    navigator.serviceWorker.addEventListener('message', ev => {
-      if (ev.data && ev.data.type==='CACHE_UPDATED')
-        showToast('✅ App lista para usar offline');
-    });
+      .catch(e => _c.warn('[PWA] SW no disponible:', e.message));
 
   // HTTP local (localhost, 127.x) → solo base64, sin /sw.js
   } else {
