@@ -4052,7 +4052,7 @@ function renderDashboard() {
     <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#4a9fd4,#3aaa2a,#d4920a)"></div>
     <div style="padding:22px 24px;border-right:1px solid var(--border)" id="dash-left-col">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text3);text-transform:uppercase">Total ingresos del grupo — día</div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text3);text-transform:uppercase">DISPONIBILIDAD FINANCIERA DEL GRUPO</div>
         <button onclick="toggleDashAmounts()" id="dash-eye-btn" title="Mostrar/ocultar importes"
           style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:2px 6px;border-radius:6px;line-height:1">👁</button>
       </div>
@@ -4233,7 +4233,7 @@ function renderDashboard() {
 <div id="dash-view-empresa" style="display:none">
   <div id="dash-emp-header" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:14px;position:relative;overflow:hidden">
     <div style="position:absolute;top:0;left:0;right:0;height:3px" id="dash-emp-bar"></div>
-    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Ingresos del día</div>
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Posición financiera del día</div>
     <div id="dash-emp-name-big" style="font-size:14px;font-weight:700;margin-bottom:5px"></div>
     <div id="dash-emp-total" style="font-family:var(--mono);font-size:30px;font-weight:900;line-height:1;margin-bottom:12px"></div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="dash-emp-kpis"></div>
@@ -4397,8 +4397,11 @@ function dashSetView(view) {
     // C71 = total grupo directo desde la minuta (tiene prioridad sobre suma B50+D50+F50)
     const c71val = histRS ? (histRS.c71||0) : (empRS ? empRS.diaC71||0 : 0);
     const totalGrupo = c71val > 0 ? c71val : totalGrupoARS;
+    // C74 = dólar oficial desde la minuta (prioridad sobre API)
+    const c74val = histRS ? (histRS.c74||0) : (empRS ? empRS.diaC74||0 : 0);
+    const tcOficial = c74val > 0 ? c74val : tcBlue;
     const totalUSD = totalGrupoUSD;
-    const totalUSDenARS = totalUSD * tcBlue;
+    const totalUSDenARS = totalUSD * tcOficial;
     const totalFIMA=rsFIMA+scFIMA;
     // Chips por empresa (solo ARS sin USD)
     const totalRS=rsIng, totalSC=scIng, totalLP=lpIng;
@@ -4413,7 +4416,7 @@ function dashSetView(view) {
         .map(x=>'<div style="background:rgba(251,191,36,0.08);border-radius:10px;padding:11px 13px;border:1px solid rgba(251,191,36,0.3);opacity:'+(x.v>0?'1':'0.4')+'"><div style="font-size:9px;font-weight:700;color:var(--yellow);text-transform:uppercase;margin-bottom:4px">'+x.n+'</div><div style="font-family:var(--mono);font-size:clamp(12px,1.6vw,16px);font-weight:800;color:var(--yellow)">U$S '+fmtARS(x.v)+'</div></div>').join('')+
       '</div>';
     if(g('dash-usd-total')) g('dash-usd-total').textContent='U$S '+fmtARS(totalUSD);
-    if(g('dash-usd-tc')) g('dash-usd-tc').textContent='TC Blue $'+fmtARS(tcBlue)+' · ≈ $ '+fmtARS(totalUSDenARS);
+    if(g('dash-usd-tc')) g('dash-usd-tc').textContent='TC Oficial $'+fmtARS(tcOficial)+(c74val>0?' (C74 Minuta)':' (API)')+' · ≈ $ '+fmtARS(totalUSDenARS);
     if(g('dash-usd-detail')) g('dash-usd-detail').innerHTML='<span style="color:#4a9fd4">RS U$S '+fmtARS(rsUSD)+'</span> &nbsp; <span style="color:#3aaa2a">SC U$S '+fmtARS(scUSD)+'</span>';
     if(g('dash-cartera-total')) g('dash-cartera-total').textContent='$ '+fmtARS(totalCart);
     if(g('dash-cartera-detail')) g('dash-cartera-detail').innerHTML='<span style="color:#4a9fd4">RS $ '+fmtARS(rsCart)+'</span> &nbsp; <span style="color:#3aaa2a">SC $ '+fmtARS(scCart)+'</span>';
@@ -4512,7 +4515,7 @@ function dashSetView(view) {
         '<div style="font-size:12px;color:var(--text3);margin-bottom:5px">'+emp.name+'</div>' +
         '<div style="font-family:var(--mono);font-size:clamp(26px,3.8vw,42px);font-weight:900;color:var(--text)" id="dash-emp-ing-valor">$ '+fmtARS(totalARS)+'</div>' +
         '<div style="display:flex;gap:10px;align-items:center;margin-top:4px;flex-wrap:wrap">' +
-          '<div style="font-size:10px;color:var(--text3)" id="dash-emp-ing-celda">Ingresos del día · '+prefB+'50: $ '+fmtARS(b50final)+(balDate?' · '+new Date(balDate+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'')+'</div>' +
+          '<div style="font-size:10px;color:var(--text3)" id="dash-emp-ing-celda">Posición financiera del día · '+prefB+'50: $ '+fmtARS(b50final)+(balDate?' · '+new Date(balDate+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'')+'</div>' +
           (totalUSDS>0?'<div style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);border-radius:6px;padding:3px 10px;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--yellow)">U$S '+fmtARS(totalUSDS)+'</div>':'') +
         '</div>' +
       '</div>' +
@@ -6450,6 +6453,12 @@ function parseMinutaDiaria(wb) {
       if (c71val && oRS) oRS.diaC71 = c71val;
     }
 
+    // C74 — DÓLAR OFICIAL (tipo de cambio de la minuta)
+    if (R[73]) {
+      const c74val = pn(c(73,2));
+      if (c74val && oRS) oRS.diaC74 = c74val;
+    }
+
     // I40=RS, I41=SC — columna I = índice 8
     if (R[39] && oRS) oRS.diaI40 = pn(c(39,8)) || 0;
     if (R[40] && oSC) oSC.diaI41 = pn(c(40,8)) || 0;
@@ -6472,6 +6481,7 @@ function parseMinutaDiaria(wb) {
       usd:oRS?oRS.diaUSD||0:0, rsCart:oRS?oRS.diaRSCart||0:0, i40:oRS?oRS.diaI40||0:0,
       rendPrem:oRS?oRS.diaRendPremRS||0:0, rendAhorr:oRS?oRS.diaRendAhorrRS||0:0,
       c71:oRS?oRS.diaC71||0:0,
+      c74:oRS?oRS.diaC74||0:0,
       d143:oRS?oRS.diaD143||0:0, d146:oRS?oRS.diaD146||0:0, d147:oRS?oRS.diaD147||0:0,
       egresos:oRS?oRS.diaEgresosRS||[]:[], totalEgr:oRS?oRS.diaTotalEgresosRS||0:0,
     };
@@ -13674,7 +13684,7 @@ async function cacheCargarTodo() {
             if (Array.isArray(val)) _lectorDocs = val;
             break;
           case 'planillas_hist':
-            if (Array.isArray(val)) _apiPlState.hist = val;
+            // migrado a localStorage — ignorar entradas viejas de Supabase
             break;
           case 'cf_minuta':
             try {
@@ -19061,7 +19071,7 @@ function renderGuardia() {
     // ── KPIs (5 tarjetas — celdas directas Minuta) ──
     '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">'+
       '<div style="background:#161c2a;border:1px solid rgba(74,222,128,0.25);border-radius:12px;padding:16px 12px;text-align:center">'+
-        '<div style="font-size:8px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px">Ingresos del día</div>'+
+        '<div style="font-size:8px;font-weight:700;color:#7a8399;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:7px">Disponibilidad financiera del grupo</div>'+
         '<div style="font-size:clamp(14px,2.2vw,28px);font-weight:900;font-family:monospace;color:#4ade80;line-height:1">$'+fmtARS(totalGrupo)+'</div>'+
         '<div style="font-size:9px;color:#7a8399;margin-top:5px">'+lastDate.split('-').reverse().join('/')+'</div>'+
         '<div style="font-size:8px;color:rgba(74,159,212,0.5);margin-top:2px;font-family:monospace">C71 Minuta</div>'+
@@ -19861,7 +19871,27 @@ let _apiPlState = {
   analisis: {}, analizando: {},
 };
 
-function _apiPlHist()    { return _apiPlState.hist || []; }
+function _apiPlSave() {
+  const meta = (_apiPlState.hist||[]).map(({id,nombre,fecha,sheetNames,filas,cols}) => ({id,nombre,fecha,sheetNames,filas,cols}));
+  try { localStorage.setItem('apipl_meta', JSON.stringify(meta)); } catch(e) {}
+  (_apiPlState.hist||[]).forEach(f => {
+    if (f.sheets) try { localStorage.setItem('apipl_data_'+f.id, JSON.stringify(f.sheets)); } catch(e) {}
+  });
+}
+function _apiPlLoad() {
+  try {
+    const meta = JSON.parse(localStorage.getItem('apipl_meta')||'null');
+    if (!Array.isArray(meta)) return;
+    _apiPlState.hist = meta.map(m => {
+      try {
+        const sheets = JSON.parse(localStorage.getItem('apipl_data_'+m.id)||'null');
+        return sheets ? {...m, sheets} : m;
+      } catch(e) { return m; }
+    });
+  } catch(e) {}
+}
+
+function _apiPlHist()    { if (!_apiPlState.hist) _apiPlLoad(); return _apiPlState.hist || []; }
 function _apiPlCurrent() { return _apiPlHist().find(f => f.id === _apiPlState.selId) || null; }
 function _apiPlSheet()   {
   const f = _apiPlCurrent();
@@ -19999,7 +20029,8 @@ function apiPlDeleteFile(id) {
   if (!confirm('¿Eliminar esta planilla del historial?')) return;
   _apiPlState.hist = (_apiPlState.hist||[]).filter(f => f.id !== id);
   if (_apiPlState.selId === id) _apiPlState.selId = null;
-  cacheGuardar('planillas_hist', _apiPlState.hist);
+  try { localStorage.removeItem('apipl_data_'+id); } catch(e) {}
+  _apiPlSave();
   apiPlRender();
   showToast('🗑 Planilla eliminada');
 }
@@ -20008,7 +20039,7 @@ function apiPlDeleteFile(id) {
 function apiPlHandleFile(file) {
   if (!file) return;
   const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
-  if (!['.xlsx','.xls','.csv'].includes(ext)) { showToast('⚠️ Solo Excel (.xlsx, .xls) o CSV'); return; }
+  if (!['.xlsx','.xlsm','.xls','.csv'].includes(ext)) { showToast('⚠️ Solo Excel (.xlsx, .xlsm, .xls) o CSV'); return; }
   const dz = document.getElementById('api-drop-zone');
   if (dz) dz.innerHTML = '<div style="font-size:36px;margin-bottom:12px">⏳</div><div style="font-weight:700;color:var(--text);font-size:14px">Leyendo '+file.name+'...</div>';
   const reader = new FileReader();
@@ -20030,7 +20061,7 @@ function apiPlHandleFile(file) {
       if (!_apiPlState.hist) _apiPlState.hist = [];
       const idx = _apiPlState.hist.findIndex(f => f.nombre === file.name);
       if (idx >= 0) _apiPlState.hist[idx] = entry; else _apiPlState.hist.push(entry);
-      cacheGuardar('planillas_hist', _apiPlState.hist);
+      _apiPlSave();
       _apiPlState.selId = id; _apiPlState.selSheet = sheetNames[0]; _apiPlState.tab = 'resumen';
       _apiPlState.pagina = 0; _apiPlState.filters = {}; _apiPlState.busqueda = ''; _apiPlState.sortCol = null; _apiPlState.chartX = null; _apiPlState.chartY = null;
       if (dz) dz.innerHTML = '<div style="font-size:40px;margin-bottom:10px">📊</div><div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px">Arrastrá tu Excel aquí o hacé clic para seleccionar</div><div style="font-size:11px;color:var(--text3)">.xlsx · .xls · .csv — el archivo nunca sale de tu navegador · todo se procesa localmente</div>';
@@ -20785,7 +20816,7 @@ async function apiPlExportPPTX() {
   const sampleCols=cols.slice(0,6);
   s6.addText('Muestra de datos — primeras '+Math.min(20,filtered.length)+' filas',{x:0.4,y:0.2,w:9.2,h:0.45,...txtOpts(16,true,WHITE)});
   const dHead=[sampleCols.map(c=>({text:c.slice(0,20),...txtOpts(9,true,WHITE)}))];
-  const dRows=filtered.slice(0,20).map(r=>sampleCols.map(c=>{const v=r[c];const n=types[c]==='numeric'?apiPlToNum(v):null;return {text:n!==null?'$ '+fmtARS(n):(v===''||v===null?'—':String(v).slice(0,30)),...txtOpts(8,false,n!==null?GREEN:GRAY),(n!==null?{align:'right'}:{}),...(n!==null?{align:'right'}:{})};} ));
+  const dRows=filtered.slice(0,20).map(r=>sampleCols.map(c=>{const v=r[c];const n=types[c]==='numeric'?apiPlToNum(v):null;return {text:n!==null?'$ '+fmtARS(n):(v===''||v===null?'—':String(v).slice(0,30)),...txtOpts(8,false,n!==null?GREEN:GRAY),...(n!==null?{align:'right'}:{})};} ));
   try {
     const colWArr=sampleCols.map(()=>9.2/sampleCols.length);
     s6.addTable([...dHead,...dRows],{x:0.4,y:0.8,w:9.2,colW:colWArr,fill:{color:'1F2937'},color:WHITE,fontSize:8,border:{pt:0.5,color:'374151'},rowH:0.3,fontFace:'Calibri'});
