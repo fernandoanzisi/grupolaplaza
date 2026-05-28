@@ -19893,9 +19893,28 @@ function _apiPlLoad() {
 
 function _apiPlHist()    { if (!_apiPlState.hist) _apiPlLoad(); return _apiPlState.hist || []; }
 function _apiPlCurrent() { return _apiPlHist().find(f => f.id === _apiPlState.selId) || null; }
+function apiPlGetCombinedSheet() {
+  const f = _apiPlCurrent();
+  if (!f || !f.sheets) return null;
+  const sheets = (f.sheetNames||[]).map(sn => f.sheets[sn]).filter(Boolean);
+  if (!sheets.length) return null;
+  const allCols = [...new Set(sheets.flatMap(sh => sh.cols))];
+  const types = {};
+  allCols.forEach(c => {
+    types[c] = sheets.some(sh => sh.types && sh.types[c] === 'numeric') ? 'numeric' : 'text';
+  });
+  const allRows = sheets.flatMap(sh => sh.rows.map(r => {
+    const row = {};
+    allCols.forEach(c => { row[c] = r[c] !== undefined ? r[c] : ''; });
+    return row;
+  }));
+  return { cols: allCols, rows: allRows, types };
+}
+
 function _apiPlSheet()   {
   const f = _apiPlCurrent();
   if (!f || !f.sheets) return null;
+  if (_apiPlState.selSheet === '@@todas') return apiPlGetCombinedSheet();
   const sn = _apiPlState.selSheet || (f.sheetNames && f.sheetNames[0]) || '';
   return f.sheets[sn] || null;
 }
@@ -19980,8 +19999,11 @@ function apiPlRender() {
 
   const sheetTabs = document.getElementById('api-sheet-tabs');
   if (sheetTabs && file.sheetNames && file.sheetNames.length > 1) {
-    sheetTabs.innerHTML = file.sheetNames.map(sn => {
-      const sel = sn === (_apiPlState.selSheet || file.sheetNames[0]);
+    const todaSel = _apiPlState.selSheet === '@@todas';
+    const selSn = todaSel ? null : (_apiPlState.selSheet || file.sheetNames[0]);
+    const todasBtn = `<button onclick="apiPlSetSheet('@@todas')" style="padding:5px 14px;border-radius:99px;border:1px solid ${todaSel?'var(--accent)':'var(--border)'};background:${todaSel?'var(--accent)':'var(--bg3)'};color:${todaSel?'white':'var(--text2)'};font-size:11px;font-weight:${todaSel?700:400};cursor:pointer;font-family:var(--font)">📋 Todas</button>`;
+    sheetTabs.innerHTML = todasBtn + file.sheetNames.map(sn => {
+      const sel = !todaSel && sn === selSn;
       return `<button onclick="apiPlSetSheet('${sn.replace(/\\/g,'\\\\').replace(/'/g,'\\\'')}')" style="padding:5px 14px;border-radius:99px;border:1px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'var(--accent)':'var(--bg3)'};color:${sel?'white':'var(--text2)'};font-size:11px;font-weight:${sel?700:400};cursor:pointer;font-family:var(--font)">${sn}</button>`;
     }).join('');
     sheetTabs.style.display = 'flex';
@@ -20135,12 +20157,27 @@ function apiPlRenderResumen(sh) {
   const nullCount = cols.reduce((s,c)=>s+rows.filter(r=>r[c]===''||r[c]===null||r[c]===undefined).length,0);
   const completitud = Math.round((1-(nullCount/(rows.length*cols.length||1)))*100);
 
-  const kpiCards = numCols.slice(0,6).map(col => {
+  // Detectar columnas identificador (no son importes — no tiene sentido sumarlas)
+  const idKeywords = ['nro','nº','numero','número','id','cod','código','codigo','cuit','cuil','ref','tel','dni','legajo','cheque','boleta','ticket','folio','serie','secuencia'];
+  const isIdLike = c => idKeywords.some(k => c.toLowerCase().replace(/[\s\.]/g,'').includes(k));
+  const idCols = numCols.filter(isIdLike);
+  const amountCols = numCols.filter(c => !isIdLike(c));
+
+  // Detectar columnas de fecha en texto
+  const dateRe = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$|^\d{4}[\/\-]\d{2}[\/\-]\d{2}$/;
+  const dateCols = txtCols.filter(col => {
+    const sample = rows.slice(0,30).map(r=>String(r[col]||'')).filter(v=>v.trim());
+    return sample.length > 0 && sample.filter(v=>dateRe.test(v.trim())).length / sample.length >= 0.6;
+  });
+
+  // Tarjetas de importes (columnas numéricas reales)
+  const kpiCards = amountCols.slice(0,6).map(col => {
     const vals = rows.map(r=>apiPlToNum(r[col])).filter(v=>v!==null);
     if (!vals.length) return '';
     const sum=vals.reduce((a,b)=>a+b,0), avg=sum/vals.length, mx=Math.max(...vals), mn=Math.min(...vals);
     return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-left:3px solid var(--accent)">
-      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${col}</div>
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${col}">${col}</div>
+      <div style="font-size:8px;color:var(--accent);margin-bottom:10px">${vals.length} registros con dato</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div><div style="font-size:9px;color:var(--text3)">TOTAL</div><div style="font-family:var(--mono);font-size:13px;font-weight:800;color:var(--green)">$ ${fmtARS(sum)}</div></div>
         <div><div style="font-size:9px;color:var(--text3)">PROMEDIO</div><div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent)">$ ${fmtARS(avg)}</div></div>
@@ -20150,13 +20187,41 @@ function apiPlRenderResumen(sh) {
     </div>`;
   }).join('');
 
-  const topCats = txtCols.slice(0,4).map(col => {
+  // Tarjetas de identificadores (nro, cod, id, etc. — muestran cantidad y únicos, no suma)
+  const idCards = idCols.slice(0,4).map(col => {
+    const vals = rows.map(r=>r[col]).filter(v=>v!==''&&v!==null&&v!==undefined);
+    const uniq = new Set(vals.map(v=>String(v))).size;
+    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-left:3px solid #a78bfa">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${col}">${col}</div>
+      <div style="font-size:8px;color:#a78bfa;margin-bottom:10px">identificador</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><div style="font-size:9px;color:var(--text3)">REGISTROS</div><div style="font-family:var(--mono);font-size:18px;font-weight:800;color:#a78bfa">${vals.length.toLocaleString('es-AR')}</div></div>
+        <div><div style="font-size:9px;color:var(--text3)">ÚNICOS</div><div style="font-family:var(--mono);font-size:18px;font-weight:800;color:var(--accent)">${uniq.toLocaleString('es-AR')}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Tarjetas de fechas (rango desde/hasta)
+  const dateCards = dateCols.slice(0,2).map(col => {
+    const vals = rows.map(r=>String(r[col]||'').trim()).filter(v=>dateRe.test(v)).sort();
+    if (!vals.length) return '';
+    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-left:3px solid var(--yellow)">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${col}">${col}</div>
+      <div style="font-size:8px;color:var(--yellow);margin-bottom:10px">rango de fechas · ${new Set(vals).size} únicas</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><div style="font-size:9px;color:var(--text3)">DESDE</div><div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--yellow)">${vals[0]}</div></div>
+        <div><div style="font-size:9px;color:var(--text3)">HASTA</div><div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--yellow)">${vals[vals.length-1]}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Columnas de texto: distribución de valores
+  const topCats = txtCols.filter(c=>!dateCols.includes(c)).slice(0,4).map(col => {
     const freq = {}; rows.forEach(r=>{const v=String(r[col]||'').trim(); if(v) freq[v]=(freq[v]||0)+1;});
     const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,7);
     if (!top.length) return '';
-    const totalFreq = top.reduce((s,[,n])=>s+n,0);
     return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
-      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:10px">${col} — top valores</div>
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:10px">${col} — distribución</div>
       ${top.map(([v,n],i) => {
         const pct = Math.round(n/rows.length*100);
         const colors = ['var(--accent)','var(--green)','var(--yellow)','#f472b6','#a78bfa','#fb923c','#34d399'];
@@ -20169,6 +20234,8 @@ function apiPlRenderResumen(sh) {
     </div>`;
   }).join('');
 
+  const hasKpis = amountCols.length || idCols.length || dateCols.length;
+
   return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-left:3px solid var(--green)">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3)">Filas de datos</div>
@@ -20177,7 +20244,7 @@ function apiPlRenderResumen(sh) {
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-left:3px solid var(--accent)">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3)">Columnas</div>
       <div style="font-family:var(--mono);font-size:24px;font-weight:900;color:var(--accent);margin-top:4px">${cols.length}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:2px">${numCols.length} numéricas · ${txtCols.length} texto</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">${amountCols.length} importes · ${idCols.length} identif. · ${txtCols.length} texto</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-left:3px solid ${completitud>=90?'var(--green)':completitud>=70?'var(--yellow)':'var(--red)'}">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3)">Completitud</div>
@@ -20190,7 +20257,7 @@ function apiPlRenderResumen(sh) {
       <div style="font-size:10px;color:var(--text3);margin-top:2px">${txtCols[0]||'—'}</div>
     </div>
   </div>
-  ${numCols.length?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:16px">'+kpiCards+'</div>':''}
+  ${hasKpis?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:16px">${kpiCards}${idCards}${dateCards}</div>`:''}
   ${topCats?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">'+topCats+'</div>':''}`;
 }
 
@@ -20488,7 +20555,7 @@ function apiPlExportExcel() {
   const {cols,rows,types}=sh;
   const filtered=apiPlGetFiltered(sh);
   const wb=XLSX.utils.book_new();
-  const sn=(_apiPlState.selSheet||'Datos').slice(0,25);
+  const sn=(_apiPlState.selSheet==='@@todas'?'Todas las hojas':(_apiPlState.selSheet||'Datos')).slice(0,25);
 
   // Hoja 1: Datos filtrados (con auto-filter)
   const wsDatos=XLSX.utils.json_to_sheet(filtered,{header:cols});
