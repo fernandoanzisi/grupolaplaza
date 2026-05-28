@@ -15183,6 +15183,119 @@ function renderRiesgoTabla() {
 
 
 // ─── FICHA DE CLIENTE PARA COPIAR/PEGAR ─────────────────────
+// ── Riesgo Crediticio — helpers de ficha de cliente ──────────────────────
+function _rhSvgChart(historial, uid) {
+  const sorted=[...historial].sort((a,b)=>a.lote.localeCompare(b.lote));
+  const n=sorted.length;
+  if(!n) return '';
+  const W=440,H=120,PL=26,PR=12,PT=14,PB=26;
+  const cW=W-PL-PR, cH=H-PT-PB;
+  const scores=sorted.map(h=>RIESGO_PERFILES[h.perfil]?.score??0);
+  const clrs=sorted.map(h=>RIESGO_PERFILES[h.perfil]?.color??'#94a3b8');
+  const labels=sorted.map(h=>h.lote.replace('nosis_',''));
+  const xOf=i=>PL+(n>1?(i/(n-1))*cW:cW/2);
+  const yOf=s=>PT+cH-(s/7)*cH;
+  const gid='rhg'+uid;
+
+  let grid='';
+  [0,2,4,6].forEach(s=>{ const y=yOf(s).toFixed(1); grid+=`<line x1="${PL}" y1="${y}" x2="${PL+cW}" y2="${y}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`; });
+
+  let yLbls='';
+  ['I','G','F','E','D','C','B','A'].forEach((p,i)=>{ yLbls+=`<text x="${PL-4}" y="${(yOf(i)+3.5).toFixed(1)}" text-anchor="end" font-size="8" fill="rgba(255,255,255,0.28)">${p}</text>`; });
+
+  const pts=sorted.map((_,i)=>`${xOf(i).toFixed(1)},${yOf(scores[i]).toFixed(1)}`);
+  const pathD='M'+pts.join(' L');
+  const areaD=pathD+` L${xOf(n-1).toFixed(1)},${(PT+cH).toFixed(1)} L${xOf(0).toFixed(1)},${(PT+cH).toFixed(1)} Z`;
+
+  let dots='', xLbls='', arrows='';
+  sorted.forEach((h,i)=>{
+    const x=xOf(i).toFixed(1), y=yOf(scores[i]).toFixed(1);
+    dots+=`<circle cx="${x}" cy="${y}" r="6" fill="${clrs[i]}" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>`;
+    dots+=`<text x="${x}" y="${(parseFloat(y)+3.5).toFixed(1)}" text-anchor="middle" font-size="8" fill="white" font-weight="700">${h.perfil}</text>`;
+    xLbls+=`<text x="${x}" y="${H-4}" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.4)">${labels[i]}</text>`;
+    if(i<n-1){
+      const col=scores[i+1]>scores[i]?'#22c55e':scores[i+1]<scores[i]?'#f87171':'#94a3b8';
+      const x2=xOf(i+1).toFixed(1), y2=yOf(scores[i+1]).toFixed(1);
+      arrows+=`<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5"/>`;
+    }
+  });
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;display:block">` +
+    `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4a9fd4" stop-opacity="0.25"/><stop offset="100%" stop-color="#4a9fd4" stop-opacity="0"/></linearGradient></defs>` +
+    grid+yLbls+
+    `<path d="${areaD}" fill="url(#${gid})"/>` +
+    (n>1?`<path d="${pathD}" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>`+arrows:'') +
+    dots+xLbls+
+    `</svg>`;
+}
+
+function _rhVolatilidad(historial) {
+  if(historial.length<2) return '';
+  const sc=historial.map(h=>RIESGO_PERFILES[h.perfil]?.score??0);
+  const rng=Math.max(...sc)-Math.min(...sc);
+  const [label,color,desc]=rng===0?['Estable','var(--green)','Sin variación']:rng<=2?['Variable','var(--yellow)','Variación leve']:['Volátil','var(--red)','Alta variación'];
+  return '<div style="flex:1;min-width:100px;background:var(--bg3);border-radius:8px;padding:10px 12px">'+
+    '<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Volatilidad</div>'+
+    '<div style="font-size:13px;font-weight:800;color:'+color+'">'+label+'</div>'+
+    '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+desc+' (Δ'+rng+')</div>'+
+  '</div>';
+}
+
+function _rhTendencia(historial) {
+  const sorted=[...historial].sort((a,b)=>a.lote.localeCompare(b.lote));
+  if(sorted.length<2) return '';
+  const sc=sorted.map(h=>RIESGO_PERFILES[h.perfil]?.score??0);
+  const win=sc.slice(-3);
+  let sube=0,baja=0;
+  for(let i=1;i<win.length;i++){ if(win[i]>win[i-1]) sube++; else if(win[i]<win[i-1]) baja++; }
+  const [label,color,icon,desc]=sube>0&&baja===0?['Alcista','var(--green)','↗','Mejorando']:baja>0&&sube===0?['Bajista','var(--red)','↘','Deteriorando']:['Lateral','var(--yellow)','→','Sin tendencia clara'];
+  return '<div style="flex:1;min-width:100px;background:var(--bg3);border-radius:8px;padding:10px 12px">'+
+    '<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Tendencia</div>'+
+    '<div style="font-size:13px;font-weight:800;color:'+color+'">'+icon+' '+label+'</div>'+
+    '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+desc+' (últ. '+win.length+' per.)</div>'+
+  '</div>';
+}
+
+function _rhComparativa(sector, currentScore) {
+  if(!sector) return '';
+  const lotes=[...new Set(appState.riesgoData.map(r=>r.lote))].sort();
+  const peers=appState.riesgoData.filter(r=>r.lote===lotes[lotes.length-1]&&r.sector===sector);
+  if(peers.length<2) return '';
+  const avg=peers.reduce((s,r)=>s+(RIESGO_PERFILES[r.perfil]?.score??0),0)/peers.length;
+  const diff=currentScore-avg;
+  const [icon,color,diffText]=diff>0.5?['↑','var(--green)','Sobre promedio']:diff<-0.5?['↓','var(--red)','Bajo promedio']:['≈','var(--yellow)','En el promedio'];
+  return '<div style="flex:1;min-width:120px;background:var(--bg3);border-radius:8px;padding:10px 12px">'+
+    '<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">vs. Sector ('+sector+')</div>'+
+    '<div style="font-size:13px;font-weight:800;color:'+color+'">'+icon+' '+diffText+'</div>'+
+    '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+peers.length+' clientes · prom. '+avg.toFixed(1)+'</div>'+
+  '</div>';
+}
+
+function _rhAlertTimeline(historial) {
+  const sorted=[...historial].sort((a,b)=>a.lote.localeCompare(b.lote));
+  const allAlerts=['judicial','bcra6','atrasos','limites','inactivo'];
+  const alertNames={judicial:'⚖️ Judicial',bcra6:'🔴 BCRA 6m',atrasos:'💳 Atrasos',limites:'🟡 Límites',inactivo:'❌ Sin activ.'};
+  const alertColors={judicial:'#f87171',bcra6:'#fb923c',atrasos:'#fbbf24',limites:'#a78bfa',inactivo:'#94a3b8'};
+  const active=allAlerts.filter(a=>sorted.some(h=>h.alertas&&h.alertas.includes(a)));
+  if(!active.length||sorted.length<1) return '';
+  const loteLabels=sorted.map(h=>h.lote.replace('nosis_',''));
+  const hdrCells=loteLabels.map(l=>'<th style="font-size:7px;color:var(--text3);font-weight:400;text-align:center;padding-bottom:3px;min-width:22px">'+l+'</th>').join('');
+  const rows=active.map(a=>{
+    const cells=sorted.map((h,i)=>{
+      const on=h.alertas&&h.alertas.includes(a);
+      return '<td title="'+loteLabels[i]+(on?' ✓':'')+'" style="min-width:22px;height:16px;background:'+(on?alertColors[a]:'rgba(255,255,255,0.05)')+';border-radius:3px;border:1px solid rgba(255,255,255,0.06)"></td>';
+    }).join('');
+    return '<tr><td style="font-size:9px;color:var(--text3);padding-right:8px;white-space:nowrap;padding-bottom:3px">'+alertNames[a]+'</td>'+cells+'</tr>';
+  }).join('');
+  return '<div style="margin-top:10px">'+
+    '<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Alertas por período</div>'+
+    '<div style="overflow-x:auto"><table style="border-collapse:separate;border-spacing:2px">'+
+      '<thead><tr><th></th>'+hdrCells+'</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table></div>'+
+  '</div>';
+}
+
 function riesgoFichaCliente() {
   const q = (document.getElementById('riesgo-search')?.value||'').toLowerCase().trim();
   if (!q) { showToast('⚠️ Escribí un nombre o CUIT para buscar'); return; }
@@ -15193,7 +15306,6 @@ function riesgoFichaCliente() {
     byCuit[r.cuit].historial.push(r);
   });
 
-  // Buscar coincidencias
   const matches = Object.values(byCuit).filter(c=>{
     const last = c.historial[0]||{};
     return last.nombre.toLowerCase().includes(q) || last.cuit.includes(q);
@@ -15211,48 +15323,26 @@ function riesgoFichaCliente() {
     return;
   }
 
+  window._riesgoFichaMatches = matches;
+  const alertText = {judicial:'⚖️ Registraciones judiciales relevadas',bcra6:'🔴 Atrasos en los últimos 6 meses (BCRA)',atrasos:'💳 Atrasos vigentes',limites:'🟡 Perfil con límites',inactivo:'❌ Sin actividad comercial'};
+
   el.style.display='block';
-  el.innerHTML = matches.map(r => {
+  el.innerHTML = matches.map((r, idx) => {
     const pr = RIESGO_PERFILES[r.perfil]||{color:'var(--text3)',label:r.perfil,bg:'rgba(255,255,255,0.05)'};
-    const alertText = {judicial:'⚖️ Registraciones judiciales relevadas',bcra6:'🔴 Atrasos en los últimos 6 meses (BCRA)',atrasos:'💳 Atrasos vigentes',limites:'🟡 Perfil con límites',inactivo:'❌ Sin actividad comercial'};
     const alertsHtml = r.alertas.map(a=>alertText[a]||a).join(' · ');
-    const histResumen = r.historial.map(h=>{
+    const histSorted = [...r.historial].sort((a,b)=>a.lote.localeCompare(b.lote));
+    const currentScore = RIESGO_PERFILES[r.perfil]?.score??0;
+
+    const histResumen = histSorted.map(h=>{
       const hp=RIESGO_PERFILES[h.perfil]||{color:'var(--text3)'};
-      return '<span style="width:22px;height:22px;border-radius:50%;background:'+hp.color+';display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:white;margin-right:3px" title="'+h.lote.replace('nosis_','')+'">'+h.perfil+'</span>';
-    }).reverse().join('');
+      return '<span style="width:18px;height:18px;border-radius:50%;background:'+hp.color+';display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:white;margin-right:2px" title="'+h.lote.replace('nosis_','')+'">'+h.perfil+'</span>';
+    }).join('');
 
-    // Texto listo para copiar/pegar por mail
-    const fechaHoy = new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
-    const perfilComentario = {
-      'A': 'El cliente presenta un perfil crediticio óptimo. Cumple en tiempo y forma con todas sus obligaciones financieras, sin registros de atrasos ni incidentes en el sistema financiero. Se recomienda operar con normalidad.',
-      'B': 'El cliente presenta un perfil crediticio satisfactorio. Registra cumplimiento general de sus obligaciones, con irregularidades menores que no comprometen su capacidad de pago. Se recomienda operar dentro de los parámetros habituales.',
-      'C': 'El cliente presenta un perfil crediticio aceptable. Su comportamiento de pago es mayormente regular, aunque con algunos antecedentes a monitorear. Se recomienda operar con los recaudos habituales.',
-      'D': 'El cliente presenta un perfil crediticio moderado. Se registran ciertos atrasos o irregularidades que requieren seguimiento. Se recomienda operar con cautela y evaluar los límites de exposición.',
-      'E': 'El cliente presenta atrasos vigentes en el sistema financiero. Su situación crediticia requiere atención. Se recomienda exigir garantías adicionales o restringir la operatoria.',
-      'F': 'El cliente presenta un historial crediticio con limitaciones significativas. Se registran incumplimientos que condicionan su capacidad operativa. Se recomienda operar bajo condiciones estrictamente controladas.',
-      'G': 'El cliente presenta una situación crediticia crítica con deudas en estado irregular o irrecuperable. Se desaconseja operar sin respaldo total. Evaluar con criterio restrictivo.',
-      'I': 'El cliente no cuenta con información crediticia suficiente para emitir una evaluación completa. Se recomienda solicitar documentación respaldatoria adicional antes de operar.',
-    };
-    const comentarioPerfil = perfilComentario[r.perfil] || 'Sin evaluación disponible para este perfil.';
-    const mailText = `CONSULTA CREDITICIA — ${fechaHoy}
-
-Cliente: ${r.nombre}
-CUIT: ${r.cuit}
-Perfil Nosis: ${r.perfil} — ${pr.label}
-Último informe: ${r.fecha||'—'}
-${r.sector?'Sector: '+r.sector:''}
-${r.tipoEmp?'Tipo empresa: '+r.tipoEmp:''}
-
-SITUACIÓN CREDITICIA:
-${r.verif||'Sin información disponible'}
-
-EVALUACIÓN:
-${comentarioPerfil}
-${r.alertas.length?'\nALERTAS: '+r.alertas.map(a=>alertText[a]||a).join(', '):''}
-${r.historial.length>1?'\nEVOLUCIÓN: '+r.historial.slice(0,6).reverse().map(h=>h.lote.replace('nosis_','')+'→'+h.perfil).join(' | '):''}
-
-—
-Este informe fue generado automáticamente por FinanzasApp Grupo La Plaza.`;
+    const svgChart = _rhSvgChart(r.historial, idx);
+    const volBlock  = _rhVolatilidad(r.historial);
+    const tendBlock = _rhTendencia(r.historial);
+    const compBlock = _rhComparativa(r.sector||'', currentScore);
+    const timeline  = _rhAlertTimeline(r.historial);
 
     return '<div style="background:var(--card);border:1px solid '+pr.color+'44;border-radius:12px;padding:18px;margin-bottom:12px">' +
       '<div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px">' +
@@ -15269,13 +15359,19 @@ Este informe fue generado automáticamente por FinanzasApp Grupo La Plaza.`;
         '<div style="text-align:right">' +
           '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">Historial</div>' +
           '<div>'+histResumen+'</div>' +
-          '<div style="font-size:10px;color:var(--text3);margin-top:4px">'+r.historial.length+' informes · último: '+( r.fecha||'—')+'</div>' +
+          '<div style="font-size:10px;color:var(--text3);margin-top:4px">'+r.historial.length+' infor. · últ: '+(r.fecha||'—')+'</div>' +
         '</div>' +
       '</div>' +
       (r.alertas.length?'<div style="background:rgba(248,113,113,0.1);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--red)">'+alertsHtml+'</div>':'') +
-      '<div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px;background:var(--bg3);border-radius:8px;padding:12px">'+( r.verif||'Sin verificación disponible')+'</div>' +
+      (svgChart?
+        '<div style="background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:12px">' +
+          '<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Evolución de Score</div>' +
+          svgChart + timeline +
+        '</div>' :'') +
+      ((volBlock||tendBlock||compBlock)?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+volBlock+tendBlock+compBlock+'</div>':'') +
+      '<div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px;background:var(--bg3);border-radius:8px;padding:12px">'+(r.verif||'Sin verificación disponible')+'</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-        '<button onclick="riesgoCopiaMail(\''+encodeURIComponent(mailText)+'\')" style="padding:8px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent)22;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer">📋 Copiar texto para mail</button>' +
+        '<button onclick="riesgoMailVisual('+idx+')" style="padding:8px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent)22;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer">📧 Copiar mail visual</button>' +
         '<button onclick="document.getElementById(\'riesgo-ficha-container\').style.display=\'none\'" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text3);font-size:12px;cursor:pointer">✕ Cerrar</button>' +
       '</div>' +
     '</div>';
@@ -15287,7 +15383,6 @@ function riesgoCopiaMail(text) {
   navigator.clipboard.writeText(decoded).then(()=>{
     showToast('✅ Texto copiado — podés pegarlo en tu mail');
   }).catch(()=>{
-    // Fallback
     const ta = document.createElement('textarea');
     ta.value = decoded;
     document.body.appendChild(ta);
@@ -15296,6 +15391,158 @@ function riesgoCopiaMail(text) {
     document.body.removeChild(ta);
     showToast('✅ Copiado');
   });
+}
+
+function riesgoMailVisual(idx) {
+  const r = window._riesgoFichaMatches && window._riesgoFichaMatches[idx];
+  if (!r) { showToast('⚠️ Error al generar mail'); return; }
+
+  const pr = RIESGO_PERFILES[r.perfil]||{color:'#64748b',label:r.perfil};
+  const sorted=[...r.historial].sort((a,b)=>a.lote.localeCompare(b.lote));
+  const n=sorted.length;
+  const scores=sorted.map(h=>RIESGO_PERFILES[h.perfil]?.score??0);
+  const clrs=sorted.map(h=>RIESGO_PERFILES[h.perfil]?.color??'#94a3b8');
+  const labels=sorted.map(h=>h.lote.replace('nosis_',''));
+  const fechaHoy=new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+  // Draw chart on canvas (white background, email-compatible)
+  const W=520,H=150,PL=34,PR=14,PT=20,PB=32;
+  const cW=W-PL-PR, cH=H-PT-PB;
+  const canvas=document.createElement('canvas');
+  canvas.width=W*2; canvas.height=H*2;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(2,2);
+  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
+
+  const xOf=i=>PL+(n>1?(i/(n-1))*cW:cW/2);
+  const yOf=s=>PT+cH-(s/7)*cH;
+
+  // Grid
+  ctx.strokeStyle='#f1f5f9'; ctx.lineWidth=1;
+  [0,2,4,6].forEach(s=>{ ctx.beginPath(); ctx.moveTo(PL,yOf(s)); ctx.lineTo(PL+cW,yOf(s)); ctx.stroke(); });
+
+  // Y labels
+  ctx.font='9px Arial'; ctx.fillStyle='#94a3b8'; ctx.textAlign='right';
+  ['I','G','F','E','D','C','B','A'].forEach((p,i)=>ctx.fillText(p,PL-5,yOf(i)+3.5));
+
+  if(n>=2){
+    // Area fill
+    ctx.beginPath();
+    sorted.forEach((_,i)=>{ i===0?ctx.moveTo(xOf(i),yOf(scores[i])):ctx.lineTo(xOf(i),yOf(scores[i])); });
+    ctx.lineTo(xOf(n-1),PT+cH); ctx.lineTo(xOf(0),PT+cH); ctx.closePath();
+    ctx.fillStyle='rgba(74,159,212,0.08)'; ctx.fill();
+
+    // Trend-colored segments
+    ctx.lineWidth=2;
+    for(let i=0;i<n-1;i++){
+      const col=scores[i+1]>scores[i]?'#22c55e':scores[i+1]<scores[i]?'#ef4444':'#94a3b8';
+      ctx.strokeStyle=col; ctx.setLineDash([5,3]);
+      ctx.beginPath(); ctx.moveTo(xOf(i),yOf(scores[i])); ctx.lineTo(xOf(i+1),yOf(scores[i+1])); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  // Dots with profile letter
+  sorted.forEach((_,i)=>{
+    const x=xOf(i),y=yOf(scores[i]);
+    ctx.beginPath(); ctx.fillStyle='#ffffff'; ctx.arc(x,y,7,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.fillStyle=clrs[i]; ctx.arc(x,y,5.5,0,Math.PI*2); ctx.fill();
+    ctx.font='bold 8px Arial'; ctx.fillStyle='#ffffff'; ctx.textAlign='center';
+    ctx.fillText(sorted[i].perfil,x,y+3);
+  });
+
+  // X labels
+  ctx.font='9px Arial'; ctx.fillStyle='#64748b'; ctx.textAlign='center';
+  sorted.forEach((_,i)=>ctx.fillText(labels[i],xOf(i),H-7));
+
+  const chartBase64=canvas.toDataURL('image/png');
+
+  // Volatilidad + Tendencia text for email header
+  let volLabel='',tendLabel='';
+  if(n>=2){
+    const rng=Math.max(...scores)-Math.min(...scores);
+    volLabel=rng===0?'Estable':rng<=2?'Variable':'Volátil';
+    const win=scores.slice(-3); let su=0,ba=0;
+    for(let i=1;i<win.length;i++){ if(win[i]>win[i-1])su++; else if(win[i]<win[i-1])ba++; }
+    tendLabel=su>0&&ba===0?'↗ Alcista':ba>0&&su===0?'↘ Bajista':'→ Lateral';
+  }
+
+  const perfilComentario={
+    'A':'El cliente presenta un perfil crediticio óptimo. Cumple en tiempo y forma con todas sus obligaciones financieras, sin registros de atrasos ni incidentes en el sistema financiero. Se recomienda operar con normalidad.',
+    'B':'El cliente presenta un perfil crediticio satisfactorio. Registra cumplimiento general de sus obligaciones, con irregularidades menores que no comprometen su capacidad de pago. Se recomienda operar dentro de los parámetros habituales.',
+    'C':'El cliente presenta un perfil crediticio aceptable. Su comportamiento de pago es mayormente regular, aunque con algunos antecedentes a monitorear. Se recomienda operar con los recaudos habituales.',
+    'D':'El cliente presenta un perfil crediticio moderado. Se registran ciertos atrasos o irregularidades que requieren seguimiento. Se recomienda operar con cautela y evaluar los límites de exposición.',
+    'E':'El cliente presenta atrasos vigentes en el sistema financiero. Su situación crediticia requiere atención. Se recomienda exigir garantías adicionales o restringir la operatoria.',
+    'F':'El cliente presenta un historial crediticio con limitaciones significativas. Se registran incumplimientos que condicionan su capacidad operativa. Se recomienda operar bajo condiciones estrictamente controladas.',
+    'G':'El cliente presenta una situación crediticia crítica con deudas en estado irregular o irrecuperable. Se desaconseja operar sin respaldo total. Evaluar con criterio restrictivo.',
+    'I':'El cliente no cuenta con información crediticia suficiente para emitir una evaluación completa. Se recomienda solicitar documentación respaldatoria adicional antes de operar.',
+  };
+  const comentarioPerfil=perfilComentario[r.perfil]||'Sin evaluación disponible.';
+  const alertText={judicial:'⚖️ Registraciones judiciales relevadas',bcra6:'🔴 Atrasos últimos 6 meses (BCRA)',atrasos:'💳 Atrasos vigentes',limites:'🟡 Perfil con límites',inactivo:'❌ Sin actividad comercial'};
+
+  const emailPrColor={'A':'#16a34a','B':'#22c55e','C':'#2563eb','D':'#7c3aed','E':'#d97706','F':'#ea580c','G':'#dc2626','I':'#475569'}[r.perfil]||'#475569';
+  const emailPrBg={'A':'#dcfce7','B':'#f0fdf4','C':'#dbeafe','D':'#ede9fe','E':'#fef3c7','F':'#ffedd5','G':'#fee2e2','I':'#f1f5f9'}[r.perfil]||'#f1f5f9';
+  const evolText=n>1?sorted.map(h=>h.lote.replace('nosis_','')+'→'+h.perfil).join(' | '):'';
+  const alertsRows=r.alertas.length
+    ?r.alertas.map(a=>'<tr><td style="padding:5px 0;font-size:12px;color:#374151;border-bottom:1px solid #f1f5f9">'+(alertText[a]||a)+'</td></tr>').join('')
+    :'<tr><td style="padding:5px 0;font-size:12px;color:#94a3b8">Sin alertas activas</td></tr>';
+
+  const htmlEmail=`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:20px;background:#f8fafc">
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 4px 24px rgba(0,0,0,0.07)">
+  <div style="background:#0f172a;padding:22px 26px">
+    <div style="color:#94a3b8;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">Grupo La Plaza · Análisis Crediticio</div>
+    <div style="color:#ffffff;font-size:20px;font-weight:800;line-height:1.2">${r.nombre}</div>
+    <div style="color:#64748b;font-size:12px;margin-top:6px">CUIT: ${r.cuit}${r.sector?' · '+r.sector:''}${r.tipoEmp?' · '+r.tipoEmp:''}</div>
+  </div>
+  <div style="background:${emailPrBg};padding:14px 26px;border-bottom:1px solid #e2e8f0">
+    <table style="width:100%;border-collapse:collapse"><tr>
+      <td style="vertical-align:middle;padding-right:14px;width:54px">
+        <div style="width:46px;height:46px;border-radius:50%;background:${emailPrColor};display:inline-flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:#fff">${r.perfil}</div>
+      </td>
+      <td style="vertical-align:middle">
+        <div style="font-size:15px;font-weight:800;color:${emailPrColor}">${pr.label}</div>
+        <div style="font-size:11px;color:#64748b;margin-top:2px">Perfil Nosis · Último informe: ${r.fecha||'—'}</div>
+      </td>
+      ${volLabel?`<td style="text-align:right;vertical-align:middle;padding-left:12px"><div style="font-size:10px;color:#94a3b8">Volatilidad</div><div style="font-size:13px;font-weight:700;color:#374151">${volLabel}</div></td>`:''}
+      ${tendLabel?`<td style="text-align:right;vertical-align:middle;padding-left:12px"><div style="font-size:10px;color:#94a3b8">Tendencia</div><div style="font-size:13px;font-weight:700;color:#374151">${tendLabel}</div></td>`:''}
+    </tr></table>
+  </div>
+  <div style="background:#ffffff;padding:18px 26px;border-bottom:1px solid #f1f5f9">
+    <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Evolución de Score</div>
+    <img src="${chartBase64}" width="508" style="width:100%;max-width:508px;border-radius:8px;border:1px solid #f1f5f9;display:block"/>
+    ${evolText?'<div style="font-size:10px;color:#94a3b8;margin-top:8px;text-align:center">'+evolText+'</div>':''}
+  </div>
+  ${r.alertas.length?`<div style="background:#fff5f5;padding:14px 26px;border-bottom:1px solid #fee2e2">
+    <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Alertas activas</div>
+    <table style="width:100%;border-collapse:collapse">${alertsRows}</table>
+  </div>`:''}
+  <div style="background:#f8fafc;padding:16px 26px;border-bottom:1px solid #e2e8f0">
+    <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Evaluación crediticia</div>
+    <div style="font-size:13px;color:#374151;line-height:1.7">${comentarioPerfil}</div>
+  </div>
+  ${r.verif?`<div style="background:#ffffff;padding:14px 26px;border-bottom:1px solid #f1f5f9">
+    <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Información verificada</div>
+    <div style="font-size:12px;color:#374151;line-height:1.6">${r.verif}</div>
+  </div>`:''}
+  <div style="background:#f1f5f9;padding:12px 26px">
+    <div style="font-size:10px;color:#94a3b8">Generado automáticamente · FinanzasApp Grupo La Plaza · ${fechaHoy}</div>
+  </div>
+</div>
+</body></html>`;
+
+  const plainText=`CONSULTA CREDITICIA — ${fechaHoy}\n\nCliente: ${r.nombre}\nCUIT: ${r.cuit}\nPerfil Nosis: ${r.perfil} — ${pr.label}\nÚltimo informe: ${r.fecha||'—'}\n${r.sector?'Sector: '+r.sector+'\n':''}${r.tipoEmp?'Tipo empresa: '+r.tipoEmp+'\n':''}\nSITUACIÓN CREDITICIA:\n${r.verif||'Sin información disponible'}\n\nEVALUACIÓN:\n${comentarioPerfil}${r.alertas.length?'\n\nALERTAS: '+r.alertas.map(a=>alertText[a]||a).join(', '):''}${evolText?'\n\nEVOLUCIÓN: '+evolText:''}\n\n—\nGenerado por FinanzasApp Grupo La Plaza`;
+
+  try {
+    const htmlBlob=new Blob([htmlEmail],{type:'text/html'});
+    const textBlob=new Blob([plainText],{type:'text/plain'});
+    navigator.clipboard.write([new ClipboardItem({'text/html':htmlBlob,'text/plain':textBlob})]).then(()=>{
+      showToast('✅ Mail visual copiado — pegalo en tu cliente de correo');
+    }).catch(()=>{
+      navigator.clipboard.writeText(plainText).then(()=>showToast('✅ Texto copiado (modo simple)')).catch(()=>showToast('⚠️ Error al copiar'));
+    });
+  } catch(e) {
+    navigator.clipboard.writeText(plainText).then(()=>showToast('✅ Texto copiado (modo simple)')).catch(()=>showToast('⚠️ Error al copiar'));
+  }
 }
 
 function exportRiesgoExcel() {
