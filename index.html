@@ -8857,6 +8857,18 @@ function renderGalicia() {
 // ═══════════════════════════════════════════════════════════════
 // CHEQUES RECHAZADOS
 // ═══════════════════════════════════════════════════════════════
+function _rechEstadoStyle(estado) {
+  const e = (estado||'').toUpperCase();
+  const known = {
+    'COBRADO':    ['var(--green)',  'rgba(74,222,128,0.12)'],
+    'PENDIENTE':  ['var(--yellow)', 'rgba(251,191,36,0.12)'],
+  };
+  if (known[e]) return known[e];
+  const palette = ['#60a5fa','#f472b6','#fb923c','#a78bfa','#34d399','#f87171','#4a9fd4'];
+  const idx = Math.abs([...e].reduce((h,c)=>h*31+c.charCodeAt(0),0)) % palette.length;
+  return [palette[idx], palette[idx]+'22'];
+}
+
 function isRechazadosXls(wb) {
   return wb.SheetNames.some(s => {
     const sl = s.trim().toLowerCase();
@@ -8926,7 +8938,7 @@ function renderRechazados() {
   const fDias=document.getElementById('rech-f-dias')?.value||'';
   const search=(document.getElementById('rech-f-search')?.value||'').toLowerCase();
   // Dropdowns dinámicos
-  [['rech-f-banco','banco'],['rech-f-apies','apies'],['rech-f-motivo','motivo']].forEach(([id,field])=>{
+  [['rech-f-banco','banco'],['rech-f-apies','apies'],['rech-f-motivo','motivo'],['rech-f-estado','estado']].forEach(([id,field])=>{
     const el=document.getElementById(id); if(!el) return;
     const vals=[...new Set(data.map(r=>r[field]).filter(Boolean))].sort();
     const cur=el.value;
@@ -8944,17 +8956,18 @@ function renderRechazados() {
     return true;
   });
   const totImp=filtered.reduce((s,r)=>s+r.importe,0);
-  const totPend=filtered.filter(r=>r.estado==='PENDIENTE').reduce((s,r)=>s+r.importe,0);
-  const totCob=filtered.filter(r=>r.estado==='COBRADO').reduce((s,r)=>s+r.importe,0);
   const totInt=filtered.reduce((s,r)=>s+r.intNoPer,0);
   const masAntiguo=filtered.filter(r=>r.dias>0).sort((a,b)=>b.dias-a.dias)[0];
+  const byEstado={};
+  filtered.forEach(r=>{ const e=(r.estado||'PENDIENTE').toUpperCase(); byEstado[e]=(byEstado[e]||0)+r.importe; });
   const statsEl=document.getElementById('rech-stats');
-  if(statsEl) statsEl.innerHTML=[
-    ['🔴 Total rechazado',totImp,'var(--red)'],
-    ['⏳ Pendiente cobro',totPend,'var(--yellow)'],
-    ['🟢 Recuperado',totCob,'var(--green)'],
-    ['📊 Int. no percibidos',totInt,'var(--accent)'],
-  ].map(([l,v,c])=>'<div class="stat-card" style="border-left:3px solid '+c+'"><div class="label">'+l+'</div><div class="value" style="color:'+c+';font-size:18px">'+fmtMoney(v)+'</div></div>').join('');
+  if(statsEl) statsEl.innerHTML=
+    '<div class="stat-card" style="border-left:3px solid var(--red)"><div class="label">🔴 Total rechazado</div><div class="value" style="color:var(--red);font-size:18px">'+fmtMoney(totImp)+'</div></div>'+
+    Object.entries(byEstado).sort((a,b)=>b[1]-a[1]).map(([e,v])=>{
+      const [col]=_rechEstadoStyle(e);
+      return '<div class="stat-card" style="border-left:3px solid '+col+'"><div class="label">'+e+'</div><div class="value" style="color:'+col+';font-size:18px">'+fmtMoney(v)+'</div></div>';
+    }).join('')+
+    '<div class="stat-card" style="border-left:3px solid var(--accent)"><div class="label">📊 Int. no percibidos</div><div class="value" style="color:var(--accent);font-size:18px">'+fmtMoney(totInt)+'</div></div>';
   const sub=document.getElementById('rech-subtitle');
   if(sub) sub.textContent=filtered.length.toLocaleString('es-AR')+' registros'+(masAntiguo?' · Más antiguo: '+masAntiguo.dias+'d ('+( masAntiguo.cliente||masAntiguo.librador||'').slice(0,25)+')':'');
   // Panel por APIES
@@ -8992,13 +9005,12 @@ function renderRechazados() {
       if (!clienteGrupos[k]) clienteGrupos[k] = { cliente:k, cuit:r.cuit||'', cheques:[], monto:0, noRec:0 };
       clienteGrupos[k].cheques.push(r);
       clienteGrupos[k].monto += r.importe||0;
-      if ((r.estado||'').toUpperCase().includes('PENDIENTE')) clienteGrupos[k].noRec++;
+      if ((r.estado||'').toUpperCase() !== 'COBRADO') clienteGrupos[k].noRec++;
     });
 
     tbody.innerHTML = vis.map((r, idx) => {
-      const eB = r.estado==='COBRADO'
-        ? '<span style="font-size:9px;font-weight:700;color:var(--green);background:rgba(74,222,128,0.12);padding:2px 6px;border-radius:3px">Cobrado</span>'
-        : '<span style="font-size:9px;font-weight:700;color:var(--yellow);background:rgba(251,191,36,0.12);padding:2px 6px;border-radius:3px">Pendiente</span>';
+      const [_eBc,_eBbg]=_rechEstadoStyle(r.estado||'PENDIENTE');
+      const eB='<span style="font-size:9px;font-weight:700;color:'+_eBc+';background:'+_eBbg+';padding:2px 6px;border-radius:3px">'+(r.estado||'Pendiente')+'</span>';
       const dc = r.dias>180?'var(--red)':r.dias>90?'var(--yellow)':'var(--text3)';
       const expandId = 'rech-expand-'+idx;
       const clienteKey = encodeURIComponent((r.cliente||r.librador||'').trim());
