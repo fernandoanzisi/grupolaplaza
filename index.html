@@ -306,6 +306,8 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
 .more-item { background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:12px 16px; font-size:13px; font-weight:500; color:var(--text2); cursor:pointer; font-family:var(--font); flex:1 1 calc(50% - 4px); text-align:left; transition:all 0.15s; }
 .more-item:hover { color:var(--accent); background:rgba(108,143,255,0.1); border-color:var(--accent); }
+@media print { body > * { display:none !important; } #api-print-frame { display:block !important; position:fixed; inset:0; width:100%; height:100%; background:white; z-index:99999; } }
+#api-print-frame { display:none; }
 
 </style>
 
@@ -3322,7 +3324,7 @@ let _supaUser=null,_supaRol=null;
     </div>
     <label style="padding:7px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);cursor:pointer;font-family:var(--font)">
       ＋ Importar planilla
-      <input type="file" id="api-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="apiPlHandleFile(this.files[0]);this.value=''">
+      <input type="file" id="api-file-input" accept=".xlsx,.xlsm,.xls,.csv" style="display:none" onchange="apiPlHandleFile(this.files[0]);this.value=''">
     </label>
   </div>
 
@@ -19710,7 +19712,15 @@ function apiPlRender() {
           style="width:44px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:3px 6px;font-size:12px;font-family:var(--mono);text-align:center"
           title="Si el Excel tiene un título arriba, ponele 2 o 3 para que los encabezados reales sean la fila de datos">
         <button onclick="showToast('ℹ️ Re-importá el archivo con el botón + para aplicar el nuevo número de fila')" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:10px;cursor:pointer">↺ Info</button>
-        <button onclick="apiPlExportarFiltrado()" style="padding:5px 12px;border-radius:7px;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.08);color:var(--green);font-size:11px;font-weight:700;cursor:pointer">📥 Exportar vista</button>
+        <div style="position:relative">
+          <button onclick="const m=document.getElementById('api-exp-menu');m.style.display=m.style.display==='block'?'none':'block'" style="padding:5px 14px;border-radius:7px;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.08);color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font)">📤 Exportar ▾</button>
+          <div id="api-exp-menu" style="display:none;position:absolute;right:0;top:34px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:5px;z-index:300;min-width:230px;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
+            <button onclick="apiPlExportExcel();document.getElementById('api-exp-menu').style.display='none'" style="display:block;width:100%;text-align:left;padding:9px 14px;background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;border-radius:8px;font-family:var(--font)">📊 Excel completo (multi-hoja)</button>
+            <button onclick="apiPlExportPowerBI();document.getElementById('api-exp-menu').style.display='none'" style="display:block;width:100%;text-align:left;padding:9px 14px;background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;border-radius:8px;font-family:var(--font)">📈 Power BI (Excel optimizado)</button>
+            <button onclick="apiPlExportPPTX();document.getElementById('api-exp-menu').style.display='none'" style="display:block;width:100%;text-align:left;padding:9px 14px;background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;border-radius:8px;font-family:var(--font)">📑 PowerPoint (.pptx)</button>
+            <button onclick="apiPlExportPDF();document.getElementById('api-exp-menu').style.display='none'" style="display:block;width:100%;text-align:left;padding:9px 14px;background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;border-radius:8px;font-family:var(--font)">📄 PDF / Imprimir</button>
+          </div>
+        </div>
         <button onclick="apiPlSelectFile(null)" style="padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg3);color:var(--text3);font-size:11px;cursor:pointer">✕ Cerrar</button>
       </div>
     </div>`;
@@ -20218,18 +20228,355 @@ function apiPlMd(md) {
 }
 
 // ─── EXPORTAR ─────────────────────────────────────────────────
-function apiPlExportarFiltrado() {
-  const sh=_apiPlSheet();
-  if (!sh) { showToast('⚠️ No hay datos para exportar'); return; }
-  const rows=apiPlGetFiltered(sh);
-  if (!rows.length) { showToast('⚠️ No hay filas con los filtros actuales'); return; }
-  const ws=XLSX.utils.json_to_sheet(rows,{header:sh.cols});
+// ─── EXCEL MULTI-HOJA ─────────────────────────────────────────
+function apiPlExportExcel() {
+  const sh=_apiPlSheet(), file=_apiPlCurrent();
+  if (!sh) { showToast('⚠️ No hay datos'); return; }
+  const {cols,rows,types}=sh;
+  const filtered=apiPlGetFiltered(sh);
   const wb=XLSX.utils.book_new();
-  const file=_apiPlCurrent();
-  XLSX.utils.book_append_sheet(wb,ws,(_apiPlState.selSheet||'Datos').slice(0,31));
-  XLSX.writeFile(wb,(file?file.nombre.replace(/\.\w+$/,''):'planilla')+'_filtrada_'+new Date().toISOString().slice(0,10)+'.xlsx');
-  showToast('📥 Excel exportado — '+rows.length.toLocaleString('es-AR')+' filas');
+  const sn=(_apiPlState.selSheet||'Datos').slice(0,25);
+
+  // Hoja 1: Datos filtrados (con auto-filter)
+  const wsDatos=XLSX.utils.json_to_sheet(filtered,{header:cols});
+  wsDatos['!autofilter']={ref:'A1:'+XLSX.utils.encode_col(cols.length-1)+'1'};
+  wsDatos['!cols']=cols.map(c=>({wch:Math.min(30,Math.max(10,c.length+4))}));
+  XLSX.utils.book_append_sheet(wb,wsDatos,'Datos filtrados');
+
+  // Hoja 2: Todos los datos originales
+  const wsAll=XLSX.utils.json_to_sheet(rows,{header:cols});
+  wsAll['!autofilter']={ref:'A1:'+XLSX.utils.encode_col(cols.length-1)+'1'};
+  wsAll['!cols']=cols.map(c=>({wch:Math.min(30,Math.max(10,c.length+4))}));
+  XLSX.utils.book_append_sheet(wb,wsAll,'Todos los datos');
+
+  // Hoja 3: Resumen estadístico
+  const numCols=cols.filter(c=>types[c]==='numeric');
+  const resumenRows=[['Columna','Filas con dato','Total','Promedio','Máximo','Mínimo','Valores únicos']];
+  cols.forEach(col=>{
+    const vals=rows.map(r=>r[col]).filter(v=>v!==''&&v!==null&&v!==undefined);
+    const nums=vals.map(v=>apiPlToNum(v)).filter(v=>v!==null);
+    const uniq=[...new Set(vals.map(v=>String(v).trim()))].length;
+    if (types[col]==='numeric'&&nums.length) {
+      const sum=nums.reduce((a,b)=>a+b,0);
+      resumenRows.push([col,vals.length,sum,sum/nums.length,Math.max(...nums),Math.min(...nums),uniq]);
+    } else {
+      resumenRows.push([col,vals.length,'—','—','—','—',uniq]);
+    }
+  });
+  const wsRes=XLSX.utils.aoa_to_sheet(resumenRows);
+  wsRes['!cols']=[{wch:25},{wch:14},{wch:16},{wch:16},{wch:16},{wch:16},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,wsRes,'Resumen estadístico');
+
+  const fname=(file?file.nombre.replace(/\.\w+$/,''):'planilla')+'_completo_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  XLSX.writeFile(wb,fname);
+  showToast('📊 Excel exportado — 3 hojas (datos, todos, resumen)');
 }
+
+// ─── EXCEL PARA POWER BI ──────────────────────────────────────
+function apiPlExportPowerBI() {
+  const sh=_apiPlSheet(), file=_apiPlCurrent();
+  if (!sh) { showToast('⚠️ No hay datos'); return; }
+  const {cols,rows,types}=sh;
+  const wb=XLSX.utils.book_new();
+
+  // Hoja "Datos" — tabla limpia tipada para Power BI
+  const cleanRows=rows.map(r=>{
+    const obj={};
+    cols.forEach(c=>{
+      const v=r[c];
+      if (types[c]==='numeric') { const n=apiPlToNum(v); obj[c]=n!==null?n:null; }
+      else obj[c]=v===''||v===null||v===undefined?null:String(v).trim();
+    });
+    return obj;
+  });
+  const wsDatos=XLSX.utils.json_to_sheet(cleanRows,{header:cols});
+  wsDatos['!autofilter']={ref:'A1:'+XLSX.utils.encode_col(cols.length-1)+'1'};
+  wsDatos['!cols']=cols.map(c=>({wch:Math.min(35,Math.max(12,c.length+4))}));
+  XLSX.utils.book_append_sheet(wb,wsDatos,'Datos');
+
+  // Hoja "Medidas" — métricas pre-calculadas que Power BI puede usar directamente
+  const numCols=cols.filter(c=>types[c]==='numeric');
+  const medRows=[['Métrica','Columna','Valor']];
+  numCols.forEach(col=>{
+    const nums=rows.map(r=>apiPlToNum(r[col])).filter(v=>v!==null);
+    if (!nums.length) return;
+    const sum=nums.reduce((a,b)=>a+b,0);
+    medRows.push(['Total',col,sum],['Promedio',col,sum/nums.length],['Máximo',col,Math.max(...nums)],['Mínimo',col,Math.min(...nums)],['Cantidad',col,nums.length]);
+  });
+  // Dimensiones — frecuencias de columnas texto
+  const txtCols=cols.filter(c=>types[c]==='text').slice(0,3);
+  const dimRows=[['Dimensión','Valor','Cantidad']];
+  txtCols.forEach(col=>{
+    const freq={};
+    rows.forEach(r=>{const v=String(r[col]||'').trim();if(v)freq[v]=(freq[v]||0)+1;});
+    Object.entries(freq).sort((a,b)=>b[1]-a[1]).forEach(([v,n])=>dimRows.push([col,v,n]));
+  });
+
+  const wsMed=XLSX.utils.aoa_to_sheet(medRows);
+  wsMed['!cols']=[{wch:15},{wch:25},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,wsMed,'Medidas');
+
+  const wsDim=XLSX.utils.aoa_to_sheet(dimRows);
+  wsDim['!cols']=[{wch:20},{wch:30},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,wsDim,'Dimensiones');
+
+  const fname=(file?file.nombre.replace(/\.\w+$/,''):'planilla')+'_powerbi_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  XLSX.writeFile(wb,fname);
+  showToast('📈 Excel Power BI exportado — hojas: Datos, Medidas, Dimensiones');
+}
+
+// ─── PDF / IMPRIMIR ───────────────────────────────────────────
+function apiPlExportPDF() {
+  const sh=_apiPlSheet(), file=_apiPlCurrent();
+  if (!sh||!file) { showToast('⚠️ No hay datos'); return; }
+  const {cols,rows,types}=sh;
+  const filtered=apiPlGetFiltered(sh);
+  const sn=_apiPlState.selSheet||(file.sheetNames&&file.sheetNames[0])||'';
+  const numCols=cols.filter(c=>types[c]==='numeric');
+  const fecha=new Date().toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'});
+  const key=(_apiPlState.selId||'')+'_'+sn;
+  const analisisText=_apiPlState.analisis[key]||'';
+
+  const kpis=[
+    {l:'Total filas',v:rows.length.toLocaleString('es-AR'),c:'#1e7fad'},
+    {l:'Columnas',v:cols.length,c:'#1e7fad'},
+    {l:'Filas filtradas',v:filtered.length.toLocaleString('es-AR'),c:'#15803d'},
+    {l:'Completitud',v:(()=>{const n=cols.reduce((s,c)=>s+rows.filter(r=>r[c]===''||r[c]===null||r[c]===undefined).length,0);return Math.round((1-n/(rows.length*cols.length||1))*100)+'%';})(),c:'#b45309'},
+  ];
+
+  const statsRows=numCols.slice(0,8).map(col=>{
+    const nums=rows.map(r=>apiPlToNum(r[col])).filter(v=>v!==null);
+    if (!nums.length) return '';
+    const sum=nums.reduce((a,b)=>a+b,0);
+    return `<tr><td><strong>${col}</strong></td><td style="text-align:right">${nums.length.toLocaleString('es-AR')}</td><td style="text-align:right;color:#15803d;font-weight:700">$ ${fmtARS(sum)}</td><td style="text-align:right">$ ${fmtARS(sum/nums.length)}</td><td style="text-align:right">$ ${fmtARS(Math.max(...nums))}</td><td style="text-align:right">$ ${fmtARS(Math.min(...nums))}</td></tr>`;
+  }).join('');
+
+  const sampleCols=cols.slice(0,8);
+  const sampleRows=filtered.slice(0,40).map(r=>`<tr>${sampleCols.map(c=>{const v=r[c];const n=types[c]==='numeric'?apiPlToNum(v):null;return `<td style="${n!==null?'text-align:right;font-family:monospace;font-weight:600':''}">${n!==null?'$ '+fmtARS(n):(v===''||v===null?'—':String(v))}</td>`;}).join('')}</tr>`).join('');
+
+  const analisisHtml=analisisText?`<div class="section">
+    <h2>🤖 Análisis con Inteligencia Artificial</h2>
+    <div style="background:#f8fafc;border-radius:10px;padding:20px;font-size:12.5px;line-height:1.85;color:#374151;border-left:4px solid #4a9fd4">
+      ${analisisText.replace(/^## (.+)$/gm,'<h3 style="font-size:14px;font-weight:800;color:#1e3a5f;margin:18px 0 8px;border-bottom:1px solid #e2e8f0;padding-bottom:4px">$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^- (.+)$/gm,'<div style="display:flex;gap:8px;margin-bottom:5px"><span style="color:#4a9fd4;font-weight:700">•</span><span>$1</span></div>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>')}
+    </div></div>`:'';
+
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Informe — ${file.nombre}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#fff;color:#1f2937;font-size:13px}
+  .cover{background:linear-gradient(135deg,#1a2744 0%,#1e3a5f 100%);color:#fff;padding:50px 50px 40px;page-break-after:always}
+  .cover .badge{font-size:11px;color:#4a9fd4;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+  .cover h1{font-size:28px;font-weight:900;margin-bottom:10px;line-height:1.3}
+  .cover .meta{color:#9ca3af;font-size:12px;margin-top:10px;line-height:1.8}
+  .section{padding:28px 50px;border-bottom:1px solid #e5e7eb}
+  .section h2{font-size:16px;font-weight:800;color:#1e3a5f;margin-bottom:16px;padding-bottom:6px;border-bottom:3px solid #4a9fd4;display:inline-block}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:4px}
+  .kpi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;border-left:4px solid #4a9fd4}
+  .kpi-l{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;font-weight:700}
+  .kpi-v{font-size:22px;font-weight:900;color:#1e3a5f;margin-top:4px;font-family:monospace}
+  table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:4px}
+  th{background:#1e3a5f;color:#fff;padding:9px 12px;text-align:left;font-weight:700;font-size:11px}
+  td{padding:7px 12px;border-bottom:1px solid #f0f4f8}
+  tr:nth-child(even) td{background:#f8fafc}
+  .footer{padding:20px 50px;text-align:center;font-size:10px;color:#9ca3af;border-top:1px solid #e5e7eb}
+  @media print{@page{size:A4;margin:12mm} .page-break{page-break-after:always} .no-print{display:none}}
+</style></head><body>
+<div class="cover">
+  <div class="badge">Grupo La Plaza — Analizador de Planillas Inteligente</div>
+  <h1>${file.nombre}</h1>
+  <div class="meta">
+    Hoja analizada: <strong style="color:#fff">${sn}</strong><br>
+    ${rows.length.toLocaleString('es-AR')} filas totales · ${cols.length} columnas · ${numCols.length} columnas numéricas · ${cols.length-numCols.length} columnas de texto<br>
+    Generado el ${fecha}
+  </div>
+</div>
+<div class="section">
+  <h2>📊 Resumen general</h2>
+  <div class="kpis">${kpis.map(k=>`<div class="kpi"><div class="kpi-l">${k.l}</div><div class="kpi-v" style="color:${k.c}">${k.v}</div></div>`).join('')}</div>
+</div>
+${statsRows?`<div class="section">
+  <h2>📈 Estadísticas por columna numérica</h2>
+  <table><thead><tr><th>Columna</th><th style="text-align:right">Registros</th><th style="text-align:right">Total</th><th style="text-align:right">Promedio</th><th style="text-align:right">Máximo</th><th style="text-align:right">Mínimo</th></tr></thead><tbody>${statsRows}</tbody></table>
+</div>`:''}
+${analisisHtml}
+<div class="section page-break">
+  <h2>🗂 Muestra de datos${filtered.length<rows.length?' (filtrados)':''} — primeras ${Math.min(40,filtered.length)} filas</h2>
+  <table><thead><tr>${sampleCols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${sampleRows}</tbody></table>
+  ${filtered.length>40?`<div style="margin-top:8px;font-size:10px;color:#6b7280">Se muestran 40 de ${filtered.length.toLocaleString('es-AR')} filas. Exportá a Excel para ver todos los datos.</div>`:''}
+</div>
+<div class="footer">Generado por Grupo La Plaza · Analizador de Planillas Inteligente · ${fecha}</div>
+</body></html>`;
+
+  const w=window.open('','_blank','width=900,height=700');
+  if (!w) { showToast('⚠️ El navegador bloqueó la ventana emergente. Habilitá los popups para este sitio.'); return; }
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>{ try{ w.focus(); w.print(); } catch(e){} }, 600);
+  showToast('📄 Informe abierto — usá Ctrl+P o el diálogo de impresión para guardar como PDF');
+}
+
+// ─── POWERPOINT ───────────────────────────────────────────────
+async function apiPlLoadPptx() {
+  if (window.PptxGenJS) return true;
+  return new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
+    s.onload=()=>res(true); s.onerror=()=>rej(new Error('No se pudo cargar PptxGenJS'));
+    document.head.appendChild(s);
+  });
+}
+
+async function apiPlExportPPTX() {
+  const sh=_apiPlSheet(), file=_apiPlCurrent();
+  if (!sh||!file) { showToast('⚠️ No hay datos'); return; }
+  showToast('⏳ Generando PowerPoint...');
+  try { await apiPlLoadPptx(); } catch(e) { showToast('⚠️ Error cargando librería: '+e.message); return; }
+
+  const {cols,rows,types}=sh;
+  const filtered=apiPlGetFiltered(sh);
+  const numCols=cols.filter(c=>types[c]==='numeric');
+  const txtCols=cols.filter(c=>types[c]==='text');
+  const sn=_apiPlState.selSheet||(file.sheetNames&&file.sheetNames[0])||'';
+  const key=(_apiPlState.selId||'')+'_'+sn;
+  const analisisText=_apiPlState.analisis[key]||'';
+  const fecha=new Date().toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'});
+
+  const pptx=new PptxGenJS();
+  pptx.layout='LAYOUT_16x9';
+  pptx.author='Grupo La Plaza';
+  pptx.subject=file.nombre;
+  pptx.title='Análisis — '+file.nombre;
+
+  const BG='111827', ACCENT='4A9FD4', WHITE='FFFFFF', GRAY='9CA3AF', DARK='1E3A5F', GREEN='4ADE80', YELLOW='FBBF24';
+  const txtOpts=(sz,bold,color,align)=>({fontSize:sz,bold:!!bold,color:color||WHITE,align:align||'left',fontFace:'Calibri'});
+
+  // ── Slide 1: Portada ──
+  const s1=pptx.addSlide();
+  s1.background={color:BG};
+  s1.addShape(pptx.ShapeType.rect,{x:0,y:0,w:0.22,h:5.625,fill:{color:ACCENT},line:{color:ACCENT}});
+  s1.addText('GRUPO LA PLAZA',{x:0.5,y:1.2,w:9,h:0.4,...txtOpts(12,true,ACCENT)});
+  s1.addText('Analizador de Planillas Inteligente',{x:0.5,y:1.65,w:9,h:0.35,...txtOpts(11,false,GRAY)});
+  s1.addText(file.nombre.replace(/\.\w+$/,''),{x:0.5,y:2.2,w:9,h:1,...txtOpts(26,true,WHITE)});
+  s1.addText('Hoja: '+sn+' · '+rows.length.toLocaleString('es-AR')+' registros · '+cols.length+' columnas',{x:0.5,y:3.35,w:9,h:0.35,...txtOpts(12,false,GRAY)});
+  s1.addText(fecha,{x:0.5,y:4.9,w:9,h:0.3,...txtOpts(10,false,GRAY)});
+
+  // ── Slide 2: KPIs ──
+  const s2=pptx.addSlide();
+  s2.background={color:BG};
+  s2.addText('Resumen de la planilla',{x:0.4,y:0.25,w:9.2,h:0.45,...txtOpts(18,true,WHITE)});
+  const nullCount=cols.reduce((s,c)=>s+rows.filter(r=>r[c]===''||r[c]===null||r[c]===undefined).length,0);
+  const completitud=Math.round((1-(nullCount/(rows.length*cols.length||1)))*100);
+  const kpis2=[
+    {l:'Total filas',v:rows.length.toLocaleString('es-AR'),c:ACCENT},
+    {l:'Columnas',v:String(cols.length),c:ACCENT},
+    {l:'Filas filtradas',v:filtered.length.toLocaleString('es-AR'),c:GREEN},
+    {l:'Completitud',v:completitud+'%',c:completitud>=90?GREEN:YELLOW},
+  ];
+  kpis2.forEach((k,i)=>{
+    const x=0.4+i*2.35, y=1.0;
+    s2.addShape(pptx.ShapeType.roundRect,{x,y,w:2.2,h:1.4,fill:{color:'1F2937'},line:{color:'374151'},rectRadius:0.08});
+    s2.addText(k.l.toUpperCase(),{x:x+0.1,y:y+0.12,w:2.0,h:0.25,...txtOpts(8,true,GRAY)});
+    s2.addText(k.v,{x:x+0.1,y:y+0.42,w:2.0,h:0.65,...txtOpts(24,true,k.c)});
+  });
+  // Cols numéricas resumen en slide 2 (debajo)
+  if (numCols.length) {
+    const mainCol=numCols[0];
+    const nums=rows.map(r=>apiPlToNum(r[mainCol])).filter(v=>v!==null);
+    if (nums.length) {
+      const sum=nums.reduce((a,b)=>a+b,0);
+      const extras=[{l:'Total '+mainCol,v:'$ '+fmtARS(sum),c:GREEN},{l:'Promedio',v:'$ '+fmtARS(sum/nums.length),c:ACCENT},{l:'Máximo',v:'$ '+fmtARS(Math.max(...nums)),c:YELLOW},{l:'Mínimo',v:'$ '+fmtARS(Math.min(...nums)),c:GRAY}];
+      extras.forEach((k,i)=>{
+        const x=0.4+i*2.35, y=2.65;
+        s2.addShape(pptx.ShapeType.roundRect,{x,y,w:2.2,h:1.3,fill:{color:'1F2937'},line:{color:'374151'},rectRadius:0.08});
+        s2.addText(k.l.toUpperCase(),{x:x+0.1,y:y+0.1,w:2.0,h:0.25,...txtOpts(8,true,GRAY)});
+        s2.addText(k.v,{x:x+0.1,y:y+0.38,w:2.0,h:0.55,...txtOpts(14,true,k.c)});
+      });
+    }
+  }
+
+  // ── Slide 3: Gráfico de barras ──
+  const s3=pptx.addSlide();
+  s3.background={color:BG};
+  const chartColX=txtCols[0]||cols[0], chartColY=numCols[0]||cols[1]||cols[0];
+  s3.addText('Distribución: '+chartColY+' por '+chartColX,{x:0.4,y:0.2,w:9.2,h:0.45,...txtOpts(16,true,WHITE)});
+  const agg={};
+  filtered.forEach(r=>{const x=String(r[chartColX]||'(vacío)').trim();agg[x]=(agg[x]||0)+(apiPlToNum(r[chartColY])||0);});
+  const chartEntries=Object.entries(agg).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  if (chartEntries.length>=2) {
+    try {
+      s3.addChart(pptx.ChartType.bar,[{name:chartColY,labels:chartEntries.map(([k])=>k),values:chartEntries.map(([,v])=>Math.round(v))}],{
+        x:0.4,y:0.75,w:9.2,h:4.5,barDir:'bar',barGapWidthPct:50,
+        chartColors:[ACCENT,'4ade80','fbbf24','f472b6','a78bfa','fb923c','34d399'],
+        showLegend:false,showValue:true,dataLabelPosition:'outEnd',dataLabelFontSize:9,dataLabelColor:WHITE,
+        catAxisLabelColor:GRAY,catAxisLabelFontSize:9,valAxisLabelColor:GRAY,valAxisLabelFontSize:8,
+        plotAreaFill:{color:BG},chartAreaFill:{color:BG},
+      });
+    } catch(e) {
+      s3.addText('Gráfico no disponible para este tipo de datos',{x:1,y:2.5,w:8,h:0.5,...txtOpts(14,false,GRAY),'align':'center'});
+    }
+  } else {
+    s3.addText('No hay suficientes categorías para generar el gráfico',{x:1,y:2.5,w:8,h:0.5,...txtOpts(13,false,GRAY)});
+  }
+
+  // ── Slide 4: Estadísticas numéricas ──
+  if (numCols.length) {
+    const s4=pptx.addSlide();
+    s4.background={color:BG};
+    s4.addText('Estadísticas por columna numérica',{x:0.4,y:0.2,w:9.2,h:0.45,...txtOpts(16,true,WHITE)});
+    const tHead=[
+      [{text:'Columna',...txtOpts(10,true,WHITE)},{text:'Registros',...txtOpts(10,true,WHITE)},{text:'Total',...txtOpts(10,true,WHITE)},{text:'Promedio',...txtOpts(10,true,WHITE)},{text:'Máximo',...txtOpts(10,true,WHITE)},{text:'Mínimo',...txtOpts(10,true,WHITE)}]
+    ];
+    const tRows=numCols.slice(0,12).map(col=>{
+      const nums=rows.map(r=>apiPlToNum(r[col])).filter(v=>v!==null);
+      if (!nums.length) return [{text:col,...txtOpts(9,false,WHITE)},{text:'—',...txtOpts(9,false,GRAY)},{text:'—',...txtOpts(9,false,GRAY)},{text:'—',...txtOpts(9,false,GRAY)},{text:'—',...txtOpts(9,false,GRAY)},{text:'—',...txtOpts(9,false,GRAY)}];
+      const sum=nums.reduce((a,b)=>a+b,0);
+      return [
+        {text:col,...txtOpts(9,true,WHITE)},
+        {text:nums.length.toLocaleString('es-AR'),...txtOpts(9,false,GRAY),'align':'right'},
+        {text:'$ '+fmtARS(sum),...txtOpts(9,true,GREEN),'align':'right'},
+        {text:'$ '+fmtARS(sum/nums.length),...txtOpts(9,false,ACCENT),'align':'right'},
+        {text:'$ '+fmtARS(Math.max(...nums)),...txtOpts(9,false,YELLOW),'align':'right'},
+        {text:'$ '+fmtARS(Math.min(...nums)),...txtOpts(9,false,GRAY),'align':'right'},
+      ];
+    });
+    try {
+      s4.addTable([...tHead,...tRows],{x:0.4,y:0.8,w:9.2,colW:[2.8,1.2,1.8,1.8,1.8,1.8],
+        fill:{color:'1F2937'},color:WHITE,fontSize:9,border:{pt:0.5,color:'374151'},
+        rowH:0.38,fontFace:'Calibri',
+      });
+    } catch(e) { s4.addText('Tabla de estadísticas no disponible',{x:1,y:2.5,w:8,h:0.5,...txtOpts(13,false,GRAY)}); }
+  }
+
+  // ── Slide 5: Análisis IA ──
+  if (analisisText) {
+    const s5=pptx.addSlide();
+    s5.background={color:BG};
+    s5.addText('🤖 Análisis con Inteligencia Artificial',{x:0.4,y:0.2,w:9.2,h:0.45,...txtOpts(16,true,WHITE)});
+    s5.addShape(pptx.ShapeType.roundRect,{x:0.4,y:0.75,w:9.2,h:4.6,fill:{color:'1F2937'},line:{color:ACCENT,pt:1},rectRadius:0.08});
+    const cleanText=analisisText.replace(/^## .+$/gm,'').replace(/\*\*(.+?)\*\*/g,'$1').replace(/^- /gm,'• ').trim().slice(0,1200)+(analisisText.length>1200?'…':'');
+    s5.addText(cleanText,{x:0.6,y:0.9,w:8.8,h:4.3,fontSize:10,color:GRAY,fontFace:'Calibri',valign:'top',wrap:true,lineSpacingMultiple:1.4});
+  }
+
+  // ── Slide 6: Muestra de datos ──
+  const s6=pptx.addSlide();
+  s6.background={color:BG};
+  const sampleCols=cols.slice(0,6);
+  s6.addText('Muestra de datos — primeras '+Math.min(20,filtered.length)+' filas',{x:0.4,y:0.2,w:9.2,h:0.45,...txtOpts(16,true,WHITE)});
+  const dHead=[sampleCols.map(c=>({text:c.slice(0,20),...txtOpts(9,true,WHITE)}))];
+  const dRows=filtered.slice(0,20).map(r=>sampleCols.map(c=>{const v=r[c];const n=types[c]==='numeric'?apiPlToNum(v):null;return {text:n!==null?'$ '+fmtARS(n):(v===''||v===null?'—':String(v).slice(0,30)),...txtOpts(8,false,n!==null?GREEN:GRAY),(n!==null?{align:'right'}:{}),...(n!==null?{align:'right'}:{})};} ));
+  try {
+    const colWArr=sampleCols.map(()=>9.2/sampleCols.length);
+    s6.addTable([...dHead,...dRows],{x:0.4,y:0.8,w:9.2,colW:colWArr,fill:{color:'1F2937'},color:WHITE,fontSize:8,border:{pt:0.5,color:'374151'},rowH:0.3,fontFace:'Calibri'});
+  } catch(e) { s6.addText('Tabla de datos no disponible',{x:1,y:2.5,w:8,h:0.5,...txtOpts(13,false,GRAY)}); }
+  if (filtered.length>20) s6.addText('... y '+(filtered.length-20).toLocaleString('es-AR')+' filas más. Exportá a Excel para ver todos los datos.',{x:0.4,y:5.2,w:9.2,h:0.3,...txtOpts(9,false,GRAY)});
+
+  const fname=(file.nombre.replace(/\.\w+$/,'')||'planilla')+'_'+new Date().toISOString().slice(0,10)+'.pptx';
+  await pptx.writeFile({fileName:fname});
+  showToast('📑 PowerPoint generado — '+pptx.slides.length+' diapositivas');
+}
+
+// Mantener alias por compatibilidad
+function apiPlExportarFiltrado() { apiPlExportExcel(); }
 </script>
 
 
