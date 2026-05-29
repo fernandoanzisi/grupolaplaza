@@ -3346,6 +3346,7 @@ let _supaUser=null,_supaRol=null;
     </div>
     <div id="api-viewer" style="display:none;flex:1;min-width:0">
       <div id="api-top-bar"></div>
+      <div id="api-ia-banner" style="margin-bottom:10px"></div>
       <div id="api-sheet-tabs" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
       <div id="api-tab-bar" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:12px"></div>
       <div id="api-content"></div>
@@ -19869,6 +19870,7 @@ let _apiPlState = {
   filters: {}, busqueda: '', pagina: 0, pageSize: 50,
   fDesde: 1, chartType: 'barras', chartX: null, chartY: null,
   analisis: {}, analizando: {},
+  consigna: '',
 };
 
 function _apiPlSave() {
@@ -19996,6 +19998,8 @@ function apiPlRender() {
       </div>
     </div>`;
   }
+
+  apiPlRenderIABanner();
 
   const sheetTabs = document.getElementById('api-sheet-tabs');
   if (sheetTabs && file.sheetNames && file.sheetNames.length > 1) {
@@ -20459,6 +20463,50 @@ function apiPlDrawPie(entries,colX,colY) {
 }
 
 // ─── ANÁLISIS IA ──────────────────────────────────────────────
+function apiPlSetConsigna(val) { _apiPlState.consigna = val; }
+
+function apiPlRenderIABanner() {
+  const el = document.getElementById('api-ia-banner');
+  if (!el) return;
+  const file = _apiPlCurrent();
+  if (!file) { el.innerHTML = ''; return; }
+  const sn = _apiPlState.selSheet === '@@todas' ? '@@todas' : (_apiPlState.selSheet || (file.sheetNames && file.sheetNames[0]) || '');
+  const key = (_apiPlState.selId || '') + '_' + sn;
+  const cached  = _apiPlState.analisis  && _apiPlState.analisis[key];
+  const loading = _apiPlState.analizando && _apiPlState.analizando[key];
+  const consigna = (_apiPlState.consigna || '').replace(/"/g, '&quot;');
+
+  let status = '';
+  if (loading) {
+    status = '<span style="font-size:11px;color:var(--yellow);display:flex;align-items:center;gap:6px;flex-shrink:0"><span style="width:10px;height:10px;border:2px solid rgba(251,191,36,0.3);border-top-color:#fbbf24;border-radius:50%;animation:spin-dash 0.8s linear infinite;display:inline-block"></span>Analizando...</span>';
+  } else if (cached) {
+    status = '<span style="font-size:11px;color:var(--green);flex-shrink:0">✓ Listo</span>';
+  }
+
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,rgba(74,159,212,0.07),rgba(167,139,250,0.05));border:1px solid rgba(74,159,212,0.2);border-radius:12px">
+    <span style="font-size:16px;flex-shrink:0">🤖</span>
+    <span style="font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap;flex-shrink:0">¿Qué querés analizar?</span>
+    <input id="api-consigna-input" type="text"
+      value="${consigna}"
+      placeholder="Ej: analizá por cliente · buscá duplicados · top 10 cheques · tendencia mensual..."
+      oninput="_apiPlState.consigna=this.value"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();apiPlAnalizarYMostrar()}"
+      style="flex:1;min-width:0;background:rgba(255,255,255,0.04);border:1px solid rgba(74,159,212,0.2);border-radius:8px;color:var(--text);padding:7px 12px;font-size:12px;font-family:var(--font);outline:none">
+    ${status}
+    <button onclick="apiPlAnalizarYMostrar()" style="padding:7px 18px;border-radius:8px;border:none;background:var(--accent);color:white;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);white-space:nowrap;flex-shrink:0">${cached ? '↺ Re-analizar' : '🚀 Analizar'}</button>
+  </div>`;
+}
+
+function apiPlAnalizarYMostrar() {
+  const file = _apiPlCurrent();
+  if (!file) return;
+  const sn = _apiPlState.selSheet === '@@todas' ? '@@todas' : (_apiPlState.selSheet || (file.sheetNames && file.sheetNames[0]) || '');
+  const key = (_apiPlState.selId || '') + '_' + sn;
+  delete _apiPlState.analisis[key];
+  apiPlSetTab('analisis');
+  apiPlAnalizar();
+}
+
 function apiPlRenderAnalisisPanel(sh) {
   const el = document.getElementById('api-content');
   if (!el) return;
@@ -20490,13 +20538,16 @@ async function apiPlAnalizar() {
   const sn=_apiPlState.selSheet||(file.sheetNames&&file.sheetNames[0])||'';
   const key=(_apiPlState.selId||'')+'_'+sn;
   _apiPlState.analizando[key]=true;
+  apiPlRenderIABanner();
   apiPlRenderAnalisisPanel(sh);
   try {
     const {cols,rows,types}=sh;
     const sample=rows.slice(0,400);
     const csv=[cols.join('\t'),...sample.map(r=>cols.map(c=>String(r[c]??'')).join('\t'))].join('\n');
     const truncNote=rows.length>400?`\n\n[Datos truncados: se analizan ${sample.length} de ${rows.length} filas totales]`:'';
-    const system=`Sos un analista de datos y consultor financiero experto de Argentina. Analizarás una planilla de Excel y harás un informe completo, específico y útil en español argentino.
+    const consigna = (_apiPlState.consigna || '').trim();
+    const consignaSection = consigna ? `\n\nCONSIGNA DEL USUARIO: "${consigna}"\nESTO ES LO MÁS IMPORTANTE: enfocá todo el análisis en responder esto. Priorizá esta pregunta en cada sección. Si el análisis general no aporta a la consigna, resumilo brevemente y dedicá más espacio a lo que pidió el usuario.` : '';
+    const system=`Sos un analista de datos y consultor financiero experto de Argentina. Analizarás una planilla de Excel y harás un informe completo, específico y útil en español argentino.${consignaSection}
 
 Tu informe DEBE tener estas secciones con encabezados ##:
 
@@ -20519,7 +20570,7 @@ Registros que se destacan, valores fuera de lo normal, celdas vacías importante
 3-5 recomendaciones concretas y accionables basadas en los datos. Qué debería hacer la persona con esta información.
 
 Usá números específicos siempre. Formato argentino: punto para miles, coma para decimales. Sé directo y profesional.`;
-    const userMsg=`Planilla: "${file.nombre}" | Hoja: "${sn}"
+    const userMsg=`Planilla: "${file.nombre}" | Hoja: "${sn}"${consigna ? ` | Consigna: "${consigna}"` : ''}
 Columnas (${cols.length}): ${cols.join(', ')}
 Tipos: ${Object.entries(types).map(([c,t])=>`${c}→${t}`).join(', ')}
 Total filas: ${rows.length.toLocaleString('es-AR')}
@@ -20534,6 +20585,7 @@ ${csv}${truncNote}`;
     _apiPlState.analisis[key]='⚠️ Error al analizar: '+e.message;
   } finally {
     _apiPlState.analizando[key]=false;
+    apiPlRenderIABanner();
     apiPlRenderAnalisisPanel(_apiPlSheet());
   }
 }
