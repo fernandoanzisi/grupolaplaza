@@ -8823,8 +8823,8 @@ function renderGalicia() {
   let filtered = data.filter(g => {
     if (fEmp   && g.emp !== fEmp) return false;
     const fechaRef = g.fPres || g.fEmi || '';
-    if (fDesde && fechaRef && fechaRef < fDesde) return false;
-    if (fHasta && fechaRef && fechaRef > fHasta) return false;
+    if (fDesde && (!fechaRef || fechaRef < fDesde)) return false;
+    if (fHasta && (!fechaRef || fechaRef > fHasta)) return false;
     if (search) {
       const hay = [g.cliente,g.librador,g.nro,g.banco,g.lugar].map(s=>String(s||'').toLowerCase()).join(' ');
       if (!hay.includes(search)) return false;
