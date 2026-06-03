@@ -1169,10 +1169,13 @@ let _supaUser=null,_supaRol=null;
     <!-- Fila 1: Fechas -->
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
       <span style="font-size:11px;color:var(--text3);white-space:nowrap">📅 Período:</span>
-      <input id="sub-f-desde" type="date" onchange="renderSubempresas()"
+      <button id="subp-hoy"    class="rate-btn" onclick="subPeriodo('hoy')"    style="font-size:11px;padding:4px 12px">Hoy</button>
+      <button id="subp-semana" class="rate-btn" onclick="subPeriodo('semana')" style="font-size:11px;padding:4px 12px">Semana</button>
+      <button id="subp-mes"    class="rate-btn" onclick="subPeriodo('mes')"    style="font-size:11px;padding:4px 12px">Mes</button>
+      <input id="sub-f-desde" type="date" onchange="subPeriodo(null)"
         style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">
       <span style="font-size:11px;color:var(--text3)">→</span>
-      <input id="sub-f-hasta" type="date" onchange="renderSubempresas()"
+      <input id="sub-f-hasta" type="date" onchange="subPeriodo(null)"
         style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);outline:none">
       <div id="sub-fechas-disponibles" style="font-size:11px;color:var(--text3)"></div>
     </div>
@@ -1216,6 +1219,7 @@ let _supaUser=null,_supaRol=null;
       <button id="subm-cartera"    class="rate-btn"        onclick="subMetrica('cartera')"    style="font-size:11px;padding:4px 12px">📋 Cartera</button>
       <button id="subm-banco"      class="rate-btn"        onclick="subMetrica('banco')"      style="font-size:11px;padding:4px 12px">🏦 Banco</button>
       <button id="subm-erogaciones" class="rate-btn"       onclick="subMetrica('erogaciones')" style="font-size:11px;padding:4px 12px">💸 Erogaciones</button>
+      <button id="subm-cajero"     class="rate-btn"        onclick="subMetrica('cajero')"     style="font-size:11px;padding:4px 12px">🏧 Cajero</button>
     </div>
   </div>
 
@@ -6607,7 +6611,11 @@ function parseMinutaDiaria(wb) {
     let rEessStart = -1;
     for (let i = 110; i < 135; i++) {
       const c0 = String(R[i] && R[i][0] || '').toUpperCase();
-      if (c0.includes('DETALLE EESS')) { rEessStart = i + 1; break; }
+      if (c0.includes('DETALLE EESS') || c0.includes('CAJERO AUTOM') || c0.includes('RESUMEN EESS') || c0.includes('UNIDADES DE NEGOCIO')) { rEessStart = i + 1; break; }
+    }
+    // Fallback: si no encontró header, intentar desde fila fija 119 (row 120 en Excel 1-indexed)
+    if (rEessStart < 0 && R[118] && String(R[118][0]||'').trim() === '' && R[119] && pn(R[119][1]) !== 0) {
+      rEessStart = 119;
     }
     if (rEessStart >= 0) {
       for (let ri = rEessStart; ri <= rEessStart + 8; ri++) {
@@ -8162,7 +8170,35 @@ function renderConsolidado() {
 // SUBEMPRESAS PAGE
 // ════════════════════════════════════════════════════════════════
 let _subMetricaActiva = 'todos';
-let _subRazonesSel = new Set(); // razones sociales seleccionadas (multi-select)
+let _subRazonesSel = new Set();
+
+function subPeriodo(p) {
+  const hoy = new Date();
+  const fmt = d => d.toISOString().slice(0, 10);
+  const dEl = document.getElementById('sub-f-desde');
+  const hEl = document.getElementById('sub-f-hasta');
+  // Resaltar botón activo
+  ['subp-hoy','subp-semana','subp-mes'].forEach(id => {
+    const b = document.getElementById(id); if (b) b.classList.remove('active');
+  });
+  if (p === 'hoy') {
+    const hoyStr = fmt(hoy);
+    dEl.value = hoyStr; hEl.value = hoyStr;
+    document.getElementById('subp-hoy')?.classList.add('active');
+  } else if (p === 'semana') {
+    const dow = hoy.getDay();
+    const lunes = new Date(hoy);
+    lunes.setDate(hoy.getDate() - (dow === 0 ? 6 : dow - 1));
+    dEl.value = fmt(lunes); hEl.value = fmt(hoy);
+    document.getElementById('subp-semana')?.classList.add('active');
+  } else if (p === 'mes') {
+    dEl.value = fmt(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+    hEl.value = fmt(hoy);
+    document.getElementById('subp-mes')?.classList.add('active');
+  }
+  // p === null: el usuario editó las fechas manualmente
+  renderSubempresas();
+}
 
 function subMetrica(m) {
   _subMetricaActiva = m;
@@ -8246,32 +8282,74 @@ function renderSubempresas() {
       });
       return;
     }
-    ests.forEach((est, i) => {
-      const carteraXls = (emp.cheques||[])
-        .filter(c => c._fromCarteraXls && c.estado === 'EN CARTERA' &&
-          (c.subempresa||'').toLowerCase().includes(est.nombre.toLowerCase().replace(/\s+bo\s+\d+/i,'').trim().slice(0,5).toLowerCase()))
-        .reduce((s,c) => s + (c.importe||0), 0);
-      const rechXls = (emp.cheques||[])
-        .filter(c => c._fromRechXls &&
-          (c.estacion||'').toLowerCase().includes(est.nombre.toLowerCase().replace(/[^a-z0-9]/gi,'').slice(0,4).toLowerCase()))
-        .reduce((s,c) => s + (c.importe||0), 0);
-      cards.push({ emp, s: {
-        nombre:    est.nombre,
-        fecha:     est.fecha,
-        efectivo:  est.efectivo || 0,
-        dispBanco: est.dispBanco || 0,
-        erogaciones: est.erogaciones || 0,
-        cajero:    est.cajero || 0,
-        rechazados: est.chqRechaz || rechXls || 0,
-        cartera:    est.chqCartera || carteraXls || 0,
-        esAgro:    est.esAgro || false,
-        color:     COLORS[i % COLORS.length],
-        ultAct:    est.ultAct || ''
-      }});
-    });
+    // Cuando hay rango de fechas con múltiples días → sumar por estación
+    const hayRango = fDesde && fHasta && fDesde !== fHasta;
+    if (hayRango) {
+      // Agrupar y sumar todos los campos numéricos por nombre de estación
+      const agrupado = {};
+      ests.forEach(est => {
+        const k = est.nombre;
+        if (!agrupado[k]) {
+          agrupado[k] = { ...est, _diasCount: 1 };
+        } else {
+          agrupado[k].efectivo    += est.efectivo    || 0;
+          agrupado[k].cajero      += est.cajero      || 0;
+          agrupado[k].fondosNoDep += est.fondosNoDep || 0;
+          agrupado[k].erogaciones += est.erogaciones || 0;
+          agrupado[k].dispBanco   += est.dispBanco   || 0;
+          agrupado[k].rendAgro    += est.rendAgro    || 0;
+          agrupado[k].chqCartera  += est.chqCartera  || 0;
+          agrupado[k].chqRechaz   += est.chqRechaz   || 0;
+          agrupado[k]._diasCount++;
+          // fecha: usar la más reciente
+          if ((est.fecha||'') > (agrupado[k].fecha||'')) agrupado[k].fecha = est.fecha;
+          if (est.ultAct > (agrupado[k].ultAct||'')) agrupado[k].ultAct = est.ultAct;
+        }
+      });
+      Object.values(agrupado).forEach((est, i) => {
+        cards.push({ emp, s: {
+          nombre:      est.nombre,
+          fecha:       est.fecha,
+          efectivo:    est.efectivo    || 0,
+          dispBanco:   est.dispBanco   || 0,
+          erogaciones: est.erogaciones || 0,
+          cajero:      est.cajero      || 0,
+          rechazados:  est.chqRechaz   || 0,
+          cartera:     est.chqCartera  || 0,
+          esAgro:      est.esAgro      || false,
+          color:       COLORS[i % COLORS.length],
+          ultAct:      est.ultAct      || '',
+          _diasCount:  est._diasCount
+        }});
+      });
+    } else {
+      ests.forEach((est, i) => {
+        const carteraXls = (emp.cheques||[])
+          .filter(c => c._fromCarteraXls && c.estado === 'EN CARTERA' &&
+            (c.subempresa||'').toLowerCase().includes(est.nombre.toLowerCase().replace(/\s+bo\s+\d+/i,'').trim().slice(0,5).toLowerCase()))
+          .reduce((s,c) => s + (c.importe||0), 0);
+        const rechXls = (emp.cheques||[])
+          .filter(c => c._fromRechXls &&
+            (c.estacion||'').toLowerCase().includes(est.nombre.toLowerCase().replace(/[^a-z0-9]/gi,'').slice(0,4).toLowerCase()))
+          .reduce((s,c) => s + (c.importe||0), 0);
+        cards.push({ emp, s: {
+          nombre:      est.nombre,
+          fecha:       est.fecha,
+          efectivo:    est.efectivo    || 0,
+          dispBanco:   est.dispBanco   || 0,
+          erogaciones: est.erogaciones || 0,
+          cajero:      est.cajero      || 0,
+          rechazados:  est.chqRechaz || rechXls || 0,
+          cartera:     est.chqCartera || carteraXls || 0,
+          esAgro:      est.esAgro      || false,
+          color:       COLORS[i % COLORS.length],
+          ultAct:      est.ultAct      || ''
+        }});
+      });
+    }
   });
 
-  // Deduplicar
+  // Deduplicar (solo aplica fuera de modo rango)
   const _seen = new Set();
   cards = cards.filter(({s}) => {
     const k = s.nombre + '|' + (s.fecha||'');
@@ -8324,6 +8402,7 @@ function renderSubempresas() {
     if (metrica === 'cartera'     && s.cartera === 0)     return false;
     if (metrica === 'banco'       && s.dispBanco === 0)   return false;
     if (metrica === 'erogaciones' && s.erogaciones === 0) return false;
+    if (metrica === 'cajero'      && s.cajero === 0)      return false;
     return true;
   });
 
@@ -8342,13 +8421,20 @@ function renderSubempresas() {
     const totRech = cards.reduce((acc,{s:s2}) => acc + s2.rechazados,  0);
     const totCar  = cards.reduce((acc,{s:s2}) => acc + s2.cartera,     0);
     const totErog = cards.reduce((acc,{s:s2}) => acc + s2.erogaciones, 0);
+    const totCaj  = cards.reduce((acc,{s:s2}) => acc + (s2.cajero||0), 0);
+    const hayRangoTot = fDesde && fHasta && fDesde !== fHasta;
+    const periodoLabel = hayRangoTot
+      ? '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">📅 Período acumulado: <b>' + fDesde + '</b> → <b>' + fHasta + '</b> · valores sumados por estación</div>'
+      : (fDesde ? '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">📅 Fecha: <b>' + fDesde + '</b></div>' : '');
     totEl.innerHTML =
       (isDemoMode ? '<div class="alert blue mb" style="font-size:12px">📋 Datos de ejemplo — importá la Minuta Excel para ver tus datos reales</div>' : '') +
+      periodoLabel +
       '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">' +
       '<div class="stat-card" style="flex:1;min-width:130px;padding:12px 14px;border-left:3px solid var(--green)"><div class="label">EFECTIVO TOTAL</div><div class="value" style="font-size:16px;color:' + (totEf>=0?'var(--green)':'var(--red)') + '">$ ' + fmtARS(totEf) + '</div></div>' +
       '<div class="stat-card" style="flex:1;min-width:130px;padding:12px 14px;border-left:3px solid var(--red)"><div class="label">RECHAZADOS TOTAL</div><div class="value" style="font-size:16px;color:var(--red)">$ ' + fmtARS(totRech) + '</div></div>' +
       '<div class="stat-card" style="flex:1;min-width:130px;padding:12px 14px;border-left:3px solid var(--accent)"><div class="label">CARTERA TOTAL</div><div class="value" style="font-size:16px;color:var(--accent)">$ ' + fmtARS(totCar) + '</div></div>' +
       '<div class="stat-card" style="flex:1;min-width:130px;padding:12px 14px;border-left:3px solid var(--yellow)"><div class="label">EROGACIONES TOTAL</div><div class="value" style="font-size:16px;color:var(--yellow)">$ ' + fmtARS(totErog) + '</div></div>' +
+      (totCaj > 0 ? '<div class="stat-card" style="flex:1;min-width:130px;padding:12px 14px;border-left:3px solid #f59e0b"><div class="label">🏧 CAJERO TOTAL</div><div class="value" style="font-size:16px;color:#f59e0b">$ ' + fmtARS(totCaj) + '</div></div>' : '') +
       '<div class="stat-card" style="flex:1;min-width:100px;padding:12px 14px;border-left:3px solid var(--text3)"><div class="label">UNIDADES</div><div class="value" style="font-size:16px">' + cards.length + '</div></div>' +
       '</div>';
   } else if (totEl) { totEl.innerHTML = ''; }
@@ -8366,6 +8452,7 @@ function renderSubempresas() {
   const showCartera     = metrica === 'todos' || metrica === 'cartera';
   const showBanco       = metrica === 'todos' || metrica === 'banco';
   const showErogaciones = metrica === 'todos' || metrica === 'erogaciones';
+  const showCajero      = metrica === 'todos' || metrica === 'cajero';
 
   grid.innerHTML = cards.map((card) => {
     const {emp, s} = card;
@@ -8379,6 +8466,7 @@ function renderSubempresas() {
     if (showEfectivo)   panelItems.push('<div style="background:' + (metrica==='efectivo'?'rgba(62,207,142,0.12)':'var(--bg3)') + ';border-radius:8px;padding:8px 6px;text-align:center;overflow:hidden' + (metrica==='efectivo'?';border:1px solid rgba(62,207,142,0.3)':'') + '"><div style="font-size:9px;color:var(--text3);margin-bottom:3px;letter-spacing:.5px">EFECTIVO</div><div style="font-family:var(--mono);font-size:' + (metrica==='efectivo'?'15':'12') + 'px;font-weight:700;color:' + efColor + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + fmtMoney(s.efectivo) + '</div></div>');
     if (showRechazados) panelItems.push('<div style="background:' + (metrica==='rechazados'?'rgba(242,107,107,0.1)':'var(--bg3)') + ';border-radius:8px;padding:8px 6px;text-align:center;overflow:hidden' + (metrica==='rechazados'?';border:1px solid rgba(242,107,107,0.3)':'') + '"><div style="font-size:9px;color:var(--text3);margin-bottom:3px;letter-spacing:.5px">RECHAZADOS</div><div style="font-family:var(--mono);font-size:' + (metrica==='rechazados'?'15':'12') + 'px;font-weight:700;color:' + rechColor + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + fmtMoney(s.rechazados) + '</div></div>');
     if (showCartera)    panelItems.push('<div style="background:' + (metrica==='cartera'?'rgba(108,143,255,0.1)':'var(--bg3)') + ';border-radius:8px;padding:8px 6px;text-align:center;overflow:hidden' + (metrica==='cartera'?';border:1px solid rgba(108,143,255,0.3)':'') + '"><div style="font-size:9px;color:var(--text3);margin-bottom:3px;letter-spacing:.5px">CARTERA</div><div style="font-family:var(--mono);font-size:' + (metrica==='cartera'?'15':'12') + 'px;font-weight:700;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + fmtMoney(s.cartera) + '</div></div>');
+    if (showCajero && s.cajero > 0) panelItems.push('<div style="background:' + (metrica==='cajero'?'rgba(245,158,11,0.12)':'var(--bg3)') + ';border-radius:8px;padding:8px 6px;text-align:center;overflow:hidden' + (metrica==='cajero'?';border:1px solid rgba(245,158,11,0.35)':'') + '"><div style="font-size:9px;color:var(--text3);margin-bottom:3px;letter-spacing:.5px">🏧 CAJERO</div><div style="font-family:var(--mono);font-size:' + (metrica==='cajero'?'15':'12') + 'px;font-weight:700;color:#f59e0b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + fmtMoney(s.cajero) + '</div></div>');
 
     const cols = panelItems.length || 1;
     const isDemo = !!card._isDemo;
@@ -8386,7 +8474,8 @@ function renderSubempresas() {
     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">';
     html += '<div style="width:40px;height:40px;border-radius:10px;background:' + s.color + '20;display:flex;align-items:center;justify-content:center;font-size:20px">' + icon + '</div>';
     html += '<div style="flex:1"><div style="font-size:15px;font-weight:700">' + s.nombre + (isDemo?' <span style="font-size:10px;padding:1px 6px;border-radius:99px;background:rgba(245,200,66,0.15);color:var(--yellow)">DEMO</span>':'') + '</div>';
-    html += '<div style="font-size:11px;color:var(--text3)">' + emp.name + ' · ' + tipo + '</div></div></div>';
+    const diasBadge = s._diasCount > 1 ? ' · <span style="font-size:10px;padding:1px 6px;border-radius:99px;background:rgba(74,159,212,0.12);color:var(--accent)">' + s._diasCount + ' días</span>' : '';
+    html += '<div style="font-size:11px;color:var(--text3)">' + emp.name + ' · ' + tipo + diasBadge + '</div></div></div>';
 
     if (panelItems.length > 0) {
       html += '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:6px;margin-bottom:10px">';
@@ -8400,8 +8489,6 @@ function renderSubempresas() {
       sec2.push('<div style="background:rgba(62,207,142,0.07)' + (metrica==='banco'?';border:1px solid rgba(62,207,142,0.3)':'') + ';border-radius:6px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3)">DISP.BANCO</div><div style="font-family:var(--mono);font-size:' + (metrica==='banco'?'15':'12') + 'px;color:var(--green)">' + fmtMoney(s.dispBanco) + '</div></div>');
     if (showErogaciones && s.erogaciones)
       sec2.push('<div style="background:rgba(242,107,107,0.07)' + (metrica==='erogaciones'?';border:1px solid rgba(242,107,107,0.3)':'') + ';border-radius:6px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3)">EROGACIONES</div><div style="font-family:var(--mono);font-size:' + (metrica==='erogaciones'?'15':'12') + 'px;color:var(--red)">' + fmtMoney(s.erogaciones) + '</div></div>');
-    if ((showBanco || showErogaciones) && s.cajero)
-      sec2.push('<div style="background:rgba(245,200,66,0.07);border-radius:6px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3)">CAJERO</div><div style="font-family:var(--mono);font-size:12px;color:var(--yellow)">' + fmtMoney(s.cajero) + '</div></div>');
 
     if (sec2.length > 0) {
       html += '<div style="display:grid;grid-template-columns:repeat(' + sec2.length + ',1fr);gap:6px;margin-bottom:8px">';
