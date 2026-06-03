@@ -1160,8 +1160,13 @@ let _supaUser=null,_supaRol=null;
 
 <!-- ═══════════════ SUBEMPRESAS ═══════════════ -->
 <div class="page" id="page-subempresas">
-  <div class="section-header mb">
-    <h2>🏢 Unidades de negocio — <span id="sub-empresa-name" style="color:var(--accent)"></span></h2>
+  <div class="section-header mb" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <h2 style="flex:1">🏢 Unidades de negocio — <span id="sub-empresa-name" style="color:var(--accent)"></span></h2>
+    <div style="display:flex;gap:8px">
+      <button onclick="subExportExcel()" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);cursor:pointer;font-family:var(--font)">📥 Excel</button>
+      <button onclick="subExportPDF()"   style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,159,212,0.3);background:rgba(74,159,212,0.08);color:var(--accent);cursor:pointer;font-family:var(--font)">📄 PDF</button>
+      <button onclick="subExportPPTX()"  style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);color:#f59e0b;cursor:pointer;font-family:var(--font)">📑 PPT</button>
+    </div>
   </div>
 
   <!-- ── Filtros ── -->
@@ -8219,7 +8224,378 @@ function subLimpiarFiltros() {
   ['sub-f-tipo','sub-f-estado'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   const el = document.getElementById('sub-sort'); if (el) el.value = 'nombre';
   _subRazonesSel.clear();
+  ['subp-hoy','subp-semana','subp-mes'].forEach(id => { const b = document.getElementById(id); if(b) b.classList.remove('active'); });
   subMetrica('todos');
+}
+
+// ════════════════════════════════════════════════════════════════
+// SUBEMPRESAS — EXPORTS (Excel / PDF / PowerPoint)
+// ════════════════════════════════════════════════════════════════
+function _subGetCardsData() {
+  // Reconstruye la lista de cards respetando los filtros actuales
+  // Reutiliza la lógica de renderSubempresas pero devuelve los datos crudos
+  const fDesde  = document.getElementById('sub-f-desde')?.value || '';
+  const fHasta  = document.getElementById('sub-f-hasta')?.value || '';
+  const fTipo   = document.getElementById('sub-f-tipo')?.value  || '';
+  const fEstado = document.getElementById('sub-f-estado')?.value|| '';
+  const searchQ = (document.getElementById('sub-search')?.value || '').toLowerCase();
+  const balDate = fHasta || fDesde || activeDateFilter || appState.lastMinutaDate || '';
+  const hayRango = fDesde && fHasta && fDesde !== fHasta;
+
+  const rows = [];
+  (appState.empresas || []).forEach(emp => {
+    let ests = (emp.estaciones || []).filter(e => {
+      if (!e.fecha) return false;
+      if (fDesde && e.fecha < fDesde) return false;
+      if (fHasta && e.fecha > fHasta) return false;
+      if (!fDesde && !fHasta && balDate) return e.fecha === balDate;
+      return true;
+    });
+    if (ests.length === 0 && (emp.estaciones||[]).length > 0) {
+      const lastDate = emp.estaciones.reduce((m,e)=>(e.fecha||'')>m?(e.fecha||''):m,'');
+      ests = emp.estaciones.filter(e => e.fecha === lastDate);
+    }
+    if (hayRango) {
+      const agr = {};
+      ests.forEach(e => {
+        const k = e.nombre;
+        if (!agr[k]) agr[k] = {...e, empresa: emp.name, _dias:1};
+        else {
+          agr[k].efectivo    += e.efectivo    || 0;
+          agr[k].cajero      += e.cajero      || 0;
+          agr[k].fondosNoDep += e.fondosNoDep || 0;
+          agr[k].erogaciones += e.erogaciones || 0;
+          agr[k].dispBanco   += e.dispBanco   || 0;
+          agr[k].chqCartera  += e.chqCartera  || 0;
+          agr[k].chqRechaz   += e.chqRechaz   || 0;
+          agr[k]._dias++;
+          if ((e.fecha||'') > (agr[k].fecha||'')) agr[k].fecha = e.fecha;
+        }
+      });
+      Object.values(agr).forEach(e => rows.push({...e, empresa: emp.name}));
+    } else {
+      ests.forEach(e => rows.push({...e, empresa: emp.name}));
+    }
+  });
+
+  return rows.filter(r => {
+    if (searchQ && !(r.nombre||'').toLowerCase().includes(searchQ)) return false;
+    if (_subRazonesSel.size > 0 && !_subRazonesSel.has(r.nombre)) return false;
+    if (fTipo === 'ypf'  && r.esAgro) return false;
+    if (fTipo === 'agro' && !r.esAgro) return false;
+    if (fEstado === 'rechazados' && !((r.chqRechaz||0) > 0)) return false;
+    if (fEstado === 'neg_ef'     && !((r.efectivo||0) < 0))  return false;
+    if (fEstado === 'ok_ef'      && !((r.efectivo||0) >= 0)) return false;
+    return true;
+  }).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'','es'));
+}
+
+function subExportExcel() {
+  const data = _subGetCardsData();
+  if (!data.length) { showToast('⚠️ No hay datos para exportar'); return; }
+  const fDesde = document.getElementById('sub-f-desde')?.value || '';
+  const fHasta = document.getElementById('sub-f-hasta')?.value || '';
+  const periodo = fDesde && fHasta ? fDesde + ' → ' + fHasta : (fDesde || fHasta || 'Último snapshot');
+
+  // Hoja 1: Detalle por estación
+  const detalle = data.map(r => ({
+    'Empresa':           r.empresa || '',
+    'Estación / Unidad': r.nombre  || '',
+    'Tipo':              r.esAgro ? 'AGRO' : 'Estación YPF',
+    'Fecha':             r.fecha   || '',
+    'Efectivo':          r.efectivo    || 0,
+    'Cajero Automático': r.cajero      || 0,
+    'Fondos No Dep.':    r.fondosNoDep || 0,
+    'Erogaciones':       r.erogaciones || 0,
+    'Disp. Banco':       r.dispBanco   || 0,
+    'Cheq. Cartera':     r.chqCartera  || 0,
+    'Rechazados':        r.chqRechaz   || 0,
+    'Días acumulados':   r._dias       || 1,
+    'Últ. actualización': r.ultAct    || '',
+  }));
+
+  // Hoja 2: Totales por empresa
+  const porEmpresa = {};
+  data.forEach(r => {
+    const k = r.empresa || 'Sin empresa';
+    if (!porEmpresa[k]) porEmpresa[k] = {Empresa:k, Efectivo:0, 'Cajero Automático':0, Erogaciones:0, 'Disp. Banco':0, 'Cheq. Cartera':0, Rechazados:0, Estaciones:0};
+    porEmpresa[k].Efectivo            += r.efectivo    || 0;
+    porEmpresa[k]['Cajero Automático']+= r.cajero      || 0;
+    porEmpresa[k].Erogaciones         += r.erogaciones || 0;
+    porEmpresa[k]['Disp. Banco']      += r.dispBanco   || 0;
+    porEmpresa[k]['Cheq. Cartera']    += r.chqCartera  || 0;
+    porEmpresa[k].Rechazados          += r.chqRechaz   || 0;
+    porEmpresa[k].Estaciones++;
+  });
+
+  // Hoja 3: Resumen grupo
+  const totEf   = data.reduce((s,r)=>s+(r.efectivo||0),0);
+  const totCaj  = data.reduce((s,r)=>s+(r.cajero||0),0);
+  const totErog = data.reduce((s,r)=>s+(r.erogaciones||0),0);
+  const totBco  = data.reduce((s,r)=>s+(r.dispBanco||0),0);
+  const totCar  = data.reduce((s,r)=>s+(r.chqCartera||0),0);
+  const totRech = data.reduce((s,r)=>s+(r.chqRechaz||0),0);
+  const resumen = [
+    {Métrica:'Período', Valor:periodo},
+    {Métrica:'Unidades', Valor:data.length},
+    {Métrica:'Efectivo Total', Valor:totEf},
+    {Métrica:'Cajero Automático Total', Valor:totCaj},
+    {Métrica:'Erogaciones Total', Valor:totErog},
+    {Métrica:'Disponible Banco Total', Valor:totBco},
+    {Métrica:'Cartera Total', Valor:totCar},
+    {Métrica:'Rechazados Total', Valor:totRech},
+  ];
+
+  const wb2 = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2, XLSX.utils.json_to_sheet(detalle),            'Detalle UUNN');
+  XLSX.utils.book_append_sheet(wb2, XLSX.utils.json_to_sheet(Object.values(porEmpresa)), 'Por empresa');
+  XLSX.utils.book_append_sheet(wb2, XLSX.utils.json_to_sheet(resumen),            'Resumen grupo');
+  const fecha = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb2, 'UUNN_' + fecha + '.xlsx');
+  showToast('📥 Excel exportado — 3 hojas');
+}
+
+function subExportPDF() {
+  const data = _subGetCardsData();
+  if (!data.length) { showToast('⚠️ No hay datos para exportar'); return; }
+  const fDesde = document.getElementById('sub-f-desde')?.value || '';
+  const fHasta = document.getElementById('sub-f-hasta')?.value || '';
+  const hayRango = fDesde && fHasta && fDesde !== fHasta;
+  const periodo  = fDesde && fHasta ? fDesde + ' → ' + fHasta : (fDesde || fHasta || 'Último snapshot');
+  const fechaHoy = new Date().toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'});
+
+  const totEf   = data.reduce((s,r)=>s+(r.efectivo||0),0);
+  const totCaj  = data.reduce((s,r)=>s+(r.cajero||0),0);
+  const totErog = data.reduce((s,r)=>s+(r.erogaciones||0),0);
+  const totBco  = data.reduce((s,r)=>s+(r.dispBanco||0),0);
+  const totCar  = data.reduce((s,r)=>s+(r.chqCartera||0),0);
+  const totRech = data.reduce((s,r)=>s+(r.chqRechaz||0),0);
+
+  const kpiHtml = [
+    {l:'Efectivo total',   v:'$ '+fmtARS(totEf),   c:'#15803d'},
+    {l:'Cajero autom.',    v:'$ '+fmtARS(totCaj),  c:'#b45309'},
+    {l:'Erogaciones',      v:'$ '+fmtARS(totErog), c:'#b91c1c'},
+    {l:'Disp. banco',      v:'$ '+fmtARS(totBco),  c:'#1e7fad'},
+    {l:'Cartera cheques',  v:'$ '+fmtARS(totCar),  c:'#6d28d9'},
+    {l:'Rechazados',       v:'$ '+fmtARS(totRech), c:'#b91c1c'},
+    {l:'Unidades',         v:data.length,           c:'#374151'},
+  ].map(k=>`<div class="kpi"><div class="kpi-l">${k.l}</div><div class="kpi-v" style="color:${k.c}">${k.v}</div></div>`).join('');
+
+  const filas = data.map(r => {
+    const ef = r.efectivo||0;
+    const efCol = ef >= 0 ? '#15803d' : '#b91c1c';
+    return `<tr>
+      <td><strong>${r.nombre||''}</strong></td>
+      <td style="color:#6b7280">${r.empresa||''}</td>
+      <td>${r.esAgro?'🌾 AGRO':'⛽ YPF'}</td>
+      <td>${r.fecha||''}</td>
+      <td style="text-align:right;font-family:monospace;font-weight:700;color:${efCol}">$ ${fmtARS(ef)}</td>
+      <td style="text-align:right;font-family:monospace;color:#b45309">$ ${fmtARS(r.cajero||0)}</td>
+      <td style="text-align:right;font-family:monospace;color:#b91c1c">$ ${fmtARS(r.erogaciones||0)}</td>
+      <td style="text-align:right;font-family:monospace;color:#1e7fad">$ ${fmtARS(r.dispBanco||0)}</td>
+      <td style="text-align:right;font-family:monospace;color:#6d28d9">$ ${fmtARS(r.chqCartera||0)}</td>
+      <td style="text-align:right;font-family:monospace;color:#b91c1c">$ ${fmtARS(r.chqRechaz||0)}</td>
+      ${hayRango?`<td style="text-align:center">${r._dias||1}</td>`:''}
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<title>Unidades de Negocio — Grupo La Plaza</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#fff;color:#1f2937;font-size:12px}
+  .cover{background:linear-gradient(135deg,#1a2744 0%,#1e3a5f 100%);color:#fff;padding:44px 50px 36px;page-break-after:always}
+  .cover .badge{font-size:10px;color:#4a9fd4;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
+  .cover h1{font-size:26px;font-weight:900;margin-bottom:8px}
+  .cover .meta{color:#9ca3af;font-size:11px;margin-top:10px;line-height:1.9}
+  .section{padding:24px 50px;border-bottom:1px solid #e5e7eb}
+  .section h2{font-size:15px;font-weight:800;color:#1e3a5f;margin-bottom:14px;padding-bottom:5px;border-bottom:3px solid #4a9fd4;display:inline-block}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .kpi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;border-left:4px solid #4a9fd4}
+  .kpi-l{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;font-weight:700}
+  .kpi-v{font-size:18px;font-weight:900;color:#1e3a5f;margin-top:3px;font-family:monospace}
+  table{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:4px}
+  th{background:#1e3a5f;color:#fff;padding:8px 10px;text-align:left;font-weight:700;font-size:10px}
+  td{padding:6px 10px;border-bottom:1px solid #f0f4f8;vertical-align:middle}
+  tr:nth-child(even) td{background:#f8fafc}
+  .footer{padding:16px 50px;text-align:center;font-size:10px;color:#9ca3af;border-top:1px solid #e5e7eb}
+  @media print{@page{size:A4 landscape;margin:10mm} .no-print{display:none}}
+</style></head><body>
+<div class="cover">
+  <div class="badge">Grupo La Plaza · Informe de Unidades de Negocio</div>
+  <h1>🏢 Unidades de Negocio</h1>
+  <div class="meta">
+    Período: <strong style="color:#fff">${periodo}</strong><br>
+    ${data.length} unidades · Generado el ${fechaHoy}
+  </div>
+</div>
+<div class="section">
+  <h2>📊 Totales del grupo</h2>
+  <div class="kpis">${kpiHtml}</div>
+</div>
+<div class="section">
+  <h2>🏭 Detalle por unidad</h2>
+  <table>
+    <thead><tr>
+      <th>Unidad</th><th>Empresa</th><th>Tipo</th><th>Fecha</th>
+      <th style="text-align:right">Efectivo</th>
+      <th style="text-align:right">Cajero</th>
+      <th style="text-align:right">Erogaciones</th>
+      <th style="text-align:right">Disp. Banco</th>
+      <th style="text-align:right">Cartera</th>
+      <th style="text-align:right">Rechazados</th>
+      ${hayRango?'<th style="text-align:center">Días</th>':''}
+    </tr></thead>
+    <tbody>${filas}</tbody>
+  </table>
+</div>
+<div class="footer">Grupo La Plaza · Unidades de Negocio · ${fechaHoy}</div>
+</body></html>`;
+
+  const w = window.open('','_blank','width=1100,height=750');
+  if (!w) { showToast('⚠️ El navegador bloqueó la ventana emergente. Habilitá los popups.'); return; }
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>{ try{ w.focus(); w.print(); } catch(e){} }, 600);
+  showToast('📄 Informe PDF abierto — usá Ctrl+P para guardar');
+}
+
+async function subExportPPTX() {
+  const data = _subGetCardsData();
+  if (!data.length) { showToast('⚠️ No hay datos para exportar'); return; }
+  showToast('⏳ Generando PowerPoint...');
+  try {
+    if (!window.PptxGenJS) {
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
+        s.onload=()=>res(true); s.onerror=()=>rej(new Error('No se pudo cargar PptxGenJS'));
+        document.head.appendChild(s);
+      });
+    }
+  } catch(e) { showToast('⚠️ Error cargando librería: '+e.message); return; }
+
+  const fDesde  = document.getElementById('sub-f-desde')?.value || '';
+  const fHasta  = document.getElementById('sub-f-hasta')?.value || '';
+  const periodo = fDesde && fHasta ? fDesde + ' → ' + fHasta : (fDesde || fHasta || 'Último snapshot');
+  const fechaHoy = new Date().toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'});
+
+  const totEf   = data.reduce((s,r)=>s+(r.efectivo||0),0);
+  const totCaj  = data.reduce((s,r)=>s+(r.cajero||0),0);
+  const totErog = data.reduce((s,r)=>s+(r.erogaciones||0),0);
+  const totBco  = data.reduce((s,r)=>s+(r.dispBanco||0),0);
+  const totCar  = data.reduce((s,r)=>s+(r.chqCartera||0),0);
+  const totRech = data.reduce((s,r)=>s+(r.chqRechaz||0),0);
+
+  const BG='111827', ACCENT='4A9FD4', WHITE='FFFFFF', GRAY='9CA3AF', GREEN='4ADE80', YELLOW='FBBF24', RED='F87171', PURPLE='A78BFA';
+  const t = (sz,bold,color,align) => ({fontSize:sz,bold:!!bold,color:color||WHITE,align:align||'left',fontFace:'Calibri'});
+
+  const pptx = new PptxGenJS();
+  pptx.layout  = 'LAYOUT_16x9';
+  pptx.author  = 'Grupo La Plaza';
+  pptx.title   = 'Unidades de Negocio — ' + periodo;
+
+  // ── Slide 1: Portada ──
+  const s1 = pptx.addSlide();
+  s1.background = {color:BG};
+  s1.addShape(pptx.ShapeType.rect,{x:0,y:0,w:0.22,h:5.625,fill:{color:ACCENT},line:{color:ACCENT}});
+  s1.addText('GRUPO LA PLAZA',{x:0.5,y:1.1,w:9,h:0.4,...t(12,true,ACCENT)});
+  s1.addText('Informe de Unidades de Negocio',{x:0.5,y:1.55,w:9,h:0.35,...t(11,false,GRAY)});
+  s1.addText('🏢 Unidades de Negocio',{x:0.5,y:2.1,w:9,h:0.8,...t(28,true,WHITE)});
+  s1.addText('Período: ' + periodo + '  ·  ' + data.length + ' unidades',{x:0.5,y:3.0,w:9,h:0.35,...t(12,false,GRAY)});
+  s1.addText(fechaHoy,{x:0.5,y:4.9,w:9,h:0.3,...t(10,false,GRAY)});
+
+  // ── Slide 2: KPIs del grupo ──
+  const s2 = pptx.addSlide();
+  s2.background = {color:BG};
+  s2.addText('Totales del grupo',{x:0.4,y:0.2,w:9.2,h:0.45,...t(18,true,WHITE)});
+  s2.addText('Período: '+periodo,{x:0.4,y:0.72,w:9.2,h:0.28,...t(10,false,GRAY)});
+  const kpis2 = [
+    {l:'Efectivo total',   v:'$ '+fmtARS(totEf),   c:totEf>=0?GREEN:RED},
+    {l:'Cajero automático',v:'$ '+fmtARS(totCaj),  c:YELLOW},
+    {l:'Erogaciones',      v:'$ '+fmtARS(totErog), c:RED},
+    {l:'Disp. banco',      v:'$ '+fmtARS(totBco),  c:ACCENT},
+    {l:'Cartera cheques',  v:'$ '+fmtARS(totCar),  c:PURPLE},
+    {l:'Rechazados',       v:'$ '+fmtARS(totRech), c:RED},
+    {l:'Unidades activas', v:String(data.length),  c:WHITE},
+  ];
+  kpis2.forEach((k,i) => {
+    const col = i % 4, row = Math.floor(i/4);
+    const x = 0.35 + col*2.4, y = 1.1 + row*1.7;
+    s2.addShape(pptx.ShapeType.roundRect,{x,y,w:2.2,h:1.5,fill:{color:'1F2937'},line:{color:'374151'},rectRadius:0.08});
+    s2.addText(k.l.toUpperCase(),{x:x+0.12,y:y+0.13,w:2.0,h:0.25,...t(8,true,GRAY)});
+    s2.addText(k.v,{x:x+0.12,y:y+0.45,w:2.0,h:0.65,...t(16,true,k.c)});
+  });
+
+  // ── Slide 3: Gráfico de barras — Efectivo por unidad ──
+  const s3 = pptx.addSlide();
+  s3.background = {color:BG};
+  s3.addText('Efectivo por unidad de negocio',{x:0.4,y:0.2,w:9.2,h:0.45,...t(16,true,WHITE)});
+  const chartData = data.filter(r=>(r.efectivo||0)!==0).slice(0,14);
+  if (chartData.length >= 2) {
+    try {
+      s3.addChart(pptx.ChartType.bar,
+        [{name:'Efectivo',labels:chartData.map(r=>r.nombre||''),values:chartData.map(r=>Math.round(r.efectivo||0))}],
+        {x:0.4,y:0.75,w:9.2,h:4.5,barDir:'bar',barGapWidthPct:40,
+         chartColors:[ACCENT,'4ade80','fbbf24','a78bfa','2dd4bf','fb923c'],
+         showLegend:false,showValue:true,dataLabelPosition:'outEnd',dataLabelFontSize:8,dataLabelColor:WHITE,
+         catAxisLabelColor:GRAY,catAxisLabelFontSize:8,valAxisLabelColor:GRAY,valAxisLabelFontSize:8,
+         plotAreaFill:{color:BG},chartAreaFill:{color:BG}});
+    } catch(e) {
+      s3.addText('Gráfico no disponible',{x:1,y:2.5,w:8,h:0.5,...t(13,false,GRAY),'align':'center'});
+    }
+  } else {
+    s3.addText('Datos insuficientes para el gráfico',{x:1,y:2.5,w:8,h:0.5,...t(13,false,GRAY)});
+  }
+
+  // ── Slide 4: Tabla detallada por unidad ──
+  const s4 = pptx.addSlide();
+  s4.background = {color:BG};
+  s4.addText('Detalle por unidad de negocio',{x:0.4,y:0.2,w:9.2,h:0.45,...t(16,true,WHITE)});
+  const tHead = [[
+    {text:'Unidad',...t(9,true,WHITE)},
+    {text:'Empresa',...t(9,true,WHITE)},
+    {text:'Efectivo',...t(9,true,WHITE),'align':'right'},
+    {text:'Cajero',...t(9,true,WHITE),'align':'right'},
+    {text:'Erogaciones',...t(9,true,WHITE),'align':'right'},
+    {text:'Rechazados',...t(9,true,WHITE),'align':'right'},
+  ]];
+  const tRows = data.slice(0,16).map(r => [
+    {text:(r.nombre||''),...t(8,false,WHITE)},
+    {text:(r.empresa||''),...t(8,false,GRAY)},
+    {text:'$ '+fmtARS(r.efectivo||0),...t(8,true,(r.efectivo||0)>=0?GREEN:RED),'align':'right'},
+    {text:'$ '+fmtARS(r.cajero||0),...t(8,false,YELLOW),'align':'right'},
+    {text:'$ '+fmtARS(r.erogaciones||0),...t(8,false,RED),'align':'right'},
+    {text:'$ '+fmtARS(r.chqRechaz||0),...t(8,false,RED),'align':'right'},
+  ]);
+  try {
+    s4.addTable([...tHead,...tRows],{x:0.35,y:0.8,w:9.3,colW:[3.0,1.8,1.5,1.3,1.5,1.2],
+      fill:{color:'1F2937'},color:WHITE,fontSize:8,border:{pt:0.5,color:'374151'},rowH:0.3,fontFace:'Calibri'});
+  } catch(e) {
+    s4.addText('Tabla no disponible',{x:1,y:2.5,w:8,h:0.5,...t(13,false,GRAY),'align':'center'});
+  }
+  if (data.length > 16) s4.addText('Se muestran 16 de '+data.length+' unidades. Ver Excel para el detalle completo.',{x:0.35,y:5.25,w:9.3,h:0.25,...t(8,false,GRAY)});
+
+  // ── Slide 5: Gráfico — Erogaciones por unidad ──
+  if (data.some(r=>(r.erogaciones||0)>0)) {
+    const s5 = pptx.addSlide();
+    s5.background = {color:BG};
+    s5.addText('Erogaciones por unidad',{x:0.4,y:0.2,w:9.2,h:0.45,...t(16,true,WHITE)});
+    const erogData = data.filter(r=>(r.erogaciones||0)>0).slice(0,14);
+    try {
+      s5.addChart(pptx.ChartType.bar,
+        [{name:'Erogaciones',labels:erogData.map(r=>r.nombre||''),values:erogData.map(r=>Math.round(r.erogaciones||0))}],
+        {x:0.4,y:0.75,w:9.2,h:4.5,barDir:'bar',barGapWidthPct:40,
+         chartColors:['F87171','fb923c','fbbf24'],
+         showLegend:false,showValue:true,dataLabelPosition:'outEnd',dataLabelFontSize:8,dataLabelColor:WHITE,
+         catAxisLabelColor:GRAY,catAxisLabelFontSize:8,valAxisLabelColor:GRAY,valAxisLabelFontSize:8,
+         plotAreaFill:{color:BG},chartAreaFill:{color:BG}});
+    } catch(e) {}
+  }
+
+  const fechaFile = new Date().toISOString().slice(0,10);
+  await pptx.writeFile({fileName:'UUNN_'+fechaFile+'.pptx'});
+  showToast('📑 PowerPoint generado — ' + (3 + (data.some(r=>(r.erogaciones||0)>0)?2:1)) + ' slides');
 }
 
 function renderSubempresas() {
