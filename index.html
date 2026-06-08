@@ -19933,31 +19933,61 @@ function exportTarjetasExcel() {
 }
 
 // ── PANEL ALERTAS RECHAZADOS ─────────────────────────────
+const _RECH_DESC_KEY = 'rech_alertas_desc_v1';
+function _rechDescartadas() { try { return JSON.parse(localStorage.getItem(_RECH_DESC_KEY)||'[]'); } catch { return []; } }
+function rechDescartar(encKey) {
+  const key = decodeURIComponent(encKey);
+  const desc = _rechDescartadas();
+  if (!desc.includes(key)) { desc.push(key); localStorage.setItem(_RECH_DESC_KEY, JSON.stringify(desc)); }
+  renderRechAlertasPanel();
+}
+function rechLimpiarDesc() { localStorage.removeItem(_RECH_DESC_KEY); renderRechAlertasPanel(); }
+function rechToggleMas() {
+  const extras = document.querySelectorAll('#rech-alertas-panel .rech-extra');
+  const btn = document.getElementById('rech-alertas-mas-btn');
+  const ocultas = extras[0]?.style.display === 'none';
+  extras.forEach(e => e.style.display = ocultas ? 'block' : 'none');
+  if (btn) btn.textContent = ocultas ? '▲ Ver menos' : '▼ Ver más (' + extras.length + ')';
+}
+
 function renderRechAlertasPanel() {
   const el = document.getElementById('rech-alertas-panel');
   if (!el) return;
   const data = appState.rechazadosData || [];
   if (!data.length) { el.innerHTML = ''; return; }
 
-  const hoy = new Date();
+  const descartadas = _rechDescartadas();
 
   // Agrupar por cliente/CUIT
   const porCliente = {};
   data.forEach(r => {
     const key = (r.cuit||r.cliente||'').trim();
     if (!key) return;
-    if (!porCliente[key]) porCliente[key] = { cliente: r.cliente||r.razonSocial||key, cuit: r.cuit||'', cheques: [], noRecuperados: 0, monto: 0 };
+    if (!porCliente[key]) porCliente[key] = { key, cliente: r.cliente||r.razonSocial||key, cuit: r.cuit||'', cheques: [], noRecuperados: 0, pendientes: 0, monto: 0, montoPend: 0, diasMax: 0 };
     porCliente[key].cheques.push(r);
     porCliente[key].monto += parseFloat(r.importe||0);
+    const esCobrado = (r.estado||'').toUpperCase() === 'COBRADO';
+    if (!esCobrado) {
+      porCliente[key].pendientes++;
+      porCliente[key].montoPend += parseFloat(r.importe||0);
+    }
     if ((r.estado||'').toUpperCase().includes('NO RECUP')) porCliente[key].noRecuperados++;
+    if ((r.dias||0) > porCliente[key].diasMax) porCliente[key].diasMax = r.dias||0;
   });
 
-  // Filtrar clientes con 2+ rechazos
+  // Solo clientes con cheques pendientes (no cobrados) y no descartados
   const alertas = Object.values(porCliente)
-    .filter(c => c.cheques.length >= 2)
-    .sort((a,b) => b.noRecuperados - a.noRecuperados || b.monto - a.monto);
+    .filter(c => c.pendientes > 0 && !descartadas.includes(c.key))
+    .sort((a,b) => b.noRecuperados - a.noRecuperados || b.montoPend - a.montoPend);
 
-  if (!alertas.length) { el.innerHTML = ''; return; }
+  const descCount = Object.values(porCliente).filter(c => c.pendientes > 0 && descartadas.includes(c.key)).length;
+
+  if (!alertas.length) {
+    el.innerHTML = descCount
+      ? `<div style="text-align:center;padding:8px 0;font-size:10px;color:#7a8399">✅ Sin alertas activas · <button onclick="rechLimpiarDesc()" style="background:none;border:none;color:#4a9fd4;cursor:pointer;font-size:10px;font-family:inherit;padding:0;text-decoration:underline">${descCount} descartada(s) — restaurar</button></div>`
+      : '';
+    return;
+  }
 
   const colorAlerta = c => c.noRecuperados > 0 ? '#f87171' : '#fbbf24';
   const iconAlerta  = c => c.noRecuperados > 0 ? '🚨' : '⚠️';
@@ -19965,54 +19995,64 @@ function renderRechAlertasPanel() {
     ? '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,0.2);color:#f87171;border:1px solid rgba(248,113,113,0.4)">NO RECUPERADO</span>'
     : '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)">PENDIENTE</span>';
 
-  const totalExpuesto = alertas.reduce((s,c)=>s+c.monto,0);
+  const totalExpuesto = alertas.reduce((s,c)=>s+c.montoPend,0);
+  const SHOW = 5;
+
+  const cards = alertas.map((c, i) => {
+    const col = colorAlerta(c);
+    const msg = generarMsgWhatsApp(c);
+    const encKey = encodeURIComponent(c.key);
+    const extra = i >= SHOW ? ' rech-extra' : '';
+    return `<div class="rech-alerta-card${extra}" style="${i>=SHOW?'display:none;':''}background:${c.noRecuperados>0?'rgba(248,113,113,0.07)':'rgba(251,191,36,0.06)'};border:1px solid ${col}44;border-radius:10px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:20px">${iconAlerta(c)}</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-size:13px;font-weight:800;color:${col}">${c.cliente}</span>
+            ${tagAlerta(c)}
+            <button onclick="rechDescartar('${encKey}')" title="Ocultar esta alerta" style="margin-left:auto;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:#7a8399;cursor:pointer;font-size:10px;padding:2px 8px;font-family:inherit">✕</button>
+          </div>
+          <div style="font-size:11px;color:#c8cede;line-height:1.7;margin-bottom:8px">
+            ${c.cuit?'CUIT: '+c.cuit+' &nbsp;·&nbsp; ':''}<strong style="color:${col}">${c.pendientes} pendiente${c.pendientes>1?'s':''}</strong> de ${c.cheques.length} &nbsp;·&nbsp; Deuda: <strong style="color:${col}">${fmtMoney(c.montoPend)}</strong>${c.diasMax>0?' &nbsp;·&nbsp; Más antiguo: <strong>'+c.diasMax+'d</strong>':''}
+            ${c.noRecuperados>0?'<br><span style="color:#f87171;font-weight:700">⚠️ '+c.noRecuperados+' en estado NO RECUPERADO</span>':''}
+          </div>
+          <div style="background:#161c2a;border-radius:7px;padding:9px;font-size:10px;color:#c8cede;font-family:monospace;line-height:1.7;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05);white-space:pre-wrap">${msg}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button onclick="copiarAlertaWsp(this,'${encodeURIComponent(msg)}')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(37,211,102,0.3);background:rgba(37,211,102,0.1);color:#25d366;font-family:inherit">📱 Copiar WhatsApp</button>
+            <button onclick="verClienteRiesgo('${encodeURIComponent(c.cliente)}')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(74,159,212,0.3);background:rgba(74,159,212,0.1);color:#4a9fd4;font-family:inherit">📋 Ver en Riesgo</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 
   el.innerHTML = `
     <div style="background:#252b3d;border:1px solid rgba(248,113,113,0.25);border-radius:12px;padding:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-        <div style="font-size:11px;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:1px">🚨 Alertas automáticas — ${alertas.length} clientes críticos</div>
-        <div style="font-size:10px;color:#7a8399">Total expuesto: <strong style="color:#f87171">${fmtMoney(totalExpuesto)}</strong></div>
+        <div style="font-size:11px;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:1px">🚨 Alertas automáticas — ${alertas.length} cliente${alertas.length>1?'s':''} con deuda pendiente</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:10px;color:#7a8399">Expuesto: <strong style="color:#f87171">${fmtMoney(totalExpuesto)}</strong></div>
+          ${descCount?`<button onclick="rechLimpiarDesc()" style="background:none;border:none;color:#7a8399;cursor:pointer;font-size:10px;font-family:inherit;padding:0;text-decoration:underline">${descCount} oculta${descCount>1?'s':''} — restaurar</button>`:''}
+        </div>
       </div>
-      ${alertas.slice(0,5).map(c => {
-        const col = colorAlerta(c);
-        const msg = generarMsgWhatsApp(c);
-        return `<div style="background:${c.noRecuperados>0?'rgba(248,113,113,0.07)':'rgba(251,191,36,0.06)'};border:1px solid ${col}44;border-radius:10px;padding:12px;margin-bottom:8px">
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="font-size:20px">${iconAlerta(c)}</span>
-            <div style="flex:1">
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-                <span style="font-size:13px;font-weight:800;color:${col}">${c.cliente}</span>
-                ${tagAlerta(c)}
-              </div>
-              <div style="font-size:11px;color:#c8cede;line-height:1.6;margin-bottom:8px">
-                ${c.cuit?'CUIT: '+c.cuit+' &nbsp;·&nbsp; ':''}<strong style="color:${col}">${c.cheques.length} cheques rechazados</strong> &nbsp;·&nbsp; Monto: <strong>${fmtMoney(c.monto)}</strong>
-                ${c.noRecuperados>0?'<br><span style="color:#f87171;font-weight:700">⚠️ '+c.noRecuperados+' cheque(s) en estado NO RECUPERADO</span>':''}
-              </div>
-              <div style="background:#161c2a;border-radius:7px;padding:9px;font-size:10px;color:#c8cede;font-family:monospace;line-height:1.7;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05);white-space:pre-wrap">${msg}</div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap">
-                <button onclick="copiarAlertaWsp(this,'${encodeURIComponent(msg)}')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(37,211,102,0.3);background:rgba(37,211,102,0.1);color:#25d366;font-family:inherit">📱 Copiar para WhatsApp</button>
-                <button onclick="verClienteRiesgo('${encodeURIComponent(c.cliente)}')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(74,159,212,0.3);background:rgba(74,159,212,0.1);color:#4a9fd4;font-family:inherit">📋 Ver en Riesgo Crediticio</button>
-              </div>
-            </div>
-          </div>
-        </div>`;
-      }).join('')}
-      ${alertas.length > 5 ? `<div style="text-align:center;font-size:10px;color:#7a8399;padding-top:4px">y ${alertas.length-5} clientes más con alertas</div>` : ''}
+      ${cards}
+      ${alertas.length > SHOW ? `<div style="text-align:center;padding-top:4px"><button id="rech-alertas-mas-btn" onclick="rechToggleMas()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#7a8399;cursor:pointer;font-size:10px;padding:5px 16px;font-family:inherit">▼ Ver más (${alertas.length-SHOW})</button></div>` : ''}
     </div>
   `;
 }
 
 function generarMsgWhatsApp(c) {
-  const cantRech = c.cheques.length;
+  const pend = c.pendientes;
   const noRec = c.noRecuperados;
   let msg = `🚨 ALERTA NO TOMAR VALORES DE ${c.cliente}`;
   if (c.cuit) msg += ` ${c.cuit}`;
-  msg += `\nCheques Rechazados: Tienen ${cantRech} cheque${cantRech>1?'s':''} rechazado${cantRech>1?'s':''} por falta de fondos.`;
+  msg += `\nCheques Rechazados: Tienen ${pend} cheque${pend>1?'s':''} pendiente${pend>1?'s':''} por falta de fondos.`;
   if (noRec > 0) {
     msg += `\nLo más grave es que están en estado NO RECUPERADOS.`;
     msg += `\nEs decir, no levantaron esos cheques ni cubrieron la deuda.`;
   }
-  msg += `\nMonto Adeudado es de $${c.monto.toLocaleString('es-AR', {minimumFractionDigits:2})}.`;
+  msg += `\nMonto Adeudado es de $${c.montoPend.toLocaleString('es-AR', {minimumFractionDigits:2})}.`;
+  if (c.diasMax > 0) msg += `\nEl cheque más antiguo lleva ${c.diasMax} días sin cobrar.`;
   return msg;
 }
 
