@@ -1,4 +1,4 @@
-const CACHE = 'finanzasapp-gla-v2';
+const CACHE = 'finanzasapp-gla-v3';
 const CDN = [
   'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
