@@ -2606,6 +2606,9 @@ let _supaUser=null,_supaRol=null;
         <button onclick="cfPresSetEmp('RS',this)"    id="cfpb-RS"    style="padding:5px 12px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid rgba(74,159,212,0.3);background:var(--bg3);color:var(--text2);cursor:pointer">🔵 RS</button>
         <button onclick="cfPresSetEmp('SC',this)"    id="cfpb-SC"    style="padding:5px 12px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid rgba(58,170,42,0.3);background:var(--bg3);color:var(--text2);cursor:pointer">🟢 SC</button>
         <div style="width:1px;height:22px;background:var(--border);margin:0 4px"></div>
+        <button onclick="cfPresExportExcel()" style="padding:5px 12px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);cursor:pointer">📥 Excel</button>
+        <button onclick="cfPresExportPDF()" style="padding:5px 12px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid rgba(74,159,212,0.4);background:rgba(74,159,212,0.1);color:var(--accent);cursor:pointer">📄 PDF</button>
+        <div style="width:1px;height:22px;background:var(--border);margin:0 4px"></div>
         <button onclick="cfPresLimpiar()" style="padding:5px 12px;border-radius:99px;font-size:11px;font-weight:600;border:1px solid rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);color:var(--red);cursor:pointer">🗑 Limpiar</button>
       </div>
     </div>
@@ -12226,6 +12229,307 @@ function _cfPresUpdateTotals() {
       });
     }
   }
+}
+
+// ─── Exportar Presupuesto Rápido ────────────────────────────────
+function cfPresExportExcel() {
+  const saldoInicio = parseFloat(document.getElementById('cfp-saldo-inicio')?.value||0)||0;
+  const filasFilt   = _cfPresEmp==='grupo' ? _cfPresFilas : _cfPresFilas.filter(f=>f.empresa===_cfPresEmp);
+  const filaIng     = filasFilt.filter(f=>f.tipo==='ingreso');
+  const filaEgr     = filasFilt.filter(f=>f.tipo==='egreso');
+  const totIng      = filaIng.reduce((s,f)=>s+(f.importe||0),0);
+  const totEgr      = filaEgr.reduce((s,f)=>s+(f.importe||0),0);
+  const saldoFinal  = saldoInicio + totIng - totEgr;
+  const resultado   = totIng - totEgr;
+  const fecha       = new Date().toLocaleDateString('es-AR');
+  const empresa     = _cfPresEmp==='grupo'?'Grupo La Plaza':_cfPresEmp==='RS'?'Rio Salado SRL':'Servicios Cipolletti SRL';
+  const wb          = XLSX.utils.book_new();
+
+  // ── Hoja 1: RESUMEN ────────────────────────────────────────────
+  const wsRes = XLSX.utils.aoa_to_sheet([
+    ['PRESUPUESTO RÁPIDO — GRUPO LA PLAZA'],
+    ['Empresa:', empresa],
+    ['Fecha:', fecha],
+    [],
+    ['═══════════════════════════════════════'],
+    ['RESUMEN EJECUTIVO'],
+    ['═══════════════════════════════════════'],
+    [],
+    ['CONCEPTO', 'IMPORTE ($)'],
+    ['Saldo inicial', saldoInicio],
+    ['(+) Total ingresos', totIng],
+    ['(-) Total egresos', totEgr],
+    ['────────────────────────────'],
+    ['RESULTADO DEL PERÍODO', resultado],
+    ['SALDO FINAL PROYECTADO', saldoFinal],
+    [],
+    ['INDICADORES'],
+    ['Margen ingresos/egresos (%)', totEgr > 0 ? ((totIng/totEgr-1)*100).toFixed(1)+'%' : '—'],
+    ['Cobertura (Ing/Egr)', totEgr > 0 ? (totIng/totEgr).toFixed(2)+'x' : '—'],
+    ['N° ítems ingresos', filaIng.length],
+    ['N° ítems egresos', filaEgr.length],
+  ]);
+  wsRes['!cols'] = [{wch:38},{wch:22}];
+  wsRes['!merges'] = [{s:{r:0,c:0},e:{r:0,c:1}}];
+  XLSX.utils.book_append_sheet(wb, wsRes, 'Resumen');
+
+  // ── Hoja 2: INGRESOS ──────────────────────────────────────────
+  const ingRows = [
+    ['INGRESOS — DETALLE COMPLETO'],
+    ['Empresa:', empresa, '', 'Fecha:', fecha],
+    [],
+    ['#', 'CONCEPTO', 'IMPORTE ($)', '% del total'],
+    ...filaIng.map((f,i) => [
+      i+1,
+      f.concepto||'(sin concepto)',
+      f.importe||0,
+      totIng > 0 ? ((f.importe||0)/totIng*100).toFixed(1)+'%' : '0%'
+    ]),
+    [],
+    ['', 'TOTAL INGRESOS', totIng, '100%'],
+  ];
+  const wsIng = XLSX.utils.aoa_to_sheet(ingRows);
+  wsIng['!cols'] = [{wch:6},{wch:40},{wch:20},{wch:14}];
+  wsIng['!merges'] = [{s:{r:0,c:0},e:{r:0,c:3}}];
+  XLSX.utils.book_append_sheet(wb, wsIng, 'Ingresos');
+
+  // ── Hoja 3: EGRESOS ───────────────────────────────────────────
+  const egrRows = [
+    ['EGRESOS — DETALLE COMPLETO'],
+    ['Empresa:', empresa, '', 'Fecha:', fecha],
+    [],
+    ['#', 'CONCEPTO', 'IMPORTE ($)', '% del total'],
+    ...filaEgr.map((f,i) => [
+      i+1,
+      f.concepto||'(sin concepto)',
+      f.importe||0,
+      totEgr > 0 ? ((f.importe||0)/totEgr*100).toFixed(1)+'%' : '0%'
+    ]),
+    [],
+    ['', 'TOTAL EGRESOS', totEgr, '100%'],
+  ];
+  const wsEgr = XLSX.utils.aoa_to_sheet(egrRows);
+  wsEgr['!cols'] = [{wch:6},{wch:40},{wch:20},{wch:14}];
+  wsEgr['!merges'] = [{s:{r:0,c:0},e:{r:0,c:3}}];
+  XLSX.utils.book_append_sheet(wb, wsEgr, 'Egresos');
+
+  // ── Hoja 4: PROYECCIÓN ACUMULADA ─────────────────────────────
+  const todas = [
+    ...filaIng.map(f=>({...f,sign:1,tipo:'INGRESO'})),
+    ...filaEgr.map(f=>({...f,sign:-1,tipo:'EGRESO'}))
+  ].sort((a,b)=>(a.concepto||'').localeCompare(b.concepto||''));
+  let acum = saldoInicio;
+  const proyRows = [
+    ['PROYECCIÓN DE SALDO ACUMULADO'],
+    ['Empresa:', empresa, '', 'Fecha:', fecha],
+    [],
+    ['PASO', 'CONCEPTO', 'TIPO', 'MOVIMIENTO ($)', 'SALDO ACUMULADO ($)'],
+    ['0 — Inicio', 'Saldo inicial', '—', saldoInicio, saldoInicio],
+    ...todas.map((f,i) => {
+      const mov = (f.importe||0) * f.sign;
+      acum += mov;
+      return [i+1, f.concepto||'(sin concepto)', f.tipo, mov, Math.round(acum)];
+    }),
+    [],
+    ['FINAL', 'Saldo final proyectado', '—', resultado, Math.round(saldoFinal)],
+  ];
+  const wsProy = XLSX.utils.aoa_to_sheet(proyRows);
+  wsProy['!cols'] = [{wch:10},{wch:40},{wch:12},{wch:20},{wch:22}];
+  wsProy['!merges'] = [{s:{r:0,c:0},e:{r:0,c:4}}];
+  XLSX.utils.book_append_sheet(wb, wsProy, 'Proyección');
+
+  // ── Hoja 5: ANÁLISIS ─────────────────────────────────────────
+  const topIng = [...filaIng].sort((a,b)=>(b.importe||0)-(a.importe||0)).slice(0,5);
+  const topEgr = [...filaEgr].sort((a,b)=>(b.importe||0)-(a.importe||0)).slice(0,5);
+  const analRows = [
+    ['ANÁLISIS DEL PRESUPUESTO'],
+    ['Empresa:', empresa, '', 'Fecha:', fecha],
+    [],
+    ['TOP 5 INGRESOS', '', 'TOP 5 EGRESOS'],
+    ['Concepto', 'Importe', '', 'Concepto', 'Importe'],
+    ...Array.from({length:5},(_,i)=>[
+      topIng[i]?.concepto||'—', topIng[i]?.importe||'',
+      '',
+      topEgr[i]?.concepto||'—', topEgr[i]?.importe||''
+    ]),
+    [],
+    ['SEMÁFORO FINANCIERO'],
+    ['Indicador', 'Valor', 'Estado'],
+    ['Saldo final', saldoFinal, saldoFinal>=0?'✅ POSITIVO':'❌ NEGATIVO'],
+    ['Resultado neto', resultado, resultado>=0?'✅ SUPERÁVIT':'❌ DÉFICIT'],
+    ['Cobertura ingresos/egresos', totEgr>0?(totIng/totEgr).toFixed(2)+'x':'N/A', totIng>=totEgr?'✅ CUBRE':'⚠️ INSUFICIENTE'],
+  ];
+  const wsAnal = XLSX.utils.aoa_to_sheet(analRows);
+  wsAnal['!cols'] = [{wch:36},{wch:18},{wch:4},{wch:36},{wch:18}];
+  wsAnal['!merges'] = [
+    {s:{r:0,c:0},e:{r:0,c:4}},
+    {s:{r:3,c:0},e:{r:3,c:1}},
+    {s:{r:3,c:3},e:{r:3,c:4}},
+  ];
+  XLSX.utils.book_append_sheet(wb, wsAnal, 'Análisis');
+
+  const fn = 'Presupuesto_Rapido_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  XLSX.writeFile(wb, fn);
+  showToast('📥 Excel descargado — 5 hojas');
+}
+
+function cfPresExportPDF() {
+  const saldoInicio = parseFloat(document.getElementById('cfp-saldo-inicio')?.value||0)||0;
+  const filasFilt   = _cfPresEmp==='grupo' ? _cfPresFilas : _cfPresFilas.filter(f=>f.empresa===_cfPresEmp);
+  const filaIng     = filasFilt.filter(f=>f.tipo==='ingreso');
+  const filaEgr     = filasFilt.filter(f=>f.tipo==='egreso');
+  const totIng      = filaIng.reduce((s,f)=>s+(f.importe||0),0);
+  const totEgr      = filaEgr.reduce((s,f)=>s+(f.importe||0),0);
+  const saldoFinal  = saldoInicio + totIng - totEgr;
+  const resultado   = totIng - totEgr;
+  const empresa     = _cfPresEmp==='grupo'?'Grupo La Plaza':_cfPresEmp==='RS'?'Rio Salado SRL':'Servicios Cipolletti SRL';
+  const fecha       = new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
+
+  // Capturar gráficos del canvas
+  const imgLine = document.getElementById('chart-cfp-line')?.toDataURL('image/png')||'';
+  const imgIng  = document.getElementById('chart-cfp-ing')?.toDataURL('image/png')||'';
+  const imgEgr  = document.getElementById('chart-cfp-egr')?.toDataURL('image/png')||'';
+
+  const fmtN = v => '$ ' + Math.round(v).toLocaleString('es-AR');
+  const semaforo = saldoFinal>=0
+    ? '<span style="color:#16a34a;font-weight:800">✅ POSITIVO</span>'
+    : '<span style="color:#dc2626;font-weight:800">❌ NEGATIVO</span>';
+
+  const ingTabla = filaIng.map((f,i)=>`
+    <tr style="border-bottom:1px solid #e5e7eb">
+      <td style="padding:7px 10px;color:#6b7280">${i+1}</td>
+      <td style="padding:7px 10px;font-weight:500">${f.concepto||'(sin concepto)'}</td>
+      <td style="padding:7px 10px;text-align:right;font-family:monospace;color:#16a34a;font-weight:700">${fmtN(f.importe||0)}</td>
+      <td style="padding:7px 10px;text-align:right;color:#6b7280">${totIng>0?((f.importe||0)/totIng*100).toFixed(1)+'%':'—'}</td>
+    </tr>`).join('');
+
+  const egrTabla = filaEgr.map((f,i)=>`
+    <tr style="border-bottom:1px solid #e5e7eb">
+      <td style="padding:7px 10px;color:#6b7280">${i+1}</td>
+      <td style="padding:7px 10px;font-weight:500">${f.concepto||'(sin concepto)'}</td>
+      <td style="padding:7px 10px;text-align:right;font-family:monospace;color:#dc2626;font-weight:700">${fmtN(f.importe||0)}</td>
+      <td style="padding:7px 10px;text-align:right;color:#6b7280">${totEgr>0?((f.importe||0)/totEgr*100).toFixed(1)+'%':'—'}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+  <title>Presupuesto Rápido — ${empresa}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#111;background:#fff;padding:32px}
+    h1{font-size:22px;font-weight:800;color:#1e3a5f;margin-bottom:4px}
+    h2{font-size:14px;font-weight:700;color:#1e3a5f;margin:24px 0 10px;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #1e3a5f;padding-bottom:4px}
+    .meta{font-size:12px;color:#6b7280;margin-bottom:20px}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+    .kpi{border-radius:10px;padding:14px 16px;border:1px solid #e5e7eb}
+    .kpi-label{font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+    .kpi-val{font-size:20px;font-weight:800;font-family:monospace}
+    .charts{display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px;margin-bottom:24px}
+    .chart-box{border:1px solid #e5e7eb;border-radius:10px;padding:14px}
+    .chart-title{font-size:11px;font-weight:700;color:#374151;margin-bottom:8px}
+    img.chart{width:100%;height:160px;object-fit:contain}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    thead tr{background:#1e3a5f;color:#fff}
+    thead th{padding:9px 10px;text-align:left;font-weight:700;font-size:11px;letter-spacing:.5px}
+    tfoot tr{background:#f3f4f6;font-weight:800}
+    tfoot td{padding:9px 10px}
+    .semaforo{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:16px}
+    .footer{margin-top:32px;font-size:10px;color:#9ca3af;text-align:center;border-top:1px solid #e5e7eb;padding-top:12px}
+    @media print{body{padding:18px}button{display:none}}
+  </style></head><body>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
+    <div>
+      <h1>⚡ Presupuesto Rápido</h1>
+      <div class="meta">${empresa} &nbsp;·&nbsp; ${fecha}</div>
+    </div>
+    <button onclick="window.print()" style="padding:8px 18px;background:#1e3a5f;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🖨 Imprimir / PDF</button>
+  </div>
+
+  <!-- Semáforo -->
+  <div class="semaforo">
+    <div style="font-size:28px">${saldoFinal>=0?'✅':'❌'}</div>
+    <div>
+      <div style="font-weight:800;font-size:14px">Saldo final: ${semaforo}</div>
+      <div style="font-size:12px;color:#374151;margin-top:3px">
+        Ingresos ${fmtN(totIng)} &nbsp;—&nbsp; Egresos ${fmtN(totEgr)} &nbsp;=&nbsp; Resultado <strong style="color:${resultado>=0?'#16a34a':'#dc2626'}">${resultado>=0?'+':''}${fmtN(resultado)}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpis">
+    <div class="kpi" style="background:#eff6ff;border-color:#bfdbfe">
+      <div class="kpi-label">💰 Saldo Inicial</div>
+      <div class="kpi-val" style="color:#1d4ed8">${fmtN(saldoInicio)}</div>
+    </div>
+    <div class="kpi" style="background:#f0fdf4;border-color:#bbf7d0">
+      <div class="kpi-label">📈 Total Ingresos</div>
+      <div class="kpi-val" style="color:#16a34a">${fmtN(totIng)}</div>
+    </div>
+    <div class="kpi" style="background:#fef2f2;border-color:#fecaca">
+      <div class="kpi-label">📉 Total Egresos</div>
+      <div class="kpi-val" style="color:#dc2626">${fmtN(totEgr)}</div>
+    </div>
+    <div class="kpi" style="background:${saldoFinal>=0?'#f0fdf4':'#fef2f2'};border-color:${saldoFinal>=0?'#bbf7d0':'#fecaca'}">
+      <div class="kpi-label">🏦 Saldo Final</div>
+      <div class="kpi-val" style="color:${saldoFinal>=0?'#16a34a':'#dc2626'}">${fmtN(saldoFinal)}</div>
+    </div>
+  </div>
+
+  <!-- Gráficos -->
+  ${(imgLine||imgIng||imgEgr)?`
+  <h2>Gráficos</h2>
+  <div class="charts">
+    <div class="chart-box">
+      <div class="chart-title">📈 Proyección saldo acumulado</div>
+      ${imgLine?`<img class="chart" src="${imgLine}">`:'<div style="color:#9ca3af;font-size:11px;padding:20px 0;text-align:center">Sin datos</div>'}
+    </div>
+    <div class="chart-box">
+      <div class="chart-title" style="color:#16a34a">🥧 Composición ingresos</div>
+      ${imgIng?`<img class="chart" src="${imgIng}">`:'<div style="color:#9ca3af;font-size:11px;padding:20px 0;text-align:center">Sin datos</div>'}
+    </div>
+    <div class="chart-box">
+      <div class="chart-title" style="color:#dc2626">🥧 Composición egresos</div>
+      ${imgEgr?`<img class="chart" src="${imgEgr}">`:'<div style="color:#9ca3af;font-size:11px;padding:20px 0;text-align:center">Sin datos</div>'}
+    </div>
+  </div>`:''}
+
+  <!-- Tabla Ingresos -->
+  ${filaIng.length?`
+  <h2>📈 Ingresos — Detalle</h2>
+  <table><thead><tr>
+    <th style="width:40px">#</th>
+    <th>Concepto</th>
+    <th style="text-align:right">Importe</th>
+    <th style="text-align:right;width:80px">% Total</th>
+  </tr></thead><tbody>${ingTabla}</tbody>
+  <tfoot><tr>
+    <td colspan="2" style="text-align:right;padding:9px 10px">TOTAL INGRESOS</td>
+    <td style="text-align:right;font-family:monospace;color:#16a34a;padding:9px 10px">${fmtN(totIng)}</td>
+    <td style="text-align:right;padding:9px 10px">100%</td>
+  </tr></tfoot></table>`:''}
+
+  <!-- Tabla Egresos -->
+  ${filaEgr.length?`
+  <h2 style="margin-top:28px">📉 Egresos — Detalle</h2>
+  <table><thead><tr>
+    <th style="width:40px">#</th>
+    <th>Concepto</th>
+    <th style="text-align:right">Importe</th>
+    <th style="text-align:right;width:80px">% Total</th>
+  </tr></thead><tbody>${egrTabla}</tbody>
+  <tfoot><tr>
+    <td colspan="2" style="text-align:right;padding:9px 10px">TOTAL EGRESOS</td>
+    <td style="text-align:right;font-family:monospace;color:#dc2626;padding:9px 10px">${fmtN(totEgr)}</td>
+    <td style="text-align:right;padding:9px 10px">100%</td>
+  </tr></tfoot></table>`:''}
+
+  <div class="footer">Grupo La Plaza &nbsp;·&nbsp; Generado el ${fecha} &nbsp;·&nbsp; Sistema financiero interno</div>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { showToast('⚠️ Habilitá los popups para ver el informe'); return; }
+  win.document.write(html);
+  win.document.close();
 }
 
 // ═══════════════════════════════════════════════════════════════
