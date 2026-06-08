@@ -13101,12 +13101,23 @@ function parseExtractoBancario(wb, mesNum, anioNum, forceEmpTag) {
     return s.slice(0,10);
   }
 
-  // Acumular por mes: si viene mesNum/anioNum, quitar solo ese mes
+  // Acumular datos: quitar solo lo que va a ser reemplazado
   if (!appState.extractoBancario) appState.extractoBancario = [];
-  if (mesNum && anioNum) {
+  if (mesNum && anioNum && forceEmpTag) {
+    // Semestral por empresa: quitar ese mes + empresa específica
+    const _pfx = anioNum + '-' + String(mesNum).padStart(2,'0');
+    appState.extractoBancario = appState.extractoBancario.filter(r =>
+      !(r.empTag === forceEmpTag && (r.fecha||'').startsWith(_pfx))
+    );
+  } else if (mesNum && anioNum) {
+    // Mes/año detectado en nombre: quitar ese mes de todas las empresas
     const _pfx = anioNum + '-' + String(mesNum).padStart(2,'0');
     appState.extractoBancario = appState.extractoBancario.filter(r => !(r.fecha||'').startsWith(_pfx));
+  } else if (forceEmpTag) {
+    // Sin mes/año pero empresa forzada (semestral por empresa): quitar solo esa empresa
+    appState.extractoBancario = appState.extractoBancario.filter(r => r.empTag !== forceEmpTag);
   } else {
+    // Sin info de mes ni empresa: reemplaza todo (caso extracto combinado sin parámetros)
     appState.extractoBancario = [];
   }
   const stats = {RS:{c:0,i:0,e:0}, SC:{c:0,i:0,e:0}, LP:{c:0,i:0,e:0}};
