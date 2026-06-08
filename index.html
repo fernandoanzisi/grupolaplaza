@@ -2591,49 +2591,101 @@ let _supaUser=null,_supaRol=null;
 <div class="page" id="page-cashflow">
 
   <!-- ════ PRESUPUESTO RÁPIDO ════ -->
-  <div class="card mb" style="padding:18px 20px;border:1px solid rgba(74,159,212,0.2)">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+  <div class="card mb" style="padding:20px 22px;border:1px solid rgba(74,159,212,0.25)">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
       <div>
-        <div style="font-size:14px;font-weight:800;color:var(--text)">⚡ Presupuesto rápido — Posición financiera real</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:2px">Basado en movimientos bancarios importados</div>
+        <div style="font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+          <span style="font-size:18px">⚡</span> Presupuesto Rápido
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">Simulador de caja — ingresá los valores para tomar decisiones</div>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button onclick="cfPresSetRango('hoy',this)"  id="cfp-hoy"  class="rate-btn" style="font-size:11px;padding:4px 12px">Hoy</button>
-        <button onclick="cfPresSetRango('sem',this)"  id="cfp-sem"  class="rate-btn" style="font-size:11px;padding:4px 12px">Semana</button>
-        <button onclick="cfPresSetRango('mes',this)"  id="cfp-mes"  class="rate-btn active" style="font-size:11px;padding:4px 12px">Mes</button>
-        <button onclick="cfPresSetRango('anio',this)" id="cfp-anio" class="rate-btn" style="font-size:11px;padding:4px 12px">Año</button>
-      </div>
-    </div>
-    <!-- KPIs -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px" id="cfp-kpis">
-      <div class="card" style="padding:12px 14px;background:var(--bg3);border-color:rgba(74,159,212,0.2)">
-        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">💰 Saldo Inicial</div>
-        <div id="cfp-k-inicio" style="font-size:18px;font-weight:800;font-family:var(--mono);color:var(--accent)">—</div>
-      </div>
-      <div class="card" style="padding:12px 14px;background:var(--bg3);border-color:rgba(74,222,128,0.2)">
-        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">📈 Ingresos</div>
-        <div id="cfp-k-ing" style="font-size:18px;font-weight:800;font-family:var(--mono);color:var(--green)">—</div>
-      </div>
-      <div class="card" style="padding:12px 14px;background:var(--bg3);border-color:rgba(248,113,113,0.2)">
-        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">📉 Egresos</div>
-        <div id="cfp-k-egr" style="font-size:18px;font-weight:800;font-family:var(--mono);color:var(--red)">—</div>
-      </div>
-      <div class="card" style="padding:12px 14px;background:var(--bg3)">
-        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🏦 Saldo Final</div>
-        <div id="cfp-k-final" style="font-size:18px;font-weight:800;font-family:var(--mono);color:var(--text)">—</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <button onclick="cfPresSetEmp('grupo',this)" id="cfpb-grupo" style="padding:5px 12px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid var(--accent);background:var(--accent)33;color:var(--accent);cursor:pointer">🏛️ Grupo</button>
+        <button onclick="cfPresSetEmp('RS',this)"    id="cfpb-RS"    style="padding:5px 12px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid rgba(74,159,212,0.3);background:var(--bg3);color:var(--text2);cursor:pointer">🔵 RS</button>
+        <button onclick="cfPresSetEmp('SC',this)"    id="cfpb-SC"    style="padding:5px 12px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid rgba(58,170,42,0.3);background:var(--bg3);color:var(--text2);cursor:pointer">🟢 SC</button>
+        <div style="width:1px;height:22px;background:var(--border);margin:0 4px"></div>
+        <button onclick="cfPresLimpiar()" style="padding:5px 12px;border-radius:99px;font-size:11px;font-weight:600;border:1px solid rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);color:var(--red);cursor:pointer">🗑 Limpiar</button>
       </div>
     </div>
+
+    <!-- Saldo inicial -->
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding:12px 16px;background:var(--bg3);border-radius:10px;border:1px solid rgba(74,159,212,0.2)">
+      <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;white-space:nowrap">💰 Saldo inicial</span>
+      <input type="number" id="cfp-saldo-inicio" placeholder="0" oninput="renderCFPresupuesto()"
+        style="background:var(--bg);border:1px solid rgba(74,159,212,0.4);border-radius:8px;padding:7px 12px;font-size:14px;font-family:var(--mono);font-weight:700;color:var(--accent);width:200px;outline:none">
+      <span style="font-size:10px;color:var(--text3)">Ingresá el efectivo / saldo bancario disponible como punto de partida</span>
+    </div>
+
+    <!-- Ingresos + Egresos lado a lado -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+
+      <!-- INGRESOS -->
+      <div style="background:rgba(74,222,128,0.05);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:1px">📈 Ingresos</div>
+          <button onclick="cfPresAgregarFila('ingreso')"
+            style="padding:3px 10px;border-radius:6px;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.12);color:var(--green);font-size:11px;font-weight:700;cursor:pointer">＋ Agregar</button>
+        </div>
+        <div id="cfp-lista-ing" style="display:flex;flex-direction:column;gap:6px;min-height:40px"></div>
+        <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(74,222,128,0.15);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:10px;color:var(--text3)">TOTAL INGRESOS</span>
+          <span id="cfp-tot-ing" style="font-size:14px;font-weight:800;font-family:var(--mono);color:var(--green)">$ 0</span>
+        </div>
+      </div>
+
+      <!-- EGRESOS -->
+      <div style="background:rgba(248,113,113,0.05);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:1px">📉 Egresos</div>
+          <button onclick="cfPresAgregarFila('egreso')"
+            style="padding:3px 10px;border-radius:6px;border:1px solid rgba(248,113,113,0.4);background:rgba(248,113,113,0.12);color:var(--red);font-size:11px;font-weight:700;cursor:pointer">＋ Agregar</button>
+        </div>
+        <div id="cfp-lista-egr" style="display:flex;flex-direction:column;gap:6px;min-height:40px"></div>
+        <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(248,113,113,0.15);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:10px;color:var(--text3)">TOTAL EGRESOS</span>
+          <span id="cfp-tot-egr" style="font-size:14px;font-weight:800;font-family:var(--mono);color:var(--red)">$ 0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs resultado -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
+      <div style="background:var(--bg3);border:1px solid rgba(74,159,212,0.2);border-radius:10px;padding:12px 14px">
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">💰 Saldo Inicial</div>
+        <div id="cfp-k-inicio" style="font-size:17px;font-weight:800;font-family:var(--mono);color:var(--accent)">$ 0</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:12px 14px">
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">📈 Total Ingresos</div>
+        <div id="cfp-k-ing" style="font-size:17px;font-weight:800;font-family:var(--mono);color:var(--green)">$ 0</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:12px 14px">
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">📉 Total Egresos</div>
+        <div id="cfp-k-egr" style="font-size:17px;font-weight:800;font-family:var(--mono);color:var(--red)">$ 0</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px">
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">🏦 Saldo Final</div>
+        <div id="cfp-k-final" style="font-size:17px;font-weight:800;font-family:var(--mono)">$ 0</div>
+      </div>
+    </div>
+
     <!-- Gráficos -->
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">📈 Saldo acumulado</div>
-        <div style="position:relative;height:160px"><canvas id="chart-cfp-line"></canvas></div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px">
+      <div style="background:var(--bg3);border-radius:10px;padding:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:10px">📈 Proyección de saldo acumulado</div>
+        <div style="position:relative;height:180px"><canvas id="chart-cfp-line"></canvas></div>
       </div>
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">🥧 Ingresos vs Egresos</div>
-        <div style="position:relative;height:160px"><canvas id="chart-cfp-pie"></canvas></div>
+      <div style="background:var(--bg3);border-radius:10px;padding:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:10px">🥧 Composición ingresos</div>
+        <div style="position:relative;height:180px"><canvas id="chart-cfp-ing"></canvas></div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:10px">🥧 Composición egresos</div>
+        <div style="position:relative;height:180px"><canvas id="chart-cfp-egr"></canvas></div>
       </div>
     </div>
+
   </div>
   <!-- ════ FIN PRESUPUESTO RÁPIDO ════ -->
 
@@ -11976,123 +12028,223 @@ function extImportarEmp(file, empTag) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// CASH FLOW — Presupuesto Rápido
+// CASH FLOW — Presupuesto Rápido (manual)
 // ═══════════════════════════════════════════════════════════════
-let _cfPresRango = 'mes';
+let _cfPresEmp = 'grupo';
+let _cfPresFilas = [];
 let _cfPresCharts = {};
+const _CFP_KEY = 'cfp_presupuesto_v1';
 
-function cfPresSetRango(rango, btn) {
-  _cfPresRango = rango;
-  ['hoy','sem','mes','anio'].forEach(r => {
-    const b = document.getElementById('cfp-' + r);
-    if (b) b.classList.toggle('active', r === rango);
+function _cfPresLoad() {
+  try { const s = localStorage.getItem(_CFP_KEY); if (s) { const d = JSON.parse(s); _cfPresFilas = d.filas||[]; } } catch(e){}
+}
+function _cfPresSave() {
+  try { localStorage.setItem(_CFP_KEY, JSON.stringify({ filas: _cfPresFilas })); } catch(e){}
+}
+
+function cfPresSetEmp(emp, btn) {
+  _cfPresEmp = emp;
+  ['grupo','RS','SC'].forEach(e => {
+    const b = document.getElementById('cfpb-'+e);
+    if (!b) return;
+    const cols = {grupo:'var(--accent)',RS:'#4a9fd4',SC:'#3aaa2a'};
+    if (e===emp) { b.style.background=cols[e]+'33'; b.style.color=cols[e]; b.style.borderColor=cols[e]; }
+    else { b.style.background='var(--bg3)'; b.style.color='var(--text2)'; b.style.borderColor='rgba(255,255,255,0.1)'; }
   });
   renderCFPresupuesto();
 }
 
+function cfPresAgregarFila(tipo) {
+  const id = Date.now();
+  _cfPresFilas.push({ id, tipo, concepto: '', importe: 0, empresa: _cfPresEmp==='grupo'?'RS':_cfPresEmp });
+  _cfPresSave();
+  renderCFPresupuesto();
+  setTimeout(() => {
+    const inp = document.querySelector('[data-cfp-id="'+id+'"][data-cfp-field="concepto"]');
+    if (inp) inp.focus();
+  }, 60);
+}
+
+function cfPresEditFila(id, field, value) {
+  const f = _cfPresFilas.find(x => x.id === id);
+  if (!f) return;
+  f[field] = field === 'importe' ? (parseFloat(value)||0) : value;
+  _cfPresSave();
+  renderCFPresupuesto();
+}
+
+function cfPresEliminarFila(id) {
+  _cfPresFilas = _cfPresFilas.filter(x => x.id !== id);
+  _cfPresSave();
+  renderCFPresupuesto();
+}
+
+function cfPresLimpiar() {
+  if (!confirm('Limpiar todo el presupuesto?')) return;
+  _cfPresFilas = [];
+  _cfPresSave();
+  const el = document.getElementById('cfp-saldo-inicio');
+  if (el) el.value = '';
+  renderCFPresupuesto();
+}
+
 function renderCFPresupuesto() {
-  const movs = appState.extractoBancario || [];
-  if (!movs.length) {
-    ['cfp-k-inicio','cfp-k-ing','cfp-k-egr','cfp-k-final'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = '—';
-    });
-    return;
+  _cfPresLoad();
+  const saldoInicio = parseFloat(document.getElementById('cfp-saldo-inicio')?.value||0)||0;
+
+  const filasFilt = _cfPresEmp==='grupo' ? _cfPresFilas : _cfPresFilas.filter(f=>f.empresa===_cfPresEmp);
+  const filaIng = filasFilt.filter(f=>f.tipo==='ingreso');
+  const filaEgr = filasFilt.filter(f=>f.tipo==='egreso');
+  const totIng = filaIng.reduce((s,f)=>s+(f.importe||0),0);
+  const totEgr = filaEgr.reduce((s,f)=>s+(f.importe||0),0);
+  const saldoFinal = saldoInicio + totIng - totEgr;
+  const resultado  = totIng - totEgr;
+
+  // Render filas ingresos
+  const ingEl = document.getElementById('cfp-lista-ing');
+  if (ingEl) {
+    if (!filaIng.length) {
+      ingEl.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px 0">Sin ingresos — hacé clic en ＋ Agregar</div>';
+    } else {
+      ingEl.innerHTML = filaIng.map(f => `
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center">
+          <input type="text" value="${f.concepto||''}" placeholder="Concepto (ej: Cobro cliente)"
+            data-cfp-id="${f.id}" data-cfp-field="concepto"
+            oninput="cfPresEditFila(${f.id},'concepto',this.value)"
+            style="background:var(--bg);border:1px solid rgba(74,222,128,0.25);border-radius:7px;padding:5px 9px;font-size:12px;color:var(--text);outline:none;width:100%">
+          <input type="number" value="${f.importe||''}" placeholder="Importe"
+            data-cfp-id="${f.id}" data-cfp-field="importe"
+            oninput="cfPresEditFila(${f.id},'importe',this.value)"
+            style="background:var(--bg);border:1px solid rgba(74,222,128,0.25);border-radius:7px;padding:5px 9px;font-size:12px;font-family:var(--mono);color:var(--green);outline:none;width:120px;text-align:right">
+          <button onclick="cfPresEliminarFila(${f.id})"
+            style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 5px;line-height:1;border-radius:4px" title="Eliminar">×</button>
+        </div>`).join('');
+    }
   }
 
-  const hoy = new Date();
-  const todayStr = hoy.toISOString().slice(0,10);
-  let desde = '', hasta = todayStr;
-
-  if (_cfPresRango === 'hoy') {
-    desde = todayStr;
-  } else if (_cfPresRango === 'sem') {
-    const d = new Date(hoy); d.setDate(d.getDate() - d.getDay());
-    desde = d.toISOString().slice(0,10);
-  } else if (_cfPresRango === 'mes') {
-    desde = todayStr.slice(0,7) + '-01';
-  } else {
-    desde = hoy.getFullYear() + '-01-01';
+  // Render filas egresos
+  const egrEl = document.getElementById('cfp-lista-egr');
+  if (egrEl) {
+    if (!filaEgr.length) {
+      egrEl.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px 0">Sin egresos — hacé clic en ＋ Agregar</div>';
+    } else {
+      egrEl.innerHTML = filaEgr.map(f => `
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center">
+          <input type="text" value="${f.concepto||''}" placeholder="Concepto (ej: Pago proveedor)"
+            data-cfp-id="${f.id}" data-cfp-field="concepto"
+            oninput="cfPresEditFila(${f.id},'concepto',this.value)"
+            style="background:var(--bg);border:1px solid rgba(248,113,113,0.25);border-radius:7px;padding:5px 9px;font-size:12px;color:var(--text);outline:none;width:100%">
+          <input type="number" value="${f.importe||''}" placeholder="Importe"
+            data-cfp-id="${f.id}" data-cfp-field="importe"
+            oninput="cfPresEditFila(${f.id},'importe',this.value)"
+            style="background:var(--bg);border:1px solid rgba(248,113,113,0.25);border-radius:7px;padding:5px 9px;font-size:12px;font-family:var(--mono);color:var(--red);outline:none;width:120px;text-align:right">
+          <button onclick="cfPresEliminarFila(${f.id})"
+            style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 5px;line-height:1;border-radius:4px" title="Eliminar">×</button>
+        </div>`).join('');
+    }
   }
 
-  const filtered = movs.filter(m => m.fecha >= desde && m.fecha <= hasta
-    && m.cat !== 'Transferencias');
+  // Totales inline
+  const totIngEl = document.getElementById('cfp-tot-ing');
+  const totEgrEl = document.getElementById('cfp-tot-egr');
+  if (totIngEl) totIngEl.textContent = '$ ' + fmtARS(totIng);
+  if (totEgrEl) totEgrEl.textContent = '$ ' + fmtARS(totEgr);
 
-  const ing = filtered.filter(m => m.tipo === 'ingreso').reduce((s,m) => s + (m.importe||0), 0);
-  const egr = filtered.filter(m => m.tipo === 'gasto').reduce((s,m) => s + (m.importe||0), 0);
-
-  const saldoRS = parseFloat(document.getElementById('cf-saldo-rs')?.value || 0) || 0;
-  const saldoSC = parseFloat(document.getElementById('cf-saldo-sc')?.value || 0) || 0;
-  const saldoInicio = saldoRS + saldoSC;
-  const saldoFinal  = saldoInicio + ing - egr;
-
+  // KPIs
   const kI  = document.getElementById('cfp-k-inicio');
   const kIn = document.getElementById('cfp-k-ing');
   const kEg = document.getElementById('cfp-k-egr');
   const kFi = document.getElementById('cfp-k-final');
-  if (kI)  kI.textContent  = '$ ' + fmtARS(saldoInicio);
-  if (kIn) kIn.textContent = '$ ' + fmtARS(ing);
-  if (kEg) kEg.textContent = '$ ' + fmtARS(egr);
-  if (kFi) { kFi.textContent = '$ ' + fmtARS(saldoFinal); kFi.style.color = saldoFinal >= 0 ? 'var(--green)' : 'var(--red)'; }
+  if (kI)  kI.textContent = '$ ' + fmtARS(saldoInicio);
+  if (kIn) kIn.textContent = '$ ' + fmtARS(totIng);
+  if (kEg) kEg.textContent = '$ ' + fmtARS(totEgr);
+  if (kFi) {
+    kFi.textContent = '$ ' + fmtARS(saldoFinal);
+    kFi.style.color = saldoFinal >= 0 ? 'var(--green)' : 'var(--red)';
+  }
 
-  // Agrupar por día para el gráfico
-  const byDay = {};
-  filtered.forEach(m => {
-    if (!m.fecha) return;
-    if (!byDay[m.fecha]) byDay[m.fecha] = { ing: 0, egr: 0 };
-    if (m.tipo === 'ingreso') byDay[m.fecha].ing += m.importe || 0;
-    else byDay[m.fecha].egr += m.importe || 0;
-  });
-  const days = Object.keys(byDay).sort();
-  const labels = days.map(d => d.slice(5));
-  let acum = saldoInicio;
-  const acumData = days.map(d => { acum += (byDay[d].ing - byDay[d].egr); return Math.round(acum); });
-
-  // Line chart
+  // ── Line chart: proyección acumulada ──────────────────────────
   const ctxL = document.getElementById('chart-cfp-line');
   if (ctxL) {
-    if (_cfPresCharts.line) _cfPresCharts.line.destroy();
+    if (_cfPresCharts.line) { _cfPresCharts.line.destroy(); _cfPresCharts.line = null; }
+    // Armar puntos: inicio + cada fila ordenada
+    const puntos = [{label:'Inicio', val:saldoInicio}];
+    let acum = saldoInicio;
+    const todas = [...filaIng.map(f=>({...f,sign:1})), ...filaEgr.map(f=>({...f,sign:-1}))];
+    todas.sort((a,b)=>(a.concepto||'').localeCompare(b.concepto||''));
+    todas.forEach(f => {
+      acum += (f.importe||0) * f.sign;
+      puntos.push({ label: (f.concepto||'Item').slice(0,16), val: Math.round(acum) });
+    });
+    puntos.push({ label:'Final', val: Math.round(saldoFinal) });
+
+    const lineColors = puntos.map((p,i) => i===0 ? '#4a9fd4' : p.val >= saldoInicio ? 'rgba(74,222,128,0.8)' : 'rgba(248,113,113,0.8)');
     _cfPresCharts.line = new Chart(ctxL, {
       type: 'line',
       data: {
-        labels,
+        labels: puntos.map(p=>p.label),
         datasets: [{
-          label: 'Saldo acumulado', data: acumData,
-          borderColor: '#4a9fd4', backgroundColor: 'rgba(74,159,212,0.1)',
-          fill: true, tension: 0.3, pointRadius: days.length > 20 ? 0 : 3,
-          borderWidth: 2,
+          label:'Saldo', data: puntos.map(p=>p.val),
+          borderColor:'#4a9fd4', backgroundColor:'rgba(74,159,212,0.08)',
+          fill:true, tension:0.35, pointRadius:5, pointBackgroundColor:lineColors,
+          pointBorderColor:'transparent', borderWidth:2,
         }]
       },
       options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: '#888', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
-          y: { ticks: { color: '#888', font: { size: 10 }, callback: v => '$' + (v/1e6).toFixed(1) + 'M' }, grid: { color: 'rgba(255,255,255,0.07)' } }
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: c=>' $ '+fmtARS(c.raw) } } },
+        scales:{
+          x:{ ticks:{ color:'#888', font:{size:10} }, grid:{ color:'rgba(255,255,255,0.04)' } },
+          y:{ ticks:{ color:'#888', font:{size:10}, callback: v => v>=1e6?'$'+(v/1e6).toFixed(1)+'M':'$'+(v/1e3).toFixed(0)+'k' }, grid:{ color:'rgba(255,255,255,0.06)' } }
         }
       }
     });
   }
 
-  // Pie chart
-  const ctxP = document.getElementById('chart-cfp-pie');
-  if (ctxP) {
-    if (_cfPresCharts.pie) _cfPresCharts.pie.destroy();
-    _cfPresCharts.pie = new Chart(ctxP, {
-      type: 'doughnut',
-      data: {
-        labels: ['Ingresos', 'Egresos'],
-        datasets: [{ data: [Math.round(ing), Math.round(egr)], backgroundColor: ['rgba(74,222,128,0.8)', 'rgba(248,113,113,0.8)'], borderWidth: 0 }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { color: '#aaa', font: { size: 10 }, boxWidth: 10, padding: 8 } },
-          tooltip: { callbacks: { label: ctx => ' $' + fmtARS(ctx.raw) } }
+  // ── Donut ingresos ────────────────────────────────────────────
+  const ctxI = document.getElementById('chart-cfp-ing');
+  if (ctxI) {
+    if (_cfPresCharts.ing) { _cfPresCharts.ing.destroy(); _cfPresCharts.ing = null; }
+    if (filaIng.length) {
+      const COLORS = ['#4ade80','#34d399','#6ee7b7','#a7f3d0','#86efac','#bbf7d0'];
+      _cfPresCharts.ing = new Chart(ctxI, {
+        type:'doughnut',
+        data:{
+          labels: filaIng.map(f=>(f.concepto||'—').slice(0,18)),
+          datasets:[{ data:filaIng.map(f=>f.importe||0), backgroundColor:COLORS.slice(0,filaIng.length), borderWidth:0 }]
         },
-        cutout: '60%'
-      }
-    });
+        options:{
+          responsive:true, maintainAspectRatio:false, cutout:'58%',
+          plugins:{ legend:{ position:'bottom', labels:{ color:'#aaa', font:{size:9}, boxWidth:8, padding:6 } },
+            tooltip:{ callbacks:{ label: c=>' $ '+fmtARS(c.raw) } } }
+        }
+      });
+    } else {
+      ctxI.getContext('2d').clearRect(0,0,ctxI.width,ctxI.height);
+    }
+  }
+
+  // ── Donut egresos ─────────────────────────────────────────────
+  const ctxE = document.getElementById('chart-cfp-egr');
+  if (ctxE) {
+    if (_cfPresCharts.egr) { _cfPresCharts.egr.destroy(); _cfPresCharts.egr = null; }
+    if (filaEgr.length) {
+      const COLORS2 = ['#f87171','#fb923c','#fbbf24','#f472b6','#a78bfa','#60a5fa'];
+      _cfPresCharts.egr = new Chart(ctxE, {
+        type:'doughnut',
+        data:{
+          labels: filaEgr.map(f=>(f.concepto||'—').slice(0,18)),
+          datasets:[{ data:filaEgr.map(f=>f.importe||0), backgroundColor:COLORS2.slice(0,filaEgr.length), borderWidth:0 }]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false, cutout:'58%',
+          plugins:{ legend:{ position:'bottom', labels:{ color:'#aaa', font:{size:9}, boxWidth:8, padding:6 } },
+            tooltip:{ callbacks:{ label: c=>' $ '+fmtARS(c.raw) } } }
+        }
+      });
+    } else {
+      ctxE.getContext('2d').clearRect(0,0,ctxE.width,ctxE.height);
+    }
   }
 }
 
