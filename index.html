@@ -5913,26 +5913,79 @@ function dropFile(e)  { e.preventDefault(); dragLeave(); handleFile({ files: [e.
 //        Cartera Fisico RS (R4+), Cartera Fisico SC (R6+), Cartera Fisico AGRO (R7+)
 // ══════════════════════════════════════════════════════════════
 function importCarteraDeValores(wb) {
-  const APIES = {
-    '11902': {empresa:'Rio Salado SRL',       estacion:'RS Roca'},
-    '15814': {empresa:'Rio Salado SRL',       estacion:'RS Centro'},
-    '2016':  {empresa:'Rio Salado SRL',       estacion:'RS Ruta'},
-    '1526':  {empresa:'Rio Salado SRL',       estacion:'RS Chichinales'},
-    '1535':  {empresa:'Servicios Cipolletti SRL', estacion:'SC Cinco Saltos'},
-    '50309': {empresa:'Servicios Cipolletti SRL', estacion:'SC Pacheco'},
-    '1539':  {empresa:'Servicios Cipolletti SRL', estacion:'SC Pacheco'},
-    '50282': {empresa:'Servicios Cipolletti SRL', estacion:'SC Esmeralda'},
-    '15431': {empresa:'Servicios Cipolletti SRL', estacion:'SC Esmeralda'},
-  };
-  let total = 0;
+  // ── Utilidades ─────────────────────────────────────────────
+  const norm = s => String(s||'').trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,'');
 
-  // Limpiar cartera existente en todas las empresas
+  // Parser argentino robusto: distingue 1.234,56 de 1,234.56
+  const pn = v => {
+    if (!v && v !== 0) return 0;
+    if (typeof v === 'number') return v;
+    const s = String(v).trim().replace(/\s/g,'').replace(/^\$/,'').replace(/^\((.+)\)$/,'-$1');
+    if (!s || s === '-') return 0;
+    const lc = s.lastIndexOf(','), ld = s.lastIndexOf('.');
+    if (lc > ld) return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0; // 1.234,56 → 1234.56
+    if (ld > lc) return parseFloat(s.replace(/,/g,'')) || 0;                   // 1,234.56 → 1234.56
+    return parseFloat(s) || 0;
+  };
+
+  // Parser de fecha: maneja serial XLSX, ISO, DD/MM/YYYY, Date
+  const fmtD = v => {
+    if (!v) return '';
+    if (v instanceof Date) { const d=new Date(v); return isNaN(d)?'':d.toISOString().slice(0,10); }
+    if (typeof v === 'number' && v > 40000) {
+      const d = new Date(Math.round((v-25569)*86400*1000));
+      return isNaN(d)?'':d.toISOString().slice(0,10);
+    }
+    const s = String(v).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+    const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+    if (m) { let[,d,mo,y]=m; if(y.length===2)y='20'+y; return `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`; }
+    const d2 = new Date(s); return isNaN(d2)?'':d2.toISOString().slice(0,10);
+  };
+
+  // Detecta la fila del header escaneando desde hintRow (búsqueda inteligente)
+  const detectHeader = (allRows, hintRow) => {
+    const KEYWORDS = ['importe','nro','numero','cheque','banco','cliente','fecha','pago','emision','librador','presentacion','cobro','vto'];
+    const test = ri => {
+      const r = allRows[ri]; if (!r) return 0;
+      const rn = r.map(c => norm(c));
+      return KEYWORDS.filter(k => rn.some(h => h.includes(k))).length;
+    };
+    // Probar desde hintRow ±3, luego barrer primeras 15 filas
+    const candidates = [...new Set([hintRow, hintRow-1, hintRow+1, hintRow-2, hintRow+2, hintRow+3])].filter(i=>i>=0&&i<(allRows.length||999));
+    const best = candidates.reduce((bst,ri) => { const h=test(ri); return h>bst.h?{ri,h}:bst; }, {ri:hintRow, h:0});
+    if (best.h >= 2) return best.ri;
+    // fallback: barrer primeras 15 filas
+    let fRow = hintRow;
+    for (let i=0; i<Math.min(15, allRows.length); i++) { if (test(i)>=2) { fRow=i; break; } }
+    return fRow;
+  };
+
+  // Detecta si una fila es de TOTAL/SUBTOTAL (se salta)
+  const isTotalRow = row => {
+    const first = norm(row.find(v => v !== null && v !== undefined) ?? '');
+    return /^(total|subtotal|suma|grand total|sub total|acumulado|promedio)/.test(first);
+  };
+
+  // Busca el nombre de hoja con fuzzy matching (case+acento insensitive)
+  const findSheet = targetName => {
+    const nt = norm(targetName);
+    return wb.SheetNames.find(sn => norm(sn) === nt)
+      || wb.SheetNames.find(sn => { const ns=norm(sn); return ns.includes(nt.slice(0,12)) || nt.includes(ns.slice(0,12)); });
+  };
+
+  let total = 0;
+  const log = [];
+  const skipped = { totales:0, duplicados:0, sinImporte:0 };
+
+  // Limpiar cartera existente
   appState.empresas.forEach(e => {
     e.cheques = (e.cheques||[]).filter(c => c.estado !== 'EN CARTERA' || !c._fromCarteraXls);
   });
 
   const getEmp = name => {
-    let emp = appState.empresas ? appState.empresas.find(e => e.name === name) : null;
+    let emp = appState.empresas?.find(e => e.name === name);
     if (!emp) {
       if (!appState.empresas) appState.empresas = [];
       emp = { name, transactions:[], accounts:[], investments:[], cheques:[] };
@@ -5940,144 +5993,146 @@ function importCarteraDeValores(wb) {
     }
     return emp;
   };
-  const fmtD = v => {
-    if (!v) return '';
-    if (v instanceof Date) return v.toISOString().slice(0,10);
-    // XLSX serial number
-    if (typeof v === 'number' && v > 40000) {
-      const d = new Date(Math.round((v - 25569) * 86400 * 1000));
-      return d.toISOString().slice(0,10);
-    }
-    const s = String(v);
-    if (s.match(/\d{4}-\d{2}-\d{2}/)) return s.slice(0,10);
-    return s;
-  };
-  const pn = v => {
-    if (typeof v === 'number') return v;
-    return parseFloat(String(v||'').replace(/[^0-9.,-]/g,'').replace(',','.')) || 0;
-  };
 
-  // ── Procesar cada hoja ─────────────────────────────────────
+  // hintRow = índice 0-based donde esperamos el header (se ajusta dinámicamente)
   const sheetConfig = [
-    { name:'Cartera E-Cheqs RS',      empresa:'Rio Salado SRL',           headerRow:5, tipo:'E-CHEQ', importeCol:7 },
-    { name:'Cartera E-Cheqs SC',      empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'E-CHEQ', importeCol:7 },
-    { name:'Cartera Ch. Fisico RS',   empresa:'Rio Salado SRL',           headerRow:4, tipo:'FISICO', importeCol:9 },
-    { name:'Cartera Ch. Fisico SC',   empresa:'Servicios Cipolletti SRL', headerRow:6, tipo:'FISICO', importeCol:9 },
-    { name:'Cartera Ch. Fisico AGRO', empresa:'Servicios Cipolletti SRL', headerRow:7, tipo:'AGRO',   importeCol:8 },
+    { name:'Cartera E-Cheqs RS',      empresa:'Rio Salado SRL',           hintRow:4, tipo:'E-CHEQ' },
+    { name:'Cartera E-Cheqs SC',      empresa:'Servicios Cipolletti SRL', hintRow:6, tipo:'E-CHEQ' },
+    { name:'Cartera Ch. Fisico RS',   empresa:'Rio Salado SRL',           hintRow:3, tipo:'FISICO' },
+    { name:'Cartera Ch. Fisico SC',   empresa:'Servicios Cipolletti SRL', hintRow:5, tipo:'FISICO' },
+    { name:'Cartera Ch. Fisico AGRO', empresa:'Servicios Cipolletti SRL', hintRow:6, tipo:'AGRO'   },
   ];
 
   sheetConfig.forEach(cfg => {
-    const ws = wb.Sheets[cfg.name];
-    if (!ws) return;
-    const rows = XLSX.utils.sheet_to_json(ws, {
-      header:1, defval:null, raw:true,
-      range: cfg.headerRow - 1
-    });
-    if (rows.length < 2) return;
+    const actualName = findSheet(cfg.name);
+    if (!actualName) {
+      log.push(`<span style="color:var(--text3)">⚪ "${cfg.name}" — no encontrada</span>`);
+      return;
+    }
+    const ws = wb.Sheets[actualName];
+    const allRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
+    if (allRows.length < 3) { log.push(`<span style="color:var(--yellow)">⚠️ "${actualName}" — sin datos</span>`); return; }
 
-    const headers = rows[0].map(h => String(h||'').trim().toLowerCase()
-      .replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i')
-      .replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').replace(/[^a-z0-9 ]/g,''));
+    const hdrIdx = detectHeader(allRows, cfg.hintRow);
+    const headers = (allRows[hdrIdx]||[]).map(h => norm(h));
 
-    const col = (...keys) => {
-      for (const k of keys) {
-        const i = headers.findIndex(h => h.includes(k));
-        if (i >= 0) return i;
-      }
-      return -1;
-    };
+    const col = (...keys) => { for(const k of keys){ const i=headers.findIndex(h=>h.includes(k)); if(i>=0)return i; } return -1; };
 
-    // Column indices
-    let iNro, iBanco, iEmision, iPago, iCliente, iLibrador, iImporte, iLugar, iUnidad;
+    let iNro, iBanco, iEmision, iPago, iCliente, iLibrador, iImporte, iLugar, iUnidad, iEstado, iCuit;
     if (cfg.tipo === 'E-CHEQ') {
-      iNro      = col('cheque','numero','nro','n de');
-      iBanco    = -1; // no tiene banco en e-cheqs
-      iEmision  = col('emision','emis','fecha de emis');
-      iPago     = col('fecha de pago','pago','cobro','vto');
+      iNro      = col('cheque','numero','nro','n de','n°');
+      iBanco    = col('banco','entidad');
+      iEmision  = col('emision','emis','fecha emis');
+      iPago     = col('fecha de pago','fecha pago','pago','cobro','vto','vencimiento');
       iCliente  = col('recibido de','recibido','cliente','razon social');
       iLibrador = col('razon social','librador');
-      iImporte  = col('importe');
-      iLugar    = -1;
-      iUnidad   = -1;
+      iImporte  = col('importe','monto','valor');
+      iCuit     = col('cuit','cuil');
+      iLugar=-1; iUnidad=-1;
     } else if (cfg.tipo === 'AGRO') {
-      iNro      = col('cheque','numero','nro');
-      iBanco    = col('banco');
-      iEmision  = col('ingreso','emision');
-      iPago     = col('fecha vto','vto','pago');
-      iCliente  = col('cliente','n.cli');
-      iLibrador = col('librador');
-      iImporte  = col('importe');
-      iLugar    = -1;
-      iUnidad   = col('unid','negocio');
+      iNro      = col('cheque','numero','nro','n°');
+      iBanco    = col('banco','entidad');
+      iEmision  = col('ingreso','emision','fecha emis');
+      iPago     = col('fecha vto','vencimiento','vto','pago','presentacion');
+      iCliente  = col('cliente','ncli','n cli');
+      iLibrador = col('librador','razon social');
+      iImporte  = col('importe','monto','valor');
+      iUnidad   = col('unid','negocio','uunn','lugar');
+      iCuit     = col('cuit','cuil');
+      iLugar=-1;
     } else { // FISICO
-      iNro      = col('numero','nro','cheque');
-      iBanco    = col('banco');
-      iEmision  = col('emision','emis');
-      iPago     = col('presentacion','cobro','pago','vto');
+      iNro      = col('numero','nro','cheque','n°');
+      iBanco    = col('banco','entidad');
+      iEmision  = col('emision','emis','fecha emis');
+      iPago     = col('presentacion','cobro','pago','vto','vencimiento');
       iCliente  = col('cliente');
-      iLibrador = col('librador');
-      iImporte  = col('importe');
-      iLugar    = col('lugar');
-      iUnidad   = -1;
+      iLibrador = col('librador','razon social');
+      iImporte  = col('importe','monto','valor');
+      iLugar    = col('lugar','estacion','uunn','sucursal');
+      iCuit     = col('cuit','cuil');
+      iUnidad=-1;
+    }
+    iEstado = col('estado','situacion');
+
+    if (iImporte < 0) {
+      log.push(`<span style="color:var(--red)">❌ "${actualName}" — no se detectó columna importe. Headers: [${headers.filter(Boolean).slice(0,8).join(', ')}]</span>`);
+      return;
     }
 
     const empObj = getEmp(cfg.empresa);
-    if (!empObj) return;
     if (!empObj.cheques) empObj.cheques = [];
 
-    rows.slice(1).forEach((row, ri) => {
-      if (!row || !row.some(v => v !== null)) return; // skip empty rows
-      // Use explicit importeCol if defined (0-indexed), else use detected column
-    const impVal = cfg.importeCol !== undefined
-      ? row[cfg.importeCol - 1]   // importeCol is 1-based (C9 = index 8)
-      : (iImporte >= 0 ? row[iImporte] : null);
-    const imp = pn(impVal);
-      if (!imp || imp <= 0) return;
-      const nro      = String(iNro >= 0      ? row[iNro]      || '' : '').trim();
-      const banco    = String(iBanco >= 0    ? row[iBanco]    || '' : '').trim();
-      const emisión  = fmtD(iEmision >= 0   ? row[iEmision]  : null);
-      const cobro    = fmtD(iPago >= 0      ? row[iPago]     : null);
-      const cliente  = String(iCliente >= 0  ? row[iCliente]  || '' : '').trim();
-      const librador = String(iLibrador >= 0 ? row[iLibrador] || '' : '').trim();
-      const lugar    = String(iLugar >= 0    ? row[iLugar]    || '' : '').trim();
-      const unidad   = String(iUnidad >= 0   ? row[iUnidad]   || '' : '').trim();
+    let sheetCount=0;
+    allRows.slice(hdrIdx+1).forEach((row, ri) => {
+      if (!row || !row.some(v => v !== null && v !== undefined)) return; // fila vacía
+      if (isTotalRow(row)) { skipped.totales++; return; }               // fila TOTAL
 
-      // Evitar duplicados (mismo nro + empresa)
-      const key = cfg.empresa + '|' + nro;
-      const exists = empObj.cheques.some(c => c._key === key);
-      if (exists) return;
+      const imp = pn(row[iImporte]);
+      if (!imp || imp <= 0) { skipped.sinImporte++; return; }
+
+      const nro      = String(row[iNro]     ?? '').trim();
+      const banco    = String(iBanco>=0  ? row[iBanco]   ?? '' : '').trim();
+      const emision  = fmtD(iEmision>=0  ? row[iEmision]  : null);
+      const cobro    = fmtD(iPago>=0     ? row[iPago]     : null);
+      const cliente  = String(iCliente>=0 ? row[iCliente] ?? '' : '').trim();
+      const librador = String(iLibrador>=0? row[iLibrador]?? '' : '').trim();
+      const lugar    = String(iLugar>=0   ? row[iLugar]   ?? '' : '').trim();
+      const unidad   = String(iUnidad>=0  ? row[iUnidad]  ?? '' : '').trim();
+      const cuit     = String(iCuit>=0    ? row[iCuit]    ?? '' : '').trim();
+      const estado   = iEstado>=0 ? String(row[iEstado]??'').trim().toUpperCase() : 'EN CARTERA';
+
+      // Duplicado: empresa + nro + banco + importe (más robusto)
+      const key = `${cfg.empresa}|${nro}|${banco}|${imp}`;
+      if (empObj.cheques.some(c => c._key === key)) { skipped.duplicados++; return; }
 
       empObj.cheques.push({
-        id:          Date.now() + ri + Math.random(),
-        _key:        key,
+        id:              Date.now() + ri + Math.random(),
+        _key:            key,
         _fromCarteraXls: true,
-        fecha:       cobro || emisión || new Date().toISOString().slice(0,10),
-        nro:         nro,
-        banco:       banco || cfg.tipo,
-        fEmision:    emisión,
-        fCobro:      cobro,
-        librador:    librador || cliente,
-        cliente:     cliente,
-        importe:     imp,
-        subempresa:  lugar || unidad,
-        estado:      'EN CARTERA',
-        tipo:        cfg.tipo,
-        notas:       lugar || unidad || cfg.name || '',
+        fecha:           cobro || emision || new Date().toISOString().slice(0,10),
+        nro, banco: banco || cfg.tipo,
+        fEmision:        emision,
+        fCobro:          cobro,
+        librador:        librador || cliente,
+        cliente, cuit, importe: imp,
+        subempresa:      lugar || unidad,
+        uunn:            unidad || lugar,
+        estado:          estado || 'EN CARTERA',
+        estadoActual:    estado || 'EN CARTERA',
+        tipo:            cfg.tipo,
+        hoja:            actualName,
+        notas:           lugar || unidad || '',
       });
+      sheetCount++;
       total++;
     });
+
+    const col2 = cfg.empresa==='Rio Salado SRL'?'#4a9fd4':'#3aaa2a';
+    const hdrInfo = hdrIdx !== cfg.hintRow ? ` <span style="color:var(--yellow)">(header auto-detectado fila ${hdrIdx+1})</span>` : '';
+    const sinFecha = empObj.cheques.filter(c=>c.hoja===actualName&&!c.fCobro).length;
+    const montoHoja = empObj.cheques.filter(c=>c.hoja===actualName).reduce((s,c)=>s+c.importe,0);
+    log.push(`<span style="color:${col2}">✅ "${actualName}" → ${cfg.tipo}: <strong>${sheetCount}</strong> cheques · ${fmtMoney(montoHoja)}${hdrInfo}${sinFecha>0?` <span style="color:var(--yellow)">· ${sinFecha} sin fecha cobro</span>`:''}</span>`);
   });
 
   const byEmp = {};
   appState.empresas.forEach(e => {
-    const n = (e.cheques||[]).filter(c => c.estado==='EN CARTERA' && c._fromCarteraXls).length;
-    if (n) byEmp[e.name] = n;
+    const ch = (e.cheques||[]).filter(c => c._fromCarteraXls);
+    if (ch.length) byEmp[e.name] = { n:ch.length, t:ch.reduce((s,c)=>s+c.importe,0) };
   });
+
+  const skipParts = [];
+  if (skipped.totales)    skipParts.push(`${skipped.totales} filas TOTAL ignoradas`);
+  if (skipped.duplicados) skipParts.push(`${skipped.duplicados} duplicados`);
+  if (skipped.sinImporte) skipParts.push(`${skipped.sinImporte} sin importe`);
+
+  const empRows = Object.entries(byEmp).map(([n,{n:cnt,t}])=>
+    `🏢 ${n.split(' ')[0]}: ${cnt} cheques · <strong>${fmtMoney(t)}</strong>`).join(' &nbsp;·&nbsp; ');
 
   return {
     total,
-    html: '<div class="alert green">✅ Cartera de valores importada — ' + total + ' cheques en cartera.<br>' +
-      Object.entries(byEmp).map(([n,v])=>'🏢 '+n+': '+v+' cheques').join(' · ') + '</div>'
+    html: `<div class="alert ${total>0?'green':'red'}">${total>0?'✅':'⚠️'} Cartera de valores — <strong>${total} cheques</strong> importados.<br>${empRows}` +
+      (skipParts.length?`<br><span style="font-size:11px;color:var(--text3)">ℹ️ ${skipParts.join(' · ')}</span>`:'') +
+      `</div><div class="import-log" style="margin-top:6px">${log.join('<br>')}</div>`,
   };
 }
 
@@ -6117,8 +6172,14 @@ function importChequesRechazados(wb) {
     return s;
   };
   const pn = v => {
-    if (typeof v === 'number') return v;
-    return parseFloat(String(v||'').replace(/[^0-9.,-]/g,'').replace(',','.')) || 0;
+    if (!v && v!==0) return 0;
+    if (typeof v==='number') return v;
+    const s=String(v).trim().replace(/\s/g,'').replace(/^\$/,'').replace(/^\((.+)\)$/,'-$1');
+    if(!s||s==='-') return 0;
+    const lc=s.lastIndexOf(','), ld=s.lastIndexOf('.');
+    if(lc>ld) return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
+    if(ld>lc) return parseFloat(s.replace(/,/g,'')) || 0;
+    return parseFloat(s) || 0;
   };
 
   // Buscar hoja principal: TABLA CONSOLIDADA > GRAL. > primera hoja con headers correctos
@@ -6139,6 +6200,7 @@ function importChequesRechazados(wb) {
 
   rows.slice(headerRowIdx + 1).forEach((row, ri) => { // datos desde R5
     if (!row || !row.some(v => v !== null)) return;
+    if (/^(total|subtotal|suma|grand|acumulado)/i.test(String(row[0]||'').trim())) return;
     const banco    = String(row[0]  || '').trim();
     const nro      = String(row[1]  || '').trim();
     const fEmision = fmtD(row[2]);
@@ -9381,9 +9443,20 @@ function parseRechazadosXls(wb) {
     const d=new Date(s); if(!isNaN(d.getTime())) return d.toISOString().slice(0,10);
     return s;
   };
-  const pn = v => { if (!v) return 0; if (typeof v==='number') return v; return parseFloat(String(v).replace(/[^0-9.,-]/g,'').replace(',','.')) || 0; };
+  const pn = v => {
+    if (!v && v!==0) return 0;
+    if (typeof v==='number') return v;
+    const s=String(v).trim().replace(/\s/g,'').replace(/^\$/,'').replace(/^\((.+)\)$/,'-$1');
+    if(!s||s==='-') return 0;
+    const lc=s.lastIndexOf(','), ld=s.lastIndexOf('.');
+    if(lc>ld) return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
+    if(ld>lc) return parseFloat(s.replace(/,/g,'')) || 0;
+    return parseFloat(s) || 0;
+  };
+  const isTotalRow = row => /^(total|subtotal|suma|grand|acumulado)/i.test(String(row.find(v=>v!==null&&v!==undefined)||'').trim());
   rows.slice(hdrRow+1).forEach(row => {
     if (!row||!row.some(v=>v!==null)) return;
+    if (isTotalRow(row)) return;
     const imp = pn(iImp>=0?row[iImp]:null);
     const fRech = fmtD(iRech>=0?row[iRech]:null);
     if (!imp||imp<=0) return;
