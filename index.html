@@ -2725,6 +2725,13 @@ let _supaUser=null,_supaRol=null;
   </div>
 </div>
 
+<!-- DETALLE OBRA — overlay profesional -->
+<div id="ob-det-ov" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:5500;overflow-y:auto">
+  <div style="max-width:980px;margin:0 auto;padding:20px 16px 60px">
+    <div id="ob-det-body"></div>
+  </div>
+</div>
+
 <!-- RIESGO CREDITICIO -->
 <div class="page" id="page-riesgo">
   <!-- HEADER -->
@@ -14714,7 +14721,7 @@ function abrirModalObra(id) {
   const body = document.getElementById('modal-obra-body');
   if (!body) return;
 
-  const o = obra || {nombre:'',empresa:_obEmp==='grupo'?'RS':_obEmp,razonSocial:'',tipo:'Construcción',estado:'Planificación',ubicacion:'',presupuesto:0,avanceFisico:0,fechaInicio:'',fechaFin:'',contratista:'',responsable:'',descripcion:'',etapas:[],facturas:[],presupuestos:[],notas:''};
+  const o = obra || {nombre:'',empresa:_obEmp==='grupo'?'RS':_obEmp,razonSocial:'',tipo:'Construcción',estado:'Planificación',ubicacion:'',presupuesto:0,avanceFisico:0,fechaInicio:'',fechaFin:'',contratista:'',responsable:'',descripcion:'',etapas:[],facturas:[],presupuestos:[],notas:'',lat:null,lng:null,fotos:[]};
 
   body.innerHTML =
     // Datos generales
@@ -14791,6 +14798,37 @@ function abrirModalObra(id) {
       '<textarea id="ob-notas" style="width:100%;min-height:80px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px;font-size:12px;color:var(--text);outline:none;resize:vertical;box-sizing:border-box">'+( o.notas||'')+'</textarea>' +
     '</div>' +
 
+    // GPS
+    '<div style="margin-bottom:20px">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">📍 Ubicación GPS</div>' +
+        '<button onclick="obDetectarUbicacion()" style="padding:3px 10px;border-radius:6px;border:1px solid var(--accent);background:var(--accent)22;color:var(--accent);font-size:10px;cursor:pointer">📍 Detectar mi ubicación</button>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+        '<div><div style="font-size:9px;color:var(--text3);margin-bottom:3px">LATITUD</div><input type="number" id="ob-lat" step="any" placeholder="-38.951" value="'+(o.lat||'')+'" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box"></div>' +
+        '<div><div style="font-size:9px;color:var(--text3);margin-bottom:3px">LONGITUD</div><input type="number" id="ob-lng" step="any" placeholder="-68.059" value="'+(o.lng||'')+'" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box"></div>' +
+      '</div>' +
+      '<div style="font-size:10px;color:var(--text3);margin-top:5px">Patagonia Argentina: lat entre -35 y -53, lng entre -65 y -72 aproximadamente</div>' +
+    '</div>' +
+
+    // Fotos
+    '<div style="margin-bottom:20px">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px">📸 Registro Fotográfico</div>' +
+        '<div style="display:flex;gap:6px">' +
+          '<select id="ob-foto-tipo" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text);outline:none">' +
+            ['Drone','Campo','Oficina','Antes','Durante','Después'].map(t=>'<option>'+t+'</option>').join('') +
+          '</select>' +
+          '<button onclick="document.getElementById(\'ob-foto-inp\').click()" style="padding:4px 12px;border-radius:6px;border:1px solid rgba(74,159,212,0.4);background:rgba(74,159,212,0.1);color:var(--accent);font-size:11px;cursor:pointer">📷 Agregar fotos</button>' +
+        '</div>' +
+      '</div>' +
+      '<input type="file" id="ob-foto-inp" accept="image/*" multiple style="display:none" onchange="obProcesarFotos(this)">' +
+      '<div id="ob-fotos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px">' +
+        obRenderFotosEdit(o.fotos||[]) +
+      '</div>' +
+      (!(o.fotos||[]).length?'<div style="font-size:11px;color:var(--text3);text-align:center;padding:20px 0">Sin fotos · Agregá imágenes del drone o del campo</div>':'') +
+    '</div>' +
+
     // Botones
     '<div style="display:flex;gap:10px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border)">' +
       (id?'<button onclick="eliminarObra(\''+id+'\')" style="padding:10px 18px;border-radius:8px;border:1px solid rgba(248,113,113,0.4);background:none;color:var(--red);font-size:13px;cursor:pointer;margin-right:auto">🗑 Eliminar</button>':'') +
@@ -14802,6 +14840,7 @@ function abrirModalObra(id) {
   window._obEtapasTemp      = JSON.parse(JSON.stringify(o.etapas||[]));
   window._obFacturasTemp    = JSON.parse(JSON.stringify(o.facturas||[]));
   window._obPresupuestosTemp = JSON.parse(JSON.stringify(o.presupuestos||[]));
+  window._obFotosTemp = JSON.parse(JSON.stringify(o.fotos||[]));
 
   // Set razón social selector
   setTimeout(() => {
@@ -14909,17 +14948,24 @@ function obSelect(label, id, opts, val) {
 
 function obRenderEtapas(etapas) {
   if (!etapas.length) return '<div style="font-size:11px;color:var(--text3);padding:8px 0">Sin etapas cargadas</div>';
-  return '<div style="display:flex;flex-direction:column;gap:6px">' +
+  return '<div style="display:flex;flex-direction:column;gap:8px">' +
     etapas.map((e,i) =>
-      '<div style="display:flex;align-items:center;gap:8px;background:var(--bg3);border-radius:8px;padding:8px 12px">' +
-        '<input type="text" value="'+e.nombre+'" onchange="window._obEtapasTemp['+i+'].nombre=this.value" style="flex:1;background:none;border:none;color:var(--text);font-size:12px;outline:none">' +
-        '<select onchange="window._obEtapasTemp['+i+'].estado=this.value" style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:11px;color:var(--text);outline:none">' +
-          ['Pendiente','En curso','Completada','Pausada'].map(s=>'<option value="'+s+'"'+(s===e.estado?' selected':'')+'>'+s+'</option>').join('') +
-        '</select>' +
-        '<label style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px;cursor:pointer">' +
-          '<input type="checkbox" '+(e.activa?'checked':'')+' onchange="window._obEtapasTemp.forEach((et,j)=>et.activa=j==='+i+'&&this.checked);obRefreshEtapas()"> Activa' +
-        '</label>' +
-        '<button onclick="window._obEtapasTemp.splice('+i+',1);obRefreshEtapas()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px">✕</button>' +
+      '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+          '<input type="text" value="'+e.nombre+'" onchange="window._obEtapasTemp['+i+'].nombre=this.value" placeholder="Nombre de la etapa" style="flex:1;background:none;border:none;border-bottom:1px solid var(--border2);color:var(--text);font-size:13px;font-weight:700;outline:none;padding-bottom:2px">' +
+          '<select onchange="window._obEtapasTemp['+i+'].estado=this.value;obRefreshEtapas()" style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text);outline:none">' +
+            ['Pendiente','En curso','Completada','Pausada'].map(s=>'<option value="'+s+'"'+(s===e.estado?' selected':'')+'>'+s+'</option>').join('') +
+          '</select>' +
+          '<button onclick="window._obEtapasTemp.splice('+i+',1);obRefreshEtapas()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0 4px">✕</button>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 80px auto;gap:8px;align-items:center">' +
+          '<div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">INICIO</div><input type="date" value="'+(e.fechaInicio||'')+'" onchange="window._obEtapasTemp['+i+'].fechaInicio=this.value" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);outline:none;box-sizing:border-box"></div>' +
+          '<div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">FIN</div><input type="date" value="'+(e.fechaFin||'')+'" onchange="window._obEtapasTemp['+i+'].fechaFin=this.value" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);outline:none;box-sizing:border-box"></div>' +
+          '<div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">PESO %</div><input type="number" min="0" max="100" value="'+(e.ponderacion||'')+'" onchange="window._obEtapasTemp['+i+'].ponderacion=parseFloat(this.value)||0" placeholder="20" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);outline:none;box-sizing:border-box"></div>' +
+          '<label style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap">' +
+            '<input type="checkbox" '+(e.activa?'checked':'')+' onchange="window._obEtapasTemp.forEach((et,j)=>et.activa=j==='+i+'&&this.checked);obRefreshEtapas()"> Activa' +
+          '</label>' +
+        '</div>' +
       '</div>'
     ).join('') +
   '</div>';
@@ -14927,7 +14973,7 @@ function obRenderEtapas(etapas) {
 
 function obAgregarEtapa() {
   if (!window._obEtapasTemp) window._obEtapasTemp = [];
-  window._obEtapasTemp.push({nombre:'Nueva etapa',estado:'Pendiente',activa:false});
+  window._obEtapasTemp.push({nombre:'Nueva etapa',estado:'Pendiente',activa:false,fechaInicio:'',fechaFin:'',ponderacion:0});
   obRefreshEtapas();
 }
 
@@ -15022,6 +15068,9 @@ function guardarObra() {
     responsable:get('ob-responsable'),
     descripcion:get('ob-descripcion'),
     notas:      get('ob-notas'),
+    lat:        parseFloat(get('ob-lat'))||null,
+    lng:        parseFloat(get('ob-lng'))||null,
+    fotos:      window._obFotosTemp||[],
     etapas:     window._obEtapasTemp||[],
     facturas:   window._obFacturasTemp||[],
     presupuestos: window._obPresupuestosTemp||[],
@@ -15061,48 +15110,204 @@ function verDetalleObra(id) {
   const o = appState.obras.find(ob=>ob.id===id);
   if (!o) return;
   const gast = obGastado(o);
-  const pct  = o.presupuesto>0?Math.min(100,(gast/o.presupuesto)*100):0;
-  const saldo = (o.presupuesto||0) - gast;
+  const presup = o.presupuesto||0;
+  const saldo = presup - gast;
+  const pct = presup>0 ? Math.min(100,(gast/presup)*100) : 0;
+  const avanceFis = (() => {
+    const et = o.etapas||[];
+    if (!et.length) return o.avanceFisico||0;
+    const comp = et.filter(e=>e.estado==='Completada').length;
+    return Math.round(comp/et.length*100);
+  })();
+  const eColor = {Planificación:'#6c8fff',Licitación:'#a78bfa','En ejecución':'#fbbf24',Pausada:'#f87171',Finalizada:'#4ade80',Cancelada:'#94a3b8'}[o.estado]||'var(--text3)';
+  const tipoIcon = o.tipo==='Construcción'?'🏗️':o.tipo==='Refacción'?'🔨':o.tipo==='Instalación'?'⚡':o.tipo==='Reparación'?'🔧':o.tipo==='Pintura'?'🎨':'🏗️';
+  const fotos = o.fotos||[];
+  window._obDetFotos = fotos;
 
-  // Análisis por rubro
+  // Por rubro
   const porRubro = {};
-  (o.facturas||[]).forEach(f => {
-    const r = f.rubro||'Otros';
-    if (!porRubro[r]) porRubro[r] = 0;
-    porRubro[r] += f.importe||0;
-  });
+  (o.facturas||[]).forEach(f=>{ const r=f.rubro||'Otros'; porRubro[r]=(porRubro[r]||0)+(f.importe||0); });
+  const rubroMax = Math.max(...Object.values(porRubro),1);
 
-  const detHtml =
-    '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px">' +
-      '<h3 style="margin:0 0 16px;font-size:16px">📊 '+o.nombre+'</h3>' +
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">' +
-        '<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Presupuesto</div><div style="font-family:var(--mono);font-weight:700;color:var(--accent)">$ '+fmtARS(o.presupuesto||0)+'</div></div>' +
-        '<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Gastado</div><div style="font-family:var(--mono);font-weight:700;color:'+(gast>(o.presupuesto||0)?'var(--red)':'var(--green)')+'">$ '+fmtARS(gast)+'</div></div>' +
-        '<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Saldo</div><div style="font-family:var(--mono);font-weight:700;color:'+(saldo<0?'var(--red)':'var(--text)')+'">$ '+fmtARS(saldo)+'</div></div>' +
+  // Dias
+  let diasInfo = '';
+  if (o.fechaFin && o.estado !== 'Finalizada') {
+    const d = Math.ceil((new Date(o.fechaFin)-new Date())/86400000);
+    diasInfo = d>0 ? `<span style="color:${d<14?'var(--red)':d<30?'var(--yellow)':'#4ade80'};font-weight:700">${d} días restantes</span>` : '<span style="color:var(--red);font-weight:700">⚠ Plazo vencido</span>';
+  }
+
+  const ov = document.getElementById('ob-det-ov');
+  const body = document.getElementById('ob-det-body');
+  if (!ov || !body) return;
+
+  body.innerHTML =
+    // ── Header ──
+    '<div style="background:linear-gradient(135deg,var(--bg2),var(--bg3));border:1px solid var(--border);border-radius:16px;padding:20px 24px;margin-bottom:20px">' +
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">' +
+        '<div style="display:flex;align-items:center;gap:14px">' +
+          '<div style="font-size:36px">'+tipoIcon+'</div>' +
+          '<div>' +
+            '<div style="font-size:22px;font-weight:900;color:var(--text)">'+o.nombre+'</div>' +
+            '<div style="font-size:12px;color:var(--text3);margin-top:4px">'+
+              (o.razonSocial||o.empresa)+' · '+o.tipo+
+              (o.ubicacion?' · '+o.ubicacion:'')+
+              (o.contratista?' · 👷 '+o.contratista:'')+
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+          '<span style="padding:4px 14px;border-radius:99px;font-size:12px;font-weight:700;background:'+eColor+'22;color:'+eColor+'">'+o.estado+'</span>' +
+          (diasInfo?'<div style="font-size:11px">'+diasInfo+'</div>':'') +
+          '<button onclick="abrirModalObra(\''+id+'\')" style="padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:11px;cursor:pointer">✏️ Editar</button>' +
+          '<button onclick="cerrarDetObra()" style="padding:6px 14px;border-radius:8px;border:none;background:var(--accent);color:white;font-size:11px;font-weight:700;cursor:pointer">✕ Cerrar</button>' +
+        '</div>' +
       '</div>' +
-      '<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Avance financiero: '+pct.toFixed(1)+'%</div><div style="background:var(--bg3);border-radius:99px;height:8px"><div style="height:100%;border-radius:99px;background:'+(pct>=100?'var(--red)':'var(--accent)')+';width:'+pct+'%"></div></div></div>' +
-      '<div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Avance físico: '+o.avanceFisico+'%</div><div style="background:var(--bg3);border-radius:99px;height:8px"><div style="height:100%;border-radius:99px;background:var(--green);width:'+o.avanceFisico+'%"></div></div></div>' +
-      (Object.keys(porRubro).length?
-        '<div style="margin-top:16px"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Por rubro</div>' +
-        Object.entries(porRubro).sort((a,b)=>b[1]-a[1]).map(([r,v])=>
-          '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px"><span>'+r+'</span><span style="font-family:var(--mono);font-weight:700">$ '+fmtARS(v)+'</span></div>'
-        ).join('')+'</div>':'') +
+      // KPI mini grid
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:16px">' +
+        [
+          ['Presupuesto','$ '+fmtARS(presup),'var(--accent)'],
+          ['Gastado','$ '+fmtARS(gast),gast>presup&&presup>0?'var(--red)':'var(--green)'],
+          ['Saldo','$ '+fmtARS(saldo),saldo<0?'var(--red)':'var(--text)'],
+          ['Avance físico',avanceFis+'%',avanceFis>=100?'#4ade80':avanceFis>=50?'var(--accent)':'#fbbf24'],
+          ['Avance financiero',pct.toFixed(1)+'%',pct>=100?'var(--red)':'var(--text2)'],
+          ['Facturas',(o.facturas||[]).length+' · $'+fmtARS(gast),'var(--text3)'],
+        ].map(([l,v,c])=>
+          '<div style="background:rgba(0,0,0,0.2);border-radius:10px;padding:10px 12px">' +
+            '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">'+l+'</div>' +
+            '<div style="font-family:var(--mono);font-size:15px;font-weight:800;color:'+c+'">'+v+'</div>' +
+          '</div>'
+        ).join('') +
+      '</div>' +
+    '</div>' +
+
+    // ── Tabs ──
+    '<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">' +
+      [['res','📊 Financiero'],['gan','📅 Cronograma'],['fot','📸 Fotos ('+fotos.length+')'],['map','📍 Mapa']].map(([k,l])=>
+        '<button id="ob-dt-'+k+'" onclick="obDetTab(\''+k+'\')" style="padding:7px 16px;border-radius:99px;border:none;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s">'+l+'</button>'
+      ).join('') +
+    '</div>' +
+
+    // ── Sección Financiero ──
+    '<div id="ob-ds-res">' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' +
+        // Por rubro
+        '<div class="card" style="padding:16px">' +
+          '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px">💰 Ejecución por rubro</div>' +
+          (Object.keys(porRubro).length ?
+            Object.entries(porRubro).sort((a,b)=>b[1]-a[1]).map(([r,v])=>
+              '<div style="margin-bottom:8px">' +
+                '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">' +
+                  '<span style="color:var(--text2)">'+r+'</span>' +
+                  '<span style="font-family:var(--mono);font-weight:700;color:var(--accent)">$ '+fmtARS(v)+'</span>' +
+                '</div>' +
+                '<div style="background:var(--bg3);border-radius:4px;height:6px">' +
+                  '<div style="height:100%;border-radius:4px;background:var(--accent);width:'+Math.round(v/rubroMax*100)+'%"></div>' +
+                '</div>' +
+              '</div>'
+            ).join('') : '<div style="color:var(--text3);font-size:12px">Sin facturas cargadas</div>') +
+        '</div>' +
+        // Avance fisico vs financiero
+        '<div class="card" style="padding:16px">' +
+          '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📈 Físico vs Financiero</div>' +
+          obCurvaAvanceSVG(o) +
+          '<div style="font-size:10px;color:var(--text3);margin-top:8px;text-align:center">Punto ideal = diagonal azul. Verde = adelantado físicamente, Rojo = atrás.</div>' +
+          // Double progress bar
+          '<div style="margin-top:14px">' +
+            '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:3px"><span>Físico</span><span style="font-weight:700;color:#4ade80">'+avanceFis+'%</span></div>' +
+            '<div style="background:var(--bg3);border-radius:4px;height:8px;margin-bottom:8px"><div style="height:100%;border-radius:4px;background:#4ade80;width:'+avanceFis+'%"></div></div>' +
+            '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:3px"><span>Financiero</span><span style="font-weight:700;color:var(--accent)">'+pct.toFixed(1)+'%</span></div>' +
+            '<div style="background:var(--bg3);border-radius:4px;height:8px"><div style="height:100%;border-radius:4px;background:'+(pct>=100?'var(--red)':'var(--accent)')+';width:'+Math.min(100,pct)+'%"></div></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      // Facturas table
+      (o.facturas&&o.facturas.length ?
+      '<div class="card" style="padding:16px;margin-top:14px">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">🧾 Facturas ('+o.facturas.length+')</div>' +
+        '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">' +
+          '<thead><tr style="background:var(--bg2)">' +
+            ['Fecha','Proveedor','Concepto','Rubro','Importe','Estado'].map(h=>'<th style="padding:7px 10px;text-align:left;font-size:9px;color:var(--text3);white-space:nowrap">'+h+'</th>').join('') +
+          '</tr></thead><tbody>' +
+          (o.facturas||[]).map(f=>'<tr style="border-bottom:1px solid var(--border)">' +
+            '<td style="padding:6px 10px;font-family:var(--mono);font-size:10px;color:var(--text3)">'+( f.fecha||'—')+'</td>' +
+            '<td style="padding:6px 10px">'+f.proveedor+'</td>' +
+            '<td style="padding:6px 10px;color:var(--text3)">'+f.concepto+'</td>' +
+            '<td style="padding:6px 10px;color:var(--text3)">'+( f.rubro||'—')+'</td>' +
+            '<td style="padding:6px 10px;font-family:var(--mono);font-weight:700;color:var(--green);text-align:right">$ '+fmtARS(f.importe||0)+'</td>' +
+            '<td style="padding:6px 10px"><span style="font-size:9px;padding:2px 7px;border-radius:99px;background:'+(f.estadoPago==='Pagado'?'rgba(74,222,128,0.15)':'rgba(251,191,36,0.15)')+';color:'+(f.estadoPago==='Pagado'?'var(--green)':'var(--yellow)')+'">'+( f.estadoPago||'Pendiente')+'</span></td>' +
+          '</tr>').join('') +
+          '</tbody>' +
+          '<tfoot><tr style="background:var(--bg2);font-weight:700"><td colspan="4" style="padding:8px 10px;font-size:11px">TOTAL</td><td style="padding:8px 10px;font-family:var(--mono);color:var(--green);text-align:right">$ '+fmtARS(gast)+'</td><td></td></tr></tfoot>' +
+        '</table></div>' +
+      '</div>' : '') +
+    '</div>' +
+
+    // ── Sección Cronograma ──
+    '<div id="ob-ds-gan" style="display:none">' +
+      '<div class="card" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">📅 Cronograma Gantt</div>' +
+        '<div style="overflow-x:auto">' + obGanttSVG(o) + '</div>' +
+      '</div>' +
+      // Etapas detail
+      '<div class="card" style="padding:16px">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">🪜 Detalle de etapas</div>' +
+        ((o.etapas||[]).length ?
+          (o.etapas||[]).map((e,i)=>{
+            const ec = {Completada:'#4ade80',Pendiente:'#6c8fff','En curso':'#fbbf24',Pausada:'#f87171'}[e.estado]||'var(--text3)';
+            let dur = '';
+            if (e.fechaInicio && e.fechaFin) {
+              const d = Math.ceil((new Date(e.fechaFin)-new Date(e.fechaInicio))/86400000);
+              dur = d+' días';
+            }
+            return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">' +
+              '<div style="width:28px;height:28px;border-radius:50%;background:'+ec+'33;border:2px solid '+ec+';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:'+ec+'">'+(i+1)+'</div>' +
+              '<div style="flex:1">' +
+                '<div style="font-size:13px;font-weight:700;color:'+(e.activa?'var(--yellow)':'var(--text)')+'">'+e.nombre+(e.activa?' ▶':' ')+'</div>' +
+                '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+( e.fechaInicio||'—')+' → '+(e.fechaFin||'—')+(dur?' · '+dur:'')+( e.ponderacion?' · Peso: '+e.ponderacion+'%':'')+'</div>' +
+              '</div>' +
+              '<span style="padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;background:'+ec+'22;color:'+ec+'">'+e.estado+'</span>' +
+            '</div>';
+          }).join('') :
+          '<div style="color:var(--text3);font-size:12px">Sin etapas definidas</div>') +
+      '</div>' +
+    '</div>' +
+
+    // ── Sección Fotos ──
+    '<div id="ob-ds-fot" style="display:none">' +
+      (fotos.length ?
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">' +
+          fotos.map((f,i)=>
+            '<div style="border-radius:12px;overflow:hidden;background:var(--bg3);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3)" onclick="obLightbox(\''+f.id+'\',\'det\')">' +
+              '<div style="aspect-ratio:4/3;overflow:hidden"><img src="'+f.data+'" style="width:100%;height:100%;object-fit:cover;transition:transform 0.3s" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'"></div>' +
+              '<div style="padding:8px 10px">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                  '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--accent)22;color:var(--accent)">'+f.tipo+'</span>' +
+                  '<span style="font-size:10px;color:var(--text3)">'+f.fecha+'</span>' +
+                '</div>' +
+                (f.descripcion?'<div style="font-size:11px;color:var(--text2);margin-top:4px">'+f.descripcion+'</div>':'') +
+              '</div>' +
+            '</div>'
+          ).join('') +
+        '</div>' :
+        '<div style="text-align:center;padding:60px;color:var(--text3)">' +
+          '<div style="font-size:48px;margin-bottom:12px">📷</div>' +
+          '<div style="font-weight:700;font-size:16px;margin-bottom:6px">Sin fotos registradas</div>' +
+          '<div style="font-size:13px">Editá la obra para agregar fotos de drone o campo</div>' +
+        '</div>') +
+    '</div>' +
+
+    // ── Sección Mapa ──
+    '<div id="ob-ds-map" style="display:none">' +
+      '<div class="card" style="padding:16px">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">📍 Ubicación de la obra</div>' +
+        obMapaHTML(o) +
+      '</div>' +
     '</div>';
 
-  showToast('📋 Detalle — '+o.nombre+' (ver consola)');
-  // Mostrar como modal simple
-  const modal = document.getElementById('modal-obra');
-  const tit   = document.getElementById('modal-obra-titulo');
-  const body  = document.getElementById('modal-obra-body');
-  if (modal && body) {
-    if (tit) tit.textContent = '📋 Detalle — '+o.nombre;
-    body.innerHTML = detHtml +
-      '<div style="text-align:right;padding-top:12px;border-top:1px solid var(--border)">' +
-        '<button onclick="cerrarModalObra()" style="padding:10px 20px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer">Cerrar</button>' +
-        '<button onclick="abrirModalObra(\''+id+'\')" style="padding:10px 20px;border-radius:8px;border:none;background:var(--accent);color:white;font-weight:700;cursor:pointer;margin-left:8px">✏️ Editar</button>' +
-      '</div>';
-    modal.style.display='flex';
-  }
+  ov.style.display = 'block';
+  obDetTab('res');
+  // Scroll to top
+  ov.scrollTop = 0;
 }
 
 function exportObrasExcel() {
@@ -15147,6 +15352,280 @@ function exportObrasExcel() {
 
   XLSX.writeFile(wb2, 'obras_'+new Date().toISOString().slice(0,10)+'.xlsx');
   showToast('📥 Exportado — '+obras.length+' obras · '+facturas.length+' facturas');
+}
+
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// OBRAS — Módulo avanzado: Fotos, Mapa, Gantt, Detalle Pro
+// ═══════════════════════════════════════════════════════════════
+
+function obDetectarUbicacion() {
+  if (!navigator.geolocation) { showToast('Geolocalización no disponible en este dispositivo'); return; }
+  const btn = document.querySelector('button[onclick="obDetectarUbicacion()"]');
+  if (btn) { btn.textContent = '⏳ Detectando...'; btn.disabled = true; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude.toFixed(6);
+    const lng = pos.coords.longitude.toFixed(6);
+    const lEl = document.getElementById('ob-lat');
+    const gEl = document.getElementById('ob-lng');
+    if (lEl) lEl.value = lat;
+    if (gEl) gEl.value = lng;
+    if (btn) { btn.textContent = '✅ Ubicación detectada'; btn.disabled = false; setTimeout(()=>{ btn.textContent='📍 Detectar mi ubicación'; },3000); }
+    showToast('📍 Ubicación detectada: '+lat+', '+lng);
+  }, err => {
+    if (btn) { btn.textContent = '📍 Detectar mi ubicación'; btn.disabled = false; }
+    showToast('⚠️ No se pudo obtener la ubicación');
+  }, {enableHighAccuracy:true, timeout:10000});
+}
+
+function obComprimirFoto(file) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX = 1400;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      cv.toBlob(blob => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', 0.82);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+async function obProcesarFotos(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  const tipo = document.getElementById('ob-foto-tipo')?.value || 'Campo';
+  const btn = document.querySelector('button[onclick="document.getElementById(\'ob-foto-inp\').click()"]');
+  if (btn) { btn.textContent = '⏳ Procesando...'; btn.disabled = true; }
+  for (const file of files) {
+    const data = await obComprimirFoto(file);
+    if (!data) continue;
+    if (!window._obFotosTemp) window._obFotosTemp = [];
+    window._obFotosTemp.push({
+      id: 'foto_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+      data, tipo,
+      fecha: new Date().toISOString().slice(0,10),
+      descripcion: ''
+    });
+  }
+  if (btn) { btn.textContent = '📷 Agregar fotos'; btn.disabled = false; }
+  obRefreshFotos();
+  input.value = '';
+}
+
+function obRenderFotosEdit(fotos) {
+  if (!fotos.length) return '';
+  return fotos.map((f,i) =>
+    '<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--bg3);cursor:pointer" onclick="obLightbox(\''+f.id+'\',\'edit\')">' +
+      '<img src="'+f.data+'" style="width:100%;height:100%;object-fit:cover">' +
+      '<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:3px 5px">' +
+        '<div style="font-size:9px;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+f.tipo+'</div>' +
+      '</div>' +
+      '<button onclick="event.stopPropagation();window._obFotosTemp.splice('+i+',1);obRefreshFotos()" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.6);border:none;border-radius:50%;color:white;cursor:pointer;width:20px;height:20px;font-size:11px;display:flex;align-items:center;justify-content:center">✕</button>' +
+    '</div>'
+  ).join('');
+}
+
+function obRefreshFotos() {
+  const grid = document.getElementById('ob-fotos-grid');
+  if (!grid) return;
+  const fotos = window._obFotosTemp || [];
+  grid.innerHTML = obRenderFotosEdit(fotos);
+  const empty = grid.nextElementSibling;
+  if (empty && empty.textContent.includes('Sin fotos')) {
+    empty.style.display = fotos.length ? 'none' : 'block';
+  }
+}
+
+function obLightbox(fotoId, ctx) {
+  const fotos = ctx==='edit' ? (window._obFotosTemp||[]) : (window._obDetFotos||[]);
+  const idx = fotos.findIndex(f=>f.id===fotoId);
+  if (idx<0) return;
+  let cur = idx;
+  const render = () => {
+    const f = fotos[cur];
+    const overlay = document.getElementById('ob-lightbox');
+    overlay.innerHTML =
+      '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center" onclick="this.parentElement.style.display=\'none\'">' +
+        '<img src="'+f.data+'" style="max-width:95vw;max-height:80vh;object-fit:contain;border-radius:8px;box-shadow:0 0 60px rgba(0,0,0,0.8)">' +
+        '<div style="color:white;margin-top:12px;text-align:center;font-size:13px;background:rgba(0,0,0,0.5);border-radius:8px;padding:8px 16px;pointer-events:none">' +
+          '<div style="font-weight:700">'+f.tipo+' · '+f.fecha+'</div>' +
+          (f.descripcion?'<div style="color:#ccc;margin-top:3px">'+f.descripcion+'</div>':'') +
+          '<div style="color:#888;font-size:10px;margin-top:4px">'+(cur+1)+' / '+fotos.length+'</div>' +
+        '</div>' +
+        (fotos.length>1?
+          '<div style="display:flex;gap:12px;margin-top:12px" onclick="event.stopPropagation()">' +
+            '<button onclick="window._obLbIdx=('+cur+'-1+'+fotos.length+')%'+fotos.length+';obLightboxGo(window._obLbIdx,\''+ctx+'\')" style="background:rgba(255,255,255,0.15);border:none;border-radius:8px;color:white;padding:8px 20px;cursor:pointer;font-size:16px">◀</button>' +
+            '<button onclick="window._obLbIdx=('+cur+'+1)%'+fotos.length+';obLightboxGo(window._obLbIdx,\''+ctx+'\')" style="background:rgba(255,255,255,0.15);border:none;border-radius:8px;color:white;padding:8px 20px;cursor:pointer;font-size:16px">▶</button>' +
+          '</div>':'') +
+        '<button onclick="document.getElementById(\'ob-lightbox\').style.display=\'none\'" style="position:absolute;top:16px;right:20px;background:none;border:none;color:white;font-size:28px;cursor:pointer">✕</button>' +
+      '</div>';
+    overlay.style.display = 'block';
+  };
+  render();
+}
+
+function obLightboxGo(idx, ctx) {
+  const fotos = ctx==='edit' ? (window._obFotosTemp||[]) : (window._obDetFotos||[]);
+  if (idx<0||idx>=fotos.length) return;
+  obLightbox(fotos[idx].id, ctx);
+}
+
+function obGanttSVG(obra) {
+  const etapas = (obra.etapas||[]).filter(e => e.fechaInicio && e.fechaFin);
+  if (!etapas.length) return '<div style="font-size:11px;color:var(--text3);padding:16px;text-align:center">Agregá fechas de inicio y fin a las etapas para ver el Gantt</div>';
+
+  const parseFecha = s => new Date(s+'T00:00:00');
+  const fechas = etapas.flatMap(e => [parseFecha(e.fechaInicio), parseFecha(e.fechaFin)]);
+  if (obra.fechaInicio) fechas.push(parseFecha(obra.fechaInicio));
+  if (obra.fechaFin) fechas.push(parseFecha(obra.fechaFin));
+  const minF = new Date(Math.min(...fechas));
+  const maxF = new Date(Math.max(...fechas));
+  const totalDias = Math.max(1, Math.ceil((maxF - minF) / 86400000));
+
+  const LW = 130, RW = 60;
+  const W = 700;
+  const CW = W - LW - RW;
+  const RH = 36;
+  const HDR = 28;
+  const svgH = etapas.length * RH + HDR + 10;
+
+  const xP = d => LW + Math.round(((parseFecha(d) - minF) / 86400000) / totalDias * CW);
+  const COLS = {Completada:'#4ade80',Pendiente:'#6c8fff','En curso':'#fbbf24',Pausada:'#f87171'};
+
+  const hoy = new Date();
+  const xHoy = LW + Math.round(((hoy - minF) / 86400000) / totalDias * CW);
+  const showHoy = hoy >= minF && hoy <= maxF;
+
+  const meses = [];
+  const cur = new Date(minF.getFullYear(), minF.getMonth(), 1);
+  while (cur <= maxF) {
+    const x = LW + Math.round(((cur - minF) / 86400000) / totalDias * CW);
+    meses.push({x, label: cur.toLocaleDateString('es-AR',{month:'short',year:'2-digit'})});
+    cur.setMonth(cur.getMonth()+1);
+  }
+
+  let svg = '<svg width="100%" viewBox="0 0 '+W+' '+svgH+'" style="display:block;font-family:system-ui,sans-serif">';
+  svg += '<rect width="'+W+'" height="'+svgH+'" fill="var(--bg3)" rx="10"/>';
+  svg += '<rect width="'+W+'" height="'+HDR+'" fill="var(--bg2)" rx="10"/>';
+  svg += '<rect y="'+(HDR-4)+'" width="'+W+'" height="4" fill="var(--bg2)"/>';
+  svg += '<text x="4" y="'+(HDR*0.67)+'" font-size="10" fill="var(--text3)" font-weight="700">ETAPA</text>';
+  meses.forEach(m => {
+    svg += '<text x="'+m.x+'" y="'+(HDR*0.67)+'" font-size="9" fill="var(--text3)" text-anchor="middle">'+m.label+'</text>';
+    svg += '<line x1="'+m.x+'" y1="'+HDR+'" x2="'+m.x+'" y2="'+svgH+'" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="2,3"/>';
+  });
+  etapas.forEach((e, i) => {
+    const y = HDR + i * RH;
+    const x1 = xP(e.fechaInicio);
+    const x2 = xP(e.fechaFin);
+    const bw = Math.max(x2 - x1, 6);
+    const col = COLS[e.estado] || '#6c8fff';
+    const pct = e.ponderacion ? e.ponderacion+'%' : '';
+    if (i%2===0) svg += '<rect x="0" y="'+y+'" width="'+W+'" height="'+RH+'" fill="rgba(255,255,255,0.02)"/>';
+    svg += '<text x="6" y="'+(y+RH/2+4)+'" font-size="10" fill="'+(e.activa?'var(--yellow)':'var(--text2)')+'" font-weight="'+(e.activa?'700':'400')+'">'+e.nombre.slice(0,17)+'</text>';
+    svg += '<rect x="'+x1+'" y="'+(y+6)+'" width="'+bw+'" height="'+(RH-12)+'" rx="5" fill="'+col+'55" stroke="'+col+'" stroke-width="1.5"/>';
+    if (e.estado==='Completada') svg += '<text x="'+(x1+bw/2)+'" y="'+(y+RH/2+4)+'" font-size="10" fill="'+col+'" text-anchor="middle" font-weight="700">✓</text>';
+    else if (bw > 30) svg += '<text x="'+(x1+bw/2)+'" y="'+(y+RH/2+4)+'" font-size="9" fill="'+col+'" text-anchor="middle">'+e.estado+'</text>';
+    if (pct) svg += '<text x="'+(W-RW+4)+'" y="'+(y+RH/2+4)+'" font-size="9" fill="var(--text3)">'+pct+'</text>';
+    svg += '<text x="'+(x2+3)+'" y="'+(y+RH/2+4)+'" font-size="8" fill="var(--text3)">'+e.fechaFin.slice(5)+'</text>';
+  });
+  if (showHoy) {
+    svg += '<line x1="'+xHoy+'" y1="'+HDR+'" x2="'+xHoy+'" y2="'+svgH+'" stroke="var(--red)" stroke-width="2" stroke-dasharray="5,3"/>';
+    svg += '<text x="'+(xHoy+3)+'" y="'+(HDR+12)+'" font-size="9" fill="var(--red)" font-weight="700">Hoy</text>';
+  }
+  svg += '</svg>';
+  return svg;
+}
+
+function obMapaHTML(obra) {
+  if (!obra.lat || !obra.lng) {
+    return '<div style="background:var(--bg3);border-radius:12px;padding:40px;text-align:center;color:var(--text3)">' +
+      '<div style="font-size:32px;margin-bottom:8px">📍</div>' +
+      '<div style="font-weight:700;margin-bottom:4px">Sin coordenadas</div>' +
+      '<div style="font-size:12px">Editá la obra y agregá latitud/longitud (o usá "Detectar mi ubicación")</div>' +
+    '</div>';
+  }
+  const lat = obra.lat, lng = obra.lng;
+  const d = 0.008;
+  const bbox = (lng-d)+','+(lat-d)+','+(lng+d)+','+(lat+d);
+  const osmUrl = 'https://www.openstreetmap.org/export/embed.html?bbox='+bbox+'&layer=mapnik&marker='+lat+','+lng;
+  const gMapsUrl = 'https://www.google.com/maps?q='+lat+','+lng;
+  const wazUrl = 'https://waze.com/ul?ll='+lat+','+lng+'&navigate=yes';
+  return '<div>' +
+    '<iframe src="'+osmUrl+'" width="100%" height="320" style="border:none;border-radius:12px;display:block" loading="lazy"></iframe>' +
+    '<div style="display:flex;gap:8px;margin-top:8px">' +
+      '<a href="'+gMapsUrl+'" target="_blank" style="padding:6px 14px;border-radius:7px;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);font-size:11px;font-weight:700;text-decoration:none">🗺 Google Maps</a>' +
+      '<a href="'+wazUrl+'" target="_blank" style="padding:6px 14px;border-radius:7px;border:1px solid rgba(74,159,212,0.3);background:rgba(74,159,212,0.08);color:var(--accent);font-size:11px;font-weight:700;text-decoration:none">🚗 Waze</a>' +
+      '<span style="font-size:10px;color:var(--text3);margin-left:auto;align-self:center">'+parseFloat(lat).toFixed(5)+', '+parseFloat(lng).toFixed(5)+'</span>' +
+    '</div>' +
+  '</div>';
+}
+
+function obCurvaAvanceSVG(obra) {
+  const avanceFis = (() => {
+    const etapas = obra.etapas||[];
+    if (!etapas.length) return obra.avanceFisico||0;
+    const comp = etapas.filter(e=>e.estado==='Completada').length;
+    return Math.round(comp/etapas.length*100);
+  })();
+  const gast = obGastado(obra);
+  const pct = obra.presupuesto>0 ? Math.min(100,Math.round(gast/obra.presupuesto*100)) : 0;
+
+  const W=400, H=160, PAD=36;
+  const CW=W-PAD*2, CH=H-PAD*2;
+  const px = v => PAD + v/100*CW;
+  const py = v => PAD + CH - v/100*CH;
+
+  const xF = px(pct);
+  const yF = py(avanceFis);
+
+  let svg = '<svg width="100%" viewBox="0 0 '+W+' '+H+'" style="display:block">';
+  svg += '<rect width="'+W+'" height="'+H+'" fill="var(--bg3)" rx="10"/>';
+  [0,25,50,75,100].forEach(v=>{
+    const xg=px(v), yg=py(v);
+    svg+='<line x1="'+xg+'" y1="'+PAD+'" x2="'+xg+'" y2="'+(PAD+CH)+'" stroke="var(--border)" stroke-width="0.5"/>';
+    svg+='<text x="'+xg+'" y="'+(PAD+CH+12)+'" font-size="8" fill="var(--text3)" text-anchor="middle">'+v+'%</text>';
+    svg+='<line x1="'+PAD+'" y1="'+yg+'" x2="'+(PAD+CW)+'" y2="'+yg+'" stroke="var(--border)" stroke-width="0.5"/>';
+    svg+='<text x="'+(PAD-4)+'" y="'+(yg+3)+'" font-size="8" fill="var(--text3)" text-anchor="end">'+v+'%</text>';
+  });
+  svg+='<line x1="'+px(0)+'" y1="'+py(0)+'" x2="'+px(100)+'" y2="'+py(100)+'" stroke="rgba(108,143,255,0.3)" stroke-width="1.5" stroke-dasharray="6,4"/>';
+  svg+='<text x="'+(W/2)+'" y="'+(H-4)+'" font-size="9" fill="var(--text3)" text-anchor="middle">Avance Financiero %</text>';
+  svg+='<text x="10" y="'+(H/2)+'" font-size="9" fill="var(--text3)" text-anchor="middle" transform="rotate(-90,10,'+(H/2)+')">Avance Físico %</text>';
+  const PCOL = avanceFis >= pct ? '#4ade80' : '#f87171';
+  svg+='<circle cx="'+xF+'" cy="'+yF+'" r="7" fill="'+PCOL+'" stroke="white" stroke-width="2"/>';
+  svg+='<text x="'+(xF+10)+'" y="'+(yF-5)+'" font-size="9" fill="'+PCOL+'" font-weight="700">Fís: '+avanceFis+'% · Fin: '+pct+'%</text>';
+  svg+='</svg>';
+  return svg;
+}
+
+function cerrarDetObra() {
+  const ov = document.getElementById('ob-det-ov');
+  if (ov) ov.style.display = 'none';
+}
+
+function obDetTab(tab) {
+  ['res','gan','fot','map'].forEach(t => {
+    const btn = document.getElementById('ob-dt-'+t);
+    const sec = document.getElementById('ob-ds-'+t);
+    if (btn) btn.style.background = t===tab ? 'var(--accent)' : 'var(--bg3)';
+    if (btn) btn.style.color = t===tab ? 'white' : 'var(--text2)';
+    if (sec) sec.style.display = t===tab ? 'block' : 'none';
+  });
 }
 
 </script>
@@ -22505,5 +22984,6 @@ async function rechSubmitSeguimiento() {
   </div>
 </div>
 
+<div id="ob-lightbox" style="display:none"></div>
 </body>
 </html>
