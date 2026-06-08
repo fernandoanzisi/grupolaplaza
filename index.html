@@ -1974,6 +1974,43 @@ let _supaUser=null,_supaRol=null;
   </div>
   <div class="grid-4 mb" id="extractos-stats"></div>
 
+  <!-- IMPORTACIÓN POR EMPRESA -->
+  <div class="card mb" style="padding:16px 20px">
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px">📂 Importar extracto bancario por empresa</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <!-- RS -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#4a9fd4;margin-bottom:6px">🔵 Rio Salado SRL</div>
+        <div onclick="document.getElementById('ext-file-rs').click()"
+          ondragover="event.preventDefault();this.style.borderColor='#4a9fd4'"
+          ondragleave="this.style.borderColor='rgba(74,159,212,0.3)'"
+          ondrop="event.preventDefault();this.style.borderColor='rgba(74,159,212,0.3)';extImportarEmp(event.dataTransfer.files[0],'RS')"
+          style="border:2px dashed rgba(74,159,212,0.35);border-radius:10px;padding:20px 14px;text-align:center;cursor:pointer;background:rgba(74,159,212,0.05);transition:all .2s">
+          <div style="font-size:24px;margin-bottom:6px">📊</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text2)">Arrastrá o hacé clic</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px">Extracto de Rio Salado · .xlsx .xls</div>
+        </div>
+        <input type="file" id="ext-file-rs" accept=".xlsx,.xls" style="display:none" onchange="extImportarEmp(this.files[0],'RS');this.value=''">
+        <div id="ext-log-rs" style="font-size:11px;color:var(--text2);margin-top:6px;display:none"></div>
+      </div>
+      <!-- SC -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#3aaa2a;margin-bottom:6px">🟢 Servicios Cipolletti SRL</div>
+        <div onclick="document.getElementById('ext-file-sc').click()"
+          ondragover="event.preventDefault();this.style.borderColor='#3aaa2a'"
+          ondragleave="this.style.borderColor='rgba(58,170,42,0.3)'"
+          ondrop="event.preventDefault();this.style.borderColor='rgba(58,170,42,0.3)';extImportarEmp(event.dataTransfer.files[0],'SC')"
+          style="border:2px dashed rgba(58,170,42,0.35);border-radius:10px;padding:20px 14px;text-align:center;cursor:pointer;background:rgba(58,170,42,0.05);transition:all .2s">
+          <div style="font-size:24px;margin-bottom:6px">📊</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text2)">Arrastrá o hacé clic</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px">Extracto de Cipolletti · .xlsx .xls</div>
+        </div>
+        <input type="file" id="ext-file-sc" accept=".xlsx,.xls" style="display:none" onchange="extImportarEmp(this.files[0],'SC');this.value=''">
+        <div id="ext-log-sc" style="font-size:11px;color:var(--text2);margin-top:6px;display:none"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- PANEL MESES CARGADOS -->
   <div id="extractos-meses-panel" style="background:var(--card);border:1px solid rgba(74,159,212,0.2);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -2552,6 +2589,54 @@ let _supaUser=null,_supaRol=null;
 
 <!-- CASH FLOW RS/SC -->
 <div class="page" id="page-cashflow">
+
+  <!-- ════ PRESUPUESTO RÁPIDO ════ -->
+  <div class="card mb" style="padding:18px 20px;border:1px solid rgba(74,159,212,0.2)">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div>
+        <div style="font-size:14px;font-weight:800;color:var(--text)">⚡ Presupuesto rápido — Posición financiera real</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">Basado en movimientos bancarios importados</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button onclick="cfPresSetRango('hoy',this)"  id="cfp-hoy"  class="rate-btn" style="font-size:11px;padding:4px 12px">Hoy</button>
+        <button onclick="cfPresSetRango('sem',this)"  id="cfp-sem"  class="rate-btn" style="font-size:11px;padding:4px 12px">Semana</button>
+        <button onclick="cfPresSetRango('mes',this)"  id="cfp-mes"  class="rate-btn active" style="font-size:11px;padding:4px 12px">Mes</button>
+        <button onclick="cfPresSetRango('anio',this)" id="cfp-anio" class="rate-btn" style="font-size:11px;padding:4px 12px">Año</button>
+      </div>
+    </div>
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px" id="cfp-kpis">
+      <div class="card" style="padding:12px 14px;background:var(--bg3);border-color:rgba(74,159,212,0.2)">
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">💰 Saldo Inicial</div>
+        <div id="cfp-k-inicio" style="font-size:18px;font-weight:800;font-family:var(--mono);color:var(--accent)">—</div>
+      </div>
+      <div class="card" style="padding:12px 14px;background:var(--bg3);border-color:rgba(74,222,128,0.2)">
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">📈 Ingresos</div>
+        <div id="cfp-k-ing" style="font-size:18px;font-weight:800;font-family:var(--mono);color:var(--green)">—</div>
+      </div>
+      <div class="card" style="padding:12px 14px;background:var(--bg3);border-color:rgba(248,113,113,0.2)">
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">📉 Egresos</div>
+        <div id="cfp-k-egr" style="font-size:18px;font-weight:800;font-family:var(--mono);color:var(--red)">—</div>
+      </div>
+      <div class="card" style="padding:12px 14px;background:var(--bg3)">
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🏦 Saldo Final</div>
+        <div id="cfp-k-final" style="font-size:18px;font-weight:800;font-family:var(--mono);color:var(--text)">—</div>
+      </div>
+    </div>
+    <!-- Gráficos -->
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">📈 Saldo acumulado</div>
+        <div style="position:relative;height:160px"><canvas id="chart-cfp-line"></canvas></div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">🥧 Ingresos vs Egresos</div>
+        <div style="position:relative;height:160px"><canvas id="chart-cfp-pie"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <!-- ════ FIN PRESUPUESTO RÁPIDO ════ -->
+
   <!-- HEADER -->
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
     <div>
@@ -11848,6 +11933,170 @@ function exportExtractosExcel() {
 
 <script>
 // ═══════════════════════════════════════════════════════════════
+// EXTRACTOS — importación por empresa separada
+// ═══════════════════════════════════════════════════════════════
+function extImportarEmp(file, empTag) {
+  if (!file) return;
+  const logEl = document.getElementById('ext-log-' + empTag.toLowerCase());
+  if (logEl) { logEl.textContent = '⏳ Procesando...'; logEl.style.display = 'block'; logEl.style.color = 'var(--text3)'; }
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const wb = XLSX.read(new Uint8Array(ev.target.result), { type:'array', cellDates:true });
+      const fileName = file.name || '';
+      const _MESES_MAP = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12};
+      let _mesNum = null, _anioNum = null;
+      const _fnLow = fileName.toLowerCase();
+      const _fnMatch = _fnLow.match(/extractos?\s+(\w+)\s+(\d{4})/i);
+      if (_fnMatch) {
+        _mesNum  = _MESES_MAP[(_fnMatch[1]||'').toLowerCase()] || null;
+        _anioNum = parseInt(_fnMatch[2]) || null;
+      }
+      const result = parseExtractoBancario(wb, _mesNum, _anioNum, empTag);
+      const mesLabel = _mesNum && _anioNum ? ' — ' + (_fnMatch[1]||'').charAt(0).toUpperCase() + (_fnMatch[1]||'').slice(1) + ' ' + _anioNum : '';
+      if (logEl) {
+        logEl.innerHTML = result.log.join('<br>');
+        logEl.style.color = 'var(--text2)';
+      }
+      showToast('✅ Extracto ' + empTag + mesLabel + ' — ' + result.total.toLocaleString() + ' movimientos');
+      if (typeof renderExtractos === 'function') renderExtractos();
+      if (appState.extractoBancario && appState.extractoBancario.length) {
+        setTimeout(() => {
+          _saveExtractosSupabase(appState.extractoBancario, _mesNum, _anioNum).then(ok => {
+            if (ok) showToast('☁️ Guardado en Supabase');
+          });
+        }, 500);
+      }
+    } catch(e) {
+      if (logEl) { logEl.textContent = '❌ Error: ' + e.message; logEl.style.color = 'var(--red)'; }
+      showToast('❌ Error al importar: ' + e.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CASH FLOW — Presupuesto Rápido
+// ═══════════════════════════════════════════════════════════════
+let _cfPresRango = 'mes';
+let _cfPresCharts = {};
+
+function cfPresSetRango(rango, btn) {
+  _cfPresRango = rango;
+  ['hoy','sem','mes','anio'].forEach(r => {
+    const b = document.getElementById('cfp-' + r);
+    if (b) b.classList.toggle('active', r === rango);
+  });
+  renderCFPresupuesto();
+}
+
+function renderCFPresupuesto() {
+  const movs = appState.extractoBancario || [];
+  if (!movs.length) {
+    ['cfp-k-inicio','cfp-k-ing','cfp-k-egr','cfp-k-final'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '—';
+    });
+    return;
+  }
+
+  const hoy = new Date();
+  const todayStr = hoy.toISOString().slice(0,10);
+  let desde = '', hasta = todayStr;
+
+  if (_cfPresRango === 'hoy') {
+    desde = todayStr;
+  } else if (_cfPresRango === 'sem') {
+    const d = new Date(hoy); d.setDate(d.getDate() - d.getDay());
+    desde = d.toISOString().slice(0,10);
+  } else if (_cfPresRango === 'mes') {
+    desde = todayStr.slice(0,7) + '-01';
+  } else {
+    desde = hoy.getFullYear() + '-01-01';
+  }
+
+  const filtered = movs.filter(m => m.fecha >= desde && m.fecha <= hasta
+    && m.cat !== 'Transferencias');
+
+  const ing = filtered.filter(m => m.tipo === 'ingreso').reduce((s,m) => s + (m.importe||0), 0);
+  const egr = filtered.filter(m => m.tipo === 'gasto').reduce((s,m) => s + (m.importe||0), 0);
+
+  const saldoRS = parseFloat(document.getElementById('cf-saldo-rs')?.value || 0) || 0;
+  const saldoSC = parseFloat(document.getElementById('cf-saldo-sc')?.value || 0) || 0;
+  const saldoInicio = saldoRS + saldoSC;
+  const saldoFinal  = saldoInicio + ing - egr;
+
+  const kI  = document.getElementById('cfp-k-inicio');
+  const kIn = document.getElementById('cfp-k-ing');
+  const kEg = document.getElementById('cfp-k-egr');
+  const kFi = document.getElementById('cfp-k-final');
+  if (kI)  kI.textContent  = '$ ' + fmtARS(saldoInicio);
+  if (kIn) kIn.textContent = '$ ' + fmtARS(ing);
+  if (kEg) kEg.textContent = '$ ' + fmtARS(egr);
+  if (kFi) { kFi.textContent = '$ ' + fmtARS(saldoFinal); kFi.style.color = saldoFinal >= 0 ? 'var(--green)' : 'var(--red)'; }
+
+  // Agrupar por día para el gráfico
+  const byDay = {};
+  filtered.forEach(m => {
+    if (!m.fecha) return;
+    if (!byDay[m.fecha]) byDay[m.fecha] = { ing: 0, egr: 0 };
+    if (m.tipo === 'ingreso') byDay[m.fecha].ing += m.importe || 0;
+    else byDay[m.fecha].egr += m.importe || 0;
+  });
+  const days = Object.keys(byDay).sort();
+  const labels = days.map(d => d.slice(5));
+  let acum = saldoInicio;
+  const acumData = days.map(d => { acum += (byDay[d].ing - byDay[d].egr); return Math.round(acum); });
+
+  // Line chart
+  const ctxL = document.getElementById('chart-cfp-line');
+  if (ctxL) {
+    if (_cfPresCharts.line) _cfPresCharts.line.destroy();
+    _cfPresCharts.line = new Chart(ctxL, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Saldo acumulado', data: acumData,
+          borderColor: '#4a9fd4', backgroundColor: 'rgba(74,159,212,0.1)',
+          fill: true, tension: 0.3, pointRadius: days.length > 20 ? 0 : 3,
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#888', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#888', font: { size: 10 }, callback: v => '$' + (v/1e6).toFixed(1) + 'M' }, grid: { color: 'rgba(255,255,255,0.07)' } }
+        }
+      }
+    });
+  }
+
+  // Pie chart
+  const ctxP = document.getElementById('chart-cfp-pie');
+  if (ctxP) {
+    if (_cfPresCharts.pie) _cfPresCharts.pie.destroy();
+    _cfPresCharts.pie = new Chart(ctxP, {
+      type: 'doughnut',
+      data: {
+        labels: ['Ingresos', 'Egresos'],
+        datasets: [{ data: [Math.round(ing), Math.round(egr)], backgroundColor: ['rgba(74,222,128,0.8)', 'rgba(248,113,113,0.8)'], borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#aaa', font: { size: 10 }, boxWidth: 10, padding: 8 } },
+          tooltip: { callbacks: { label: ctx => ' $' + fmtARS(ctx.raw) } }
+        },
+        cutout: '60%'
+      }
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // CASH FLOW — Manual + Cheques automáticos
 // ═══════════════════════════════════════════════════════════════
 let _cfEmp = 'grupo';
@@ -12289,6 +12538,7 @@ function renderCashFlow() {
   if (!appState.cfFilas) appState.cfFilas = [];
   if (!appState.cfMinutaData) appState.cfMinutaData = {};
   if (!appState.cfOverrides)  appState.cfOverrides  = {};
+  if (typeof renderCFPresupuesto === 'function') setTimeout(renderCFPresupuesto, 0);
 
   const saldoRSEl = document.getElementById('cf-saldo-rs');
   const saldoSCEl = document.getElementById('cf-saldo-sc');
@@ -12617,7 +12867,7 @@ function isExtractoBancario(wb) {
   } catch(e) { return false; }
 }
 
-function parseExtractoBancario(wb, mesNum, anioNum) {
+function parseExtractoBancario(wb, mesNum, anioNum, forceEmpTag) {
   const log = []; let total = 0;
 
   // Hoja principal de datos (la que tiene más filas)
@@ -12713,7 +12963,7 @@ function parseExtractoBancario(wb, mesNum, anioNum) {
     if (!row) return;
     const imp = parseFloat(row[iImp]) || 0;
     if (imp === 0) return;
-    const empTag = String(row[iEmp]||'').trim().toUpperCase();
+    const empTag = forceEmpTag || String(row[iEmp]||'').trim().toUpperCase();
     if (!['RS','SC','LP'].includes(empTag)) return;
 
     const fecha     = parseFecha(row[iFecha]);
