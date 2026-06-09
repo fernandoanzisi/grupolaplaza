@@ -23899,33 +23899,159 @@ function cgMostrarFicha(nombre) {
 
   // ── POSICIÓN NETA FINAL ───────────────────────────────────────────
   const peorPerfil = riesgo.length ? (riesgo.reduce((a,b)=>(b.fecha||'')>(a.fecha||'')?b:a, riesgo[0]).perfil||'—') : '—';
-  const alerta = rechActivos.length>0||['F','G','H','I'].includes(String(peorPerfil).toUpperCase())||(saldoNet>0);
   const deudaDebo = Math.max(0, saldoNet);
-  h += '<div style="border:2px solid '+(posNeta>=0?'rgba(74,222,128,0.4)':'rgba(248,113,113,0.4)')+';border-radius:14px;padding:18px 20px;margin-bottom:20px;background:'+(posNeta>=0?'rgba(74,222,128,0.04)':'rgba(248,113,113,0.04)')+'">' +
-    '<div style="font-size:13px;font-weight:800;margin-bottom:14px;color:'+(posNeta>=0?'#4ade80':'#f87171')+'">'+( posNeta>=0?'✅':'⚠️')+' POSICIÓN NETA DEL CLIENTE</div>' +
-    '<div style="display:flex;flex-direction:column;gap:6px;font-size:13px;margin-bottom:14px">' +
-      '<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(108,143,255,0.08);border-radius:8px">' +
-        '<span style="color:var(--text3)">📂 Cartera vigente (por cobrar)</span>' +
-        '<span style="font-weight:800;color:var(--accent)">+ '+fmt(montCart)+'</span>' +
+
+  // Donut SVG
+  const donutItems = [
+    { label:'Cartera vigente', value:montCart, color:'#6b8fff' },
+    { label:'Deuda DEBO',      value:deudaDebo, color:'#fbbf24' },
+    { label:'Rechazos activos',value:montRech,  color:'#f87171' }
+  ].filter(x=>x.value>0);
+  const donutTotal = donutItems.reduce((s,x)=>s+x.value,0)||1;
+  const R=52, CX=70, CY=70, SW=22;
+  const circ = +(2*Math.PI*R).toFixed(2);
+  let cum=0, donutSvg='<svg width="140" height="140" viewBox="0 0 140 140" style="display:block">';
+  donutSvg += '<circle cx="'+CX+'" cy="'+CY+'" r="'+R+'" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="'+SW+'"/>';
+  donutItems.forEach(item=>{
+    const len=+(item.value/donutTotal*circ).toFixed(2);
+    const offset=+(circ/4+cum).toFixed(2);
+    donutSvg+='<circle cx="'+CX+'" cy="'+CY+'" r="'+R+'" fill="none" stroke="'+item.color+'" stroke-width="'+SW+'" stroke-dasharray="'+len+' '+circ+'" stroke-dashoffset="'+(-offset)+'"/>';
+    cum+=len;
+  });
+  const netLabel = posNeta>=0?'FAVOR':'RIESGO';
+  donutSvg+='<text x="'+CX+'" y="'+(CY-8)+'" text-anchor="middle" fill="#9aa3b2" font-size="9" font-family="sans-serif" font-weight="600">'+netLabel+'</text>';
+  donutSvg+='<text x="'+CX+'" y="'+(CY+8)+'" text-anchor="middle" fill="'+(posNeta>=0?'#4ade80':'#f87171')+'" font-size="9.5" font-family="sans-serif" font-weight="800">'+fmt(posNeta)+'</text>';
+  donutSvg+='</svg>';
+  // Leyenda del donut
+  const donutLegend = donutItems.map(x=>'<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3)">' +
+    '<div style="width:10px;height:10px;border-radius:3px;background:'+x.color+';flex-shrink:0"></div>' +
+    '<span>'+x.label+'</span><span style="margin-left:auto;font-weight:700;color:var(--text)">'+fmt(x.value)+'</span></div>'
+  ).join('');
+
+  h += '<div id="cg-ficha-posicion" style="border:2px solid '+(posNeta>=0?'rgba(74,222,128,0.4)':'rgba(248,113,113,0.4)')+';border-radius:14px;padding:18px 20px;margin-bottom:20px;background:'+(posNeta>=0?'rgba(74,222,128,0.04)':'rgba(248,113,113,0.04)')+'">' +
+    // Header con botón copiar
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">' +
+      '<div style="font-size:13px;font-weight:800;color:'+(posNeta>=0?'#4ade80':'#f87171')+'">'+( posNeta>=0?'✅':'⚠️')+' POSICIÓN NETA DEL CLIENTE</div>' +
+      '<button onclick="cgFichaCopiar()" style="padding:7px 16px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(108,143,255,0.35);background:rgba(108,143,255,0.1);color:var(--accent);font-family:var(--font)">📋 Copiar para WhatsApp / Mail</button>' +
+    '</div>' +
+    // Layout: ecuación + gráfico
+    '<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-bottom:16px">' +
+      // Ecuación
+      '<div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:6px;font-size:13px">' +
+        '<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(108,143,255,0.08);border-radius:8px">' +
+          '<span style="color:var(--text3)">📂 Cartera vigente</span><span style="font-weight:800;color:#6b8fff">+ '+fmt(montCart)+'</span>' +
+        '</div>' +
+        (saldoNet>0
+          ? '<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(251,191,36,0.08);border-radius:8px"><span style="color:var(--text3)">💰 Deuda en DEBO</span><span style="font-weight:800;color:#fbbf24">− '+fmt(deudaDebo)+'</span></div>'
+          : '<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(74,222,128,0.06);border-radius:8px"><span style="color:var(--text3)">💰 Saldo DEBO</span><span style="font-weight:800;color:#4ade80">'+fmt(Math.abs(saldoNet))+' a favor</span></div>') +
+        (montRech
+          ? '<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(248,113,113,0.08);border-radius:8px"><span style="color:var(--text3)">❌ Rechazos activos</span><span style="font-weight:800;color:#f87171">− '+fmt(montRech)+'</span></div>'
+          : '<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(74,222,128,0.06);border-radius:8px"><span style="color:var(--text3)">❌ Rechazados</span><span style="font-weight:800;color:#4ade80">sin rechazos</span></div>') +
+        '<div style="display:flex;justify-content:space-between;padding:10px 14px;background:'+(posNeta>=0?'rgba(74,222,128,0.12)':'rgba(248,113,113,0.12)')+';border-radius:8px;border:1px solid '+(posNeta>=0?'rgba(74,222,128,0.3)':'rgba(248,113,113,0.3)')+';margin-top:4px">' +
+          '<span style="font-weight:800;font-size:14px;color:var(--text)">= RESULTADO NETO</span>' +
+          '<span style="font-weight:900;font-size:17px;color:'+(posNeta>=0?'#4ade80':'#f87171')+'">'+fmt(posNeta)+'</span>' +
+        '</div>' +
       '</div>' +
-      (saldoNet>0?'<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(248,113,113,0.08);border-radius:8px"><span style="color:var(--text3)">💰 Deuda en cuenta corriente (DEBO)</span><span style="font-weight:800;color:#f87171">− '+fmt(deudaDebo)+'</span></div>':'<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(74,222,128,0.06);border-radius:8px"><span style="color:var(--text3)">💰 Saldo cuenta corriente</span><span style="font-weight:800;color:#4ade80">'+fmt(saldoNet)+' (saldo a favor)</span></div>') +
-      (montRech?'<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(248,113,113,0.08);border-radius:8px"><span style="color:var(--text3)">❌ Cheques rechazados activos</span><span style="font-weight:800;color:#f87171">− '+fmt(montRech)+'</span></div>':'<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(74,222,128,0.06);border-radius:8px"><span style="color:var(--text3)">❌ Cheques rechazados</span><span style="font-weight:800;color:#4ade80">$0 — sin rechazos</span></div>') +
-      '<div style="display:flex;justify-content:space-between;padding:10px 14px;background:'+(posNeta>=0?'rgba(74,222,128,0.12)':'rgba(248,113,113,0.12)')+';border-radius:8px;border:1px solid '+(posNeta>=0?'rgba(74,222,128,0.3)':'rgba(248,113,113,0.3)')+';margin-top:4px">' +
-        '<span style="font-weight:800;font-size:14px;color:var(--text)">= RESULTADO NETO</span>' +
-        '<span style="font-weight:900;font-size:16px;color:'+(posNeta>=0?'#4ade80':'#f87171')+'">'+fmt(posNeta)+'</span>' +
+      // Gráfico donut
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:10px;min-width:140px">' +
+        donutSvg +
+        '<div style="width:140px;display:flex;flex-direction:column;gap:5px">'+donutLegend+'</div>' +
       '</div>' +
     '</div>' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">' +
-      _cgKpi('Cartera vigente', fmt(montCart), 'var(--accent)') +
-      _cgKpi('Deuda DEBO', fmt(deudaDebo), deudaDebo?'#f87171':'#4ade80') +
+      _cgKpi('Cartera vigente', fmt(montCart), '#6b8fff') +
+      _cgKpi('Deuda DEBO', fmt(deudaDebo), deudaDebo?'#fbbf24':'#4ade80') +
       _cgKpi('Rechazos activos', fmt(montRech), montRech?'#f87171':'#4ade80') +
       _cgKpi('Perfil crediticio', peorPerfil, (PERFILES[String(peorPerfil).toUpperCase()]||{c:'var(--text2)'}).c) +
     '</div></div>';
+
+  window._cgFichaData = { nombre, debo, riesgo, rech, cart, saldoNet, montRech, montCart, posNeta, deudaDebo, peorPerfil, PERFILES };
 
   res.innerHTML = h;
 
   // Lanzar análisis IA con todos los datos
   cgFichaIA({ nombre, debo, riesgo, rech, rechActivos, cart, saldoNet, montRech, montCart, peorPerfil, posNeta, deudaDebo, PERFILES });
+}
+
+function cgFichaCopiar() {
+  const d = window._cgFichaData;
+  if (!d) return;
+  const fmt = n => '$'+(n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const ultimo = d.riesgo.length ? d.riesgo.reduce((a,b)=>(b.fecha||'')>(a.fecha||'')?b:a,d.riesgo[0]) : null;
+  const PERFILES = d.PERFILES;
+  const pLabel = ultimo ? (PERFILES[String(ultimo.perfil||'').toUpperCase()]||{l:'—'}).l : '—';
+  const grupByApies = (arr,kFn,vFn) => {const m={};arr.forEach(x=>{const k=kFn(x)||'Sin dato';if(!m[k])m[k]=0;m[k]+=vFn(x)||0;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
+
+  const lineas = [
+    '📊 INFORME DE CLIENTE — GRUPO LA PLAZA',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    '👤 '+d.nombre,
+    '📅 '+new Date().toLocaleDateString('es-AR'),
+    '',
+    '━━━ POSICIÓN NETA ━━━',
+    '📂 Cartera vigente:      '+fmt(d.montCart),
+    '💰 Deuda en DEBO:        '+(d.deudaDebo?'−'+fmt(d.deudaDebo):'$0 (sin deuda)'),
+    '❌ Rechazos activos:     '+(d.montRech?'−'+fmt(d.montRech):'$0 (sin rechazos)'),
+    '─────────────────────────',
+    '= RESULTADO NETO:        '+(d.posNeta>=0?'+':'')+fmt(d.posNeta)+(d.posNeta>=0?' ✅':' ⚠️'),
+    '',
+  ];
+
+  if (d.debo.length) {
+    lineas.push('━━━ CUENTA CORRIENTE (DEBO) ━━━');
+    const grupos = grupByApies(d.debo, c=>c.uunn||c.apies||c.emp, c=>c.saldo||0);
+    grupos.forEach(([k,v])=>lineas.push('  '+k+': '+fmt(v)));
+    lineas.push('  TOTAL SALDO: '+fmt(d.saldoNet));
+    lineas.push('');
+  }
+
+  const rechAct = d.rech.filter(r=>(r.estado||'').toUpperCase()!=='COBRADO');
+  if (rechAct.length) {
+    lineas.push('━━━ CHEQUES RECHAZADOS ACTIVOS ━━━');
+    const grupos = grupByApies(rechAct, r=>r.apies||'Sin APIES', r=>r.importe||0);
+    grupos.forEach(([k,v])=>lineas.push('  APIES '+k+': '+fmt(v)));
+    lineas.push('  TOTAL RECHAZOS: '+fmt(d.montRech));
+    lineas.push('');
+  }
+
+  if (d.cart.length) {
+    lineas.push('━━━ CHEQUES EN CARTERA ━━━');
+    const grupos = grupByApies(d.cart, c=>c.uunn||c.subempresa||c._empName||'Sin dato', c=>c.importe||0);
+    grupos.forEach(([k,v])=>lineas.push('  '+k+': '+fmt(v)));
+    lineas.push('  TOTAL CARTERA: '+fmt(d.montCart));
+    lineas.push('');
+  }
+
+  if (ultimo) {
+    lineas.push('━━━ RIESGO CREDITICIO (NOSIS) ━━━');
+    lineas.push('  Perfil '+ultimo.perfil+' — '+pLabel);
+    lineas.push('  Score: '+(ultimo.score||'—'));
+    if (ultimo.alertas && ultimo.alertas!=='—') lineas.push('  ⚠️ Alertas: '+ultimo.alertas);
+    lineas.push('');
+  }
+
+  const iaEl = document.getElementById('cg-ficha-ia-text');
+  const iaText = iaEl&&iaEl.textContent&&!iaEl.textContent.includes('Generando')&&!iaEl.textContent.includes('Error') ? iaEl.textContent.trim() : null;
+  if (iaText) {
+    lineas.push('━━━ ANÁLISIS IA ━━━');
+    lineas.push(iaText);
+    lineas.push('');
+  }
+
+  lineas.push('─────────────────────────');
+  lineas.push('Informe generado por Grupo La Plaza — '+new Date().toLocaleString('es-AR'));
+
+  const texto = lineas.join('\n');
+  navigator.clipboard.writeText(texto).then(()=>{
+    const btn = document.querySelector('#cg-ficha-posicion button');
+    if (btn) { const orig=btn.textContent; btn.textContent='✅ Copiado!'; setTimeout(()=>{btn.textContent=orig;},2000); }
+  }).catch(()=>{
+    const ta=document.createElement('textarea');
+    ta.value=texto; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    const btn=document.querySelector('#cg-ficha-posicion button');
+    if(btn){const orig=btn.textContent;btn.textContent='✅ Copiado!';setTimeout(()=>{btn.textContent=orig;},2000);}
+  });
 }
 
 async function cgFichaIA(d) {
