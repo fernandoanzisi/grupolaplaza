@@ -23897,6 +23897,101 @@ function cgMostrarFicha(nombre) {
       }).join('')+'</tbody></table></div></details>';
   }
 
+  // ── CASCADA DE VENCIMIENTOS ──────────────────────────────────────
+  h += '<div style="font-size:13px;font-weight:700;margin-bottom:10px">📅 Cascada de Vencimientos — Cartera</div>';
+  if (!cart.length) {
+    h += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:12px;color:var(--text3);margin-bottom:20px">Sin cheques en cartera para proyectar.</div>';
+  } else {
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const conFecha = cart.map(c=>{
+      const raw = c.fCobro||c.fecha||'';
+      const d = new Date(raw+'T12:00:00');
+      const dias = isNaN(d)?null:Math.ceil((d-hoy)/(1000*60*60*24));
+      return {...c, _d:isNaN(d)?null:d, _dias:dias};
+    }).filter(c=>c._d).sort((a,b)=>a._d-b._d);
+    const sinFecha = cart.filter(c=>{ const d=new Date((c.fCobro||c.fecha||'')+'T12:00:00'); return isNaN(d);});
+
+    // KPIs de período
+    const tot30  = conFecha.filter(c=>c._dias<=30).reduce((s,c)=>s+(c.importe||0),0);
+    const tot60  = conFecha.filter(c=>c._dias>30&&c._dias<=60).reduce((s,c)=>s+(c.importe||0),0);
+    const tot90  = conFecha.filter(c=>c._dias>60&&c._dias<=90).reduce((s,c)=>s+(c.importe||0),0);
+    const totMas = conFecha.filter(c=>c._dias>90).reduce((s,c)=>s+(c.importe||0),0);
+    const totVen = conFecha.filter(c=>c._dias<0).reduce((s,c)=>s+(c.importe||0),0);
+    const proxDias = conFecha.find(c=>c._dias>=0)?conFecha.find(c=>c._dias>=0)._dias:null;
+
+    h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px">' +
+      (totVen?_cgKpi('Vencidos s/cobrar', fmt(totVen), '#f87171'):'') +
+      _cgKpi('Próx. 30 días', fmt(tot30), tot30?'#fbbf24':'var(--text3)') +
+      _cgKpi('31 a 60 días', fmt(tot60), tot60?'var(--accent)':'var(--text3)') +
+      _cgKpi('61 a 90 días', fmt(tot90), tot90?'#4ade80':'var(--text3)') +
+      (totMas?_cgKpi('Más de 90 días', fmt(totMas), '#9aa3b2'):'') +
+      (proxDias!==null?_cgKpi('Próx. vto en', proxDias+' días', proxDias<=15?'#f87171':proxDias<=30?'#fbbf24':'#4ade80'):'') +
+    '</div>';
+
+    // Barra visual por mes
+    const porMes = {};
+    conFecha.forEach(c=>{
+      const k=c._d.toLocaleString('es-AR',{month:'short',year:'2-digit'});
+      if(!porMes[k])porMes[k]={label:k,total:0,count:0,diasRef:c._dias};
+      porMes[k].total+=c.importe||0; porMes[k].count++;
+    });
+    const meses = Object.values(porMes);
+    const maxMes = Math.max(...meses.map(m=>m.total))||1;
+    if (meses.length > 0) {
+      h += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:12px">Distribución mensual de cobros</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px">';
+      meses.forEach(m=>{
+        const pct = Math.round(m.total/maxMes*100);
+        const col = m.diasRef<0?'#f87171':m.diasRef<=30?'#fbbf24':m.diasRef<=60?'#6b8fff':'#4ade80';
+        h += '<div style="display:flex;align-items:center;gap:10px">' +
+          '<div style="width:52px;font-size:11px;color:var(--text3);flex-shrink:0;text-transform:capitalize">'+m.label+'</div>' +
+          '<div style="flex:1;background:rgba(255,255,255,0.05);border-radius:4px;height:18px;overflow:hidden">' +
+            '<div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:4px;transition:width 0.4s;display:flex;align-items:center;padding-left:6px;box-sizing:border-box">' +
+              (pct>18?'<span style="font-size:9px;font-weight:700;color:rgba(0,0,0,0.7)">'+m.count+' ch</span>':'') +
+            '</div></div>' +
+          '<div style="width:100px;text-align:right;font-size:11px;font-weight:700;color:'+col+'">'+fmt(m.total)+'</div>' +
+        '</div>';
+      });
+      h += '</div></div>';
+    }
+
+    // Tabla de cascada con acumulado
+    let acum = 0;
+    const totalConFecha = conFecha.reduce((s,c)=>s+(c.importe||0),0);
+    h += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+      _cgThead(['F.Cobro','center'],['Días','center'],['Banco'],['Nro'],['Importe','right'],['Acumulado','right'],['% cobrado','center']) +
+      '<tbody>'+conFecha.map(c=>{
+        acum+=c.importe||0;
+        const pctAcum=Math.round(acum/totalConFecha*100);
+        const col=c._dias<0?'#f87171':c._dias<=15?'#fb923c':c._dias<=30?'#fbbf24':'#4ade80';
+        const diasTxt=c._dias<0?'VENCIDO':c._dias===0?'HOY':'+'+c._dias+'d';
+        return '<tr style="border-top:1px solid var(--border)">' +
+          '<td style="padding:7px 12px;text-align:center;font-size:11px;color:var(--text3)">'+c._d.toLocaleDateString('es-AR')+'</td>' +
+          '<td style="padding:7px 12px;text-align:center"><span style="background:rgba(0,0,0,0.2);color:'+col+';border-radius:6px;padding:2px 7px;font-size:10px;font-weight:800">'+diasTxt+'</span></td>' +
+          '<td style="padding:7px 12px;font-size:11px;color:var(--text3)">'+(c.banco||'—')+'</td>' +
+          '<td style="padding:7px 12px;color:var(--text)">'+(c.nro||'—')+'</td>' +
+          '<td style="padding:7px 12px;text-align:right;font-weight:700;color:'+col+'">'+fmt(c.importe)+'</td>' +
+          '<td style="padding:7px 12px;text-align:right;font-weight:700;color:var(--accent)">'+fmt(acum)+'</td>' +
+          '<td style="padding:7px 12px;text-align:center">' +
+            '<div style="background:rgba(108,143,255,0.15);border-radius:99px;height:14px;overflow:hidden;position:relative;width:60px;margin:0 auto">' +
+              '<div style="position:absolute;left:0;top:0;height:100%;width:'+pctAcum+'%;background:var(--accent);border-radius:99px"></div>' +
+              '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white">'+pctAcum+'%</span>' +
+            '</div>' +
+          '</td></tr>';
+      }).join('');
+    if (sinFecha.length) {
+      h += '<tr style="border-top:1px solid var(--border);background:rgba(255,255,255,0.02)">' +
+        '<td colspan="4" style="padding:7px 12px;font-size:11px;color:var(--text3)">'+sinFecha.length+' cheque(s) sin fecha de cobro</td>' +
+        '<td style="padding:7px 12px;text-align:right;color:var(--text3)">'+fmt(sinFecha.reduce((s,c)=>s+(c.importe||0),0))+'</td>' +
+        '<td colspan="2"></td></tr>';
+    }
+    h += '</tbody></table></div>';
+
+    // Guardar datos de cascada para IA y copiar
+    window._cgFichaCascada = { conFecha, tot30, tot60, tot90, totMas, totVen, proxDias, meses };
+  }
+
   // ── POSICIÓN NETA FINAL ───────────────────────────────────────────
   const peorPerfil = riesgo.length ? (riesgo.reduce((a,b)=>(b.fecha||'')>(a.fecha||'')?b:a, riesgo[0]).perfil||'—') : '—';
   const deudaDebo = Math.max(0, saldoNet);
@@ -24022,6 +24117,22 @@ function cgFichaCopiar() {
     lineas.push('');
   }
 
+  const cas = window._cgFichaCascada;
+  if (cas && d.cart.length) {
+    lineas.push('━━━ CASCADA DE VENCIMIENTOS ━━━');
+    if (cas.totVen)            lineas.push('  ⚠️ Vencidos sin cobrar:   '+fmt(cas.totVen));
+    if (cas.proxDias!==null)   lineas.push('  Próximo vencimiento en:    '+cas.proxDias+' días');
+    lineas.push('  Próximos 30 días:          '+fmt(cas.tot30));
+    lineas.push('  31 a 60 días:              '+fmt(cas.tot60));
+    lineas.push('  61 a 90 días:              '+fmt(cas.tot90));
+    if (cas.totMas)            lineas.push('  Más de 90 días:           '+fmt(cas.totMas));
+    if (cas.meses&&cas.meses.length) {
+      lineas.push('  Por mes:');
+      cas.meses.forEach(m=>lineas.push('    '+m.label+': '+fmt(m.total)+' ('+m.count+' cheques)'));
+    }
+    lineas.push('');
+  }
+
   if (ultimo) {
     lineas.push('━━━ RIESGO CREDITICIO (NOSIS) ━━━');
     lineas.push('  Perfil '+ultimo.perfil+' — '+pLabel);
@@ -24097,9 +24208,24 @@ async function cgFichaIA(d) {
     '',
     '--- CHEQUES EN CARTERA ---',
     d.cart.length ? 'Total: '+d.cart.length+' cheques por '+fmt2(d.montCart)+' | Por empresa: '+groupTxt(d.cart,c=>c.uunn||c.subempresa||c._empName,c=>c.importe) : 'Sin cheques en cartera.',
+    '',
+    '--- CASCADA DE VENCIMIENTOS ---',
+    (()=>{
+      const cas=window._cgFichaCascada;
+      if(!cas) return 'Sin datos de vencimientos.';
+      const lines=[];
+      if(cas.totVen) lines.push('VENCIDOS sin cobrar: '+fmt2(cas.totVen));
+      if(cas.proxDias!==null) lines.push('Próximo vencimiento en: '+cas.proxDias+' días');
+      lines.push('Próximos 30 días: '+fmt2(cas.tot30));
+      lines.push('31 a 60 días: '+fmt2(cas.tot60));
+      lines.push('61 a 90 días: '+fmt2(cas.tot90));
+      if(cas.totMas) lines.push('Más de 90 días: '+fmt2(cas.totMas));
+      if(cas.meses&&cas.meses.length) lines.push('Por mes: '+cas.meses.map(m=>m.label+' '+fmt2(m.total)).join(' | '));
+      return lines.join(' | ');
+    })(),
   ].filter(Boolean).join('\n');
 
-  const prompt = 'Sos analista financiero de Grupo La Plaza, empresa de combustibles y agro en Patagonia Argentina. Analizá este cliente y hacé un informe ejecutivo CLARO y DIRECTO en español rioplatense. Sé concreto: decí si es un cliente confiable o no, y por qué. Mencioná los puntos clave de riesgo o de solidez. Usá frases cortas. Máximo 5 oraciones. No uses markdown ni bullets, solo texto corrido.\n\n'+resumen;
+  const prompt = 'Sos analista financiero y comercial de Grupo La Plaza, empresa de combustibles y agro en Patagonia Argentina. Analizá este cliente y hacé un informe ejecutivo MUY CLARO y DIRECTO en español rioplatense. Respondé estas preguntas en orden: 1) ¿Es un cliente confiable o riesgoso, y por qué? 2) ¿Cuándo cobra el grupo la mayor parte de sus cheques (próximos 30/60/90 días)? 3) ¿Conviene seguir vendiéndole o hay que tomar recaudos? Sé conciso, máximo 6 oraciones. No uses markdown, bullets ni títulos. Solo texto corrido, directo al grano.\n\n'+resumen;
 
   try {
     const resp = await fetch('/api/claude', {
