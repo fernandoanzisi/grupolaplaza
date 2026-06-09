@@ -23933,7 +23933,7 @@ function cgFichaPDF() {
   ${d.rech.length?`<table><thead><tr><th>Banco</th><th>Número</th><th>F.Emisión</th><th>F.Rechazo</th><th>Importe</th><th>Días</th><th>Estado</th><th>Motivo</th></tr></thead><tbody>${d.rech.map(r=>{const act=(r.estado||'').toUpperCase()!=='COBRADO';return `<tr><td>${r.banco||'—'}</td><td>${r.nro||'—'}</td><td>${fmtD(r.fEmi||r.femi)}</td><td>${fmtD(r.fRech||r.frech)}</td><td style="color:${act?'red':'#333'};font-weight:700">${fmt(r.importe)}</td><td>${r.dias||'—'}</td><td><span class="chip" style="background:${act?'#fff0f0':'#f0fff0'};color:${act?'red':'green'}">${act?'ACTIVO':'COBRADO'}</span></td><td>${r.motivo||'—'}</td></tr>`;}).join('')}</tbody></table>`:'<p>Sin cheques rechazados. ✅</p>'}
   <h2>📂 Cartera de Valores</h2>
   ${d.cart.length?`<table><thead><tr><th>Empresa</th><th>Banco</th><th>Número</th><th>Librador</th><th>F.Presentación</th><th>Días</th><th>Importe</th></tr></thead><tbody>${d.cart.map(c=>`<tr><td>${c.emp||'—'}</td><td>${c.banco||'—'}</td><td>${c.numero||'—'}</td><td>${c.librador||'—'}</td><td>${fmtD(c.fPres||c.fpres)}</td><td>${c.dias||'—'}</td><td>${fmt(c.importe)}</td></tr>`).join('')}</tbody></table>`:'<p>Sin cheques en cartera.</p>'}
-  <script>window.onload=()=>window.print()</script></body></html>`);
+  <script>window.onload=()=>window.print()<\/script></body></html>`);
   win.document.close();
 }
 
