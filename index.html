@@ -23690,6 +23690,22 @@ function cgMostrarFicha(nombre) {
   const allCheques = (appState.empresas||[]).flatMap(e => (e.cheques||[]).map(c=>({...c,_empName:e.name||''})));
   const cart = allCheques.filter(c => match(c.cliente||c.librador));
 
+  // Helpers de agrupación
+  const groupBy = (arr, keyFn, valFn) => {
+    const m = {};
+    arr.forEach(x => {
+      const k = keyFn(x)||'Sin dato'; const v = valFn(x)||0;
+      if (!m[k]) m[k] = 0; m[k] += v;
+    });
+    return Object.entries(m).sort((a,b)=>b[1]-a[1]);
+  };
+
+  // Totales para balance
+  const saldoNet  = debo.reduce((s,c)=>s+(c.saldo||0),0);
+  const montRech  = rechActivos.reduce((s,r)=>s+(r.importe||0),0);
+  const montCart  = cart.reduce((s,c)=>s+(c.importe||0),0);
+  const posNeta   = montCart - montRech - Math.max(0, saldoNet);
+
   window._cgFichaData = { nombre, debo, riesgo, rech, cart };
 
   const fmt = n => '$'+(n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
@@ -23720,23 +23736,39 @@ function cgMostrarFicha(nombre) {
     h += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:12px;color:var(--text3);margin-bottom:20px">Sin registros en Clientes DEBO.</div>';
   } else {
     const totalSaldo = debo.reduce((s,c)=>s+(c.saldo||0),0);
-    const totalDeb = debo.reduce((s,c)=>s+(c.debitos||0),0);
-    const totalCred = debo.reduce((s,c)=>s+(c.creditos||0),0);
+    const totalDeb   = debo.reduce((s,c)=>s+(c.debitos||0),0);
+    const totalCred  = debo.reduce((s,c)=>s+(c.creditos||0),0);
+    // Breakdown por UUNN/APIES
+    const deboByUunn = groupBy(debo, c=>c.uunn||c.apies||c.emp, c=>c.saldo||0);
     h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px">' +
-      _cgKpi('Saldo neto', fmt(totalSaldo), totalSaldo<0?'#f87171':'#4ade80') +
-      _cgKpi('Débitos', fmt(totalDeb), 'var(--accent)') +
-      _cgKpi('Créditos', fmt(totalCred), '#fbbf24') +
-      _cgKpi('Cuentas', debo.length+'', 'var(--text2)') + '</div>' +
-      '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
-      _cgThead(['Empresa'],['Cuenta'],['Débitos','right'],['Créditos','right'],['Saldo','right'],['Actualiz.','center']) +
+      _cgKpi('Saldo neto', fmt(totalSaldo), totalSaldo>0?'#f87171':'#4ade80') +
+      _cgKpi('Débitos total', fmt(totalDeb), 'var(--accent)') +
+      _cgKpi('Créditos total', fmt(totalCred), '#fbbf24') +
+      _cgKpi('Cuentas', debo.length+'', 'var(--text2)') + '</div>';
+    // Tabla por estación
+    h += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px"><div style="padding:9px 14px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border)">Deuda por estación / unidad de negocio</div><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+      _cgThead(['Estación / UUNN'],['Saldo','right'],['%','right']) +
+      '<tbody>'+deboByUunn.map(([k,v])=>'<tr style="border-top:1px solid var(--border)">' +
+        '<td style="padding:8px 14px;color:var(--text);font-weight:600">'+k+'</td>' +
+        '<td style="padding:8px 14px;text-align:right;font-weight:800;color:'+(v>0?'#f87171':'#4ade80')+'">'+fmt(v)+'</td>' +
+        '<td style="padding:8px 14px;text-align:right;color:var(--text3);font-size:11px">'+(totalSaldo?Math.abs(Math.round(v/totalSaldo*100))+'%':'—')+'</td>' +
+      '</tr>').join('')+'<tr style="border-top:2px solid var(--border);background:var(--bg3)">' +
+        '<td style="padding:9px 14px;font-weight:700;color:var(--text)">TOTAL</td>' +
+        '<td style="padding:9px 14px;text-align:right;font-weight:900;color:'+(totalSaldo>0?'#f87171':'#4ade80')+'">'+fmt(totalSaldo)+'</td>' +
+        '<td style="padding:9px 14px;text-align:right;color:var(--text3)">100%</td>' +
+      '</tr></tbody></table></div>';
+    // Detalle completo colapsable
+    h += '<details style="margin-bottom:20px"><summary style="font-size:11px;color:var(--text3);cursor:pointer;padding:6px 2px">Ver detalle completo ('+debo.length+' registros)</summary>' +
+      '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+      _cgThead(['Empresa'],['Cuenta/Banco'],['Débitos','right'],['Créditos','right'],['Saldo','right'],['Actualiz.','center']) +
       '<tbody>'+debo.map(c=>'<tr style="border-top:1px solid var(--border)">' +
-        '<td style="padding:8px 12px;color:var(--text3);font-size:11px">'+(c.emp||'—')+'</td>' +
-        '<td style="padding:8px 12px;color:var(--text)">'+(c.nombre||'—')+'</td>' +
-        '<td style="padding:8px 12px;text-align:right;color:var(--accent)">'+fmt(c.debitos)+'</td>' +
-        '<td style="padding:8px 12px;text-align:right;color:#fbbf24">'+fmt(c.creditos)+'</td>' +
-        '<td style="padding:8px 12px;text-align:right;font-weight:700;color:'+((c.saldo||0)<0?'#f87171':'#4ade80')+'">'+fmt(c.saldo)+'</td>' +
-        '<td style="padding:8px 12px;text-align:center;font-size:11px;color:var(--text3)">'+fmtD(c.fecUp)+'</td></tr>'
-      ).join('')+'</tbody></table></div>';
+        '<td style="padding:7px 12px;color:var(--text3);font-size:11px">'+(c.emp||'—')+'</td>' +
+        '<td style="padding:7px 12px;color:var(--text)">'+(c.nombre||'—')+'</td>' +
+        '<td style="padding:7px 12px;text-align:right;color:var(--accent)">'+fmt(c.debitos)+'</td>' +
+        '<td style="padding:7px 12px;text-align:right;color:#fbbf24">'+fmt(c.creditos)+'</td>' +
+        '<td style="padding:7px 12px;text-align:right;font-weight:700;color:'+((c.saldo||0)>0?'#f87171':'#4ade80')+'">'+fmt(c.saldo)+'</td>' +
+        '<td style="padding:7px 12px;text-align:center;font-size:11px;color:var(--text3)">'+fmtD(c.fecUp)+'</td></tr>'
+      ).join('')+'</tbody></table></div></details>';
   }
 
   // ── RIESGO CREDITICIO ─────────────────────────────────────────────
@@ -23785,29 +23817,42 @@ function cgMostrarFicha(nombre) {
   // ── CHEQUES RECHAZADOS — Dinero/Rechazados ────────────────────────
   h += '<div style="font-size:13px;font-weight:700;margin-bottom:10px">❌ Cheques Rechazados</div>';
   if (!rech.length) {
-    h += '<div style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:14px;font-size:12px;color:#4ade80;margin-bottom:20px">✅ Sin cheques rechazados registrados en el sistema.</div>';
+    h += '<div style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:14px;font-size:12px;color:#4ade80;margin-bottom:20px">✅ Sin cheques rechazados registrados.</div>';
   } else {
     const totalRech = rechActivos.reduce((s,r)=>s+(r.importe||0),0);
     const totalHist = rech.reduce((s,r)=>s+(r.importe||0),0);
+    const rechByApies = groupBy(rechActivos, r=>r.apies||'Sin APIES', r=>r.importe||0);
     h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px">' +
       _cgKpi('Monto activo', fmt(totalRech), rechActivos.length?'#f87171':'#4ade80') +
       _cgKpi('Cheques activos', rechActivos.length+'', rechActivos.length?'#f87171':'#4ade80') +
       _cgKpi('Total histórico', fmt(totalHist), 'var(--text2)') +
-      _cgKpi('Recuperados', (rech.length-rechActivos.length)+'/'+rech.length, '#4ade80') + '</div>' +
-      '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
-      _cgThead(['Banco'],['Nro'],['F.Emisión','center'],['F.Rechazo','center'],['Importe','right'],['Días','center'],['Estado','center'],['Motivo']) +
+      _cgKpi('Recuperados', (rech.length-rechActivos.length)+'/'+rech.length, '#4ade80') + '</div>';
+    if (rechByApies.length) {
+      h += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px"><div style="padding:9px 14px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border)">Rechazados activos por estación</div><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+        _cgThead(['APIES'],['Monto activo','right'],['%','right']) +
+        '<tbody>'+rechByApies.map(([k,v])=>'<tr style="border-top:1px solid var(--border)">' +
+          '<td style="padding:8px 14px;font-weight:600;color:var(--text)">APIES '+k+'</td>' +
+          '<td style="padding:8px 14px;text-align:right;font-weight:800;color:#f87171">'+fmt(v)+'</td>' +
+          '<td style="padding:8px 14px;text-align:right;color:var(--text3);font-size:11px">'+(totalRech?Math.round(v/totalRech*100)+'%':'—')+'</td>' +
+        '</tr>').join('')+
+        '<tr style="border-top:2px solid var(--border);background:var(--bg3)"><td style="padding:9px 14px;font-weight:700;color:var(--text)">TOTAL ACTIVO</td><td style="padding:9px 14px;text-align:right;font-weight:900;color:#f87171">'+fmt(totalRech)+'</td><td style="padding:9px 14px;text-align:right;color:var(--text3)">100%</td></tr>' +
+      '</tbody></table></div>';
+    }
+    h += '<details style="margin-bottom:20px"><summary style="font-size:11px;color:var(--text3);cursor:pointer;padding:6px 2px">Ver todos los cheques ('+rech.length+')</summary>' +
+      '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+      _cgThead(['APIES'],['Banco'],['Nro'],['F.Rechazo','center'],['Importe','right'],['Días','center'],['Estado','center'],['Motivo']) +
       '<tbody>'+rech.map(r=>{
         const act=(r.estado||'').toUpperCase()!=='COBRADO';
         return '<tr style="border-top:1px solid var(--border)">' +
+          '<td style="padding:7px 12px;font-size:11px;color:var(--text3)">'+(r.apies||'—')+'</td>' +
           '<td style="padding:7px 12px;font-size:11px;color:var(--text3)">'+(r.banco||'—')+'</td>' +
           '<td style="padding:7px 12px;color:var(--text)">'+(r.nro||'—')+'</td>' +
-          '<td style="padding:7px 12px;text-align:center;font-size:11px;color:var(--text3)">'+fmtD(r.fEmi||r.femi)+'</td>' +
           '<td style="padding:7px 12px;text-align:center;font-size:11px;color:var(--text3)">'+fmtD(r.fRech||r.frech)+'</td>' +
           '<td style="padding:7px 12px;text-align:right;font-weight:700;color:'+(act?'#f87171':'var(--text2)')+'">'+fmt(r.importe)+'</td>' +
           '<td style="padding:7px 12px;text-align:center;color:var(--text3)">'+(r.dias||'—')+'</td>' +
           '<td style="padding:7px 12px;text-align:center"><span style="background:'+(act?'rgba(248,113,113,0.12)':'rgba(74,222,128,0.12)')+';color:'+(act?'#f87171':'#4ade80')+';border-radius:99px;padding:2px 8px;font-size:10px;font-weight:700">'+(act?'ACTIVO':'COBRADO')+'</span></td>' +
           '<td style="padding:7px 12px;font-size:11px;color:var(--text3)">'+(r.motivo||'—')+'</td></tr>';
-      }).join('')+'</tbody></table></div>';
+      }).join('')+'</tbody></table></div></details>';
   }
 
   // ── CHEQUES EN CARTERA — Dinero/Cheques ──────────────────────────
@@ -23817,13 +23862,26 @@ function cgMostrarFicha(nombre) {
   } else {
     const totalCart = cart.reduce((s,c)=>s+(c.importe||0),0);
     const hoy = new Date();
+    const cartByUunn = groupBy(cart, c=>c.uunn||c.subempresa||c._empName||'Sin dato', c=>c.importe||0);
     const vencidos = cart.filter(c=>{const d=new Date((c.fCobro||c.fecha||'')+'T12:00:00'); return !isNaN(d)&&d<hoy;}).length;
     h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px">' +
       _cgKpi('Total cartera', fmt(totalCart), 'var(--accent)') +
       _cgKpi('Cheques', cart.length+'', 'var(--text2)') +
       _cgKpi('Vencidos', vencidos+'', vencidos?'#f87171':'#4ade80') +
-      _cgKpi('Vigentes', (cart.length-vencidos)+'', '#4ade80') + '</div>' +
-      '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+      _cgKpi('Vigentes', (cart.length-vencidos)+'', '#4ade80') + '</div>';
+    if (cartByUunn.length > 1) {
+      h += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px"><div style="padding:9px 14px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border)">Cartera por estación / empresa</div><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+        _cgThead(['Estación / Empresa'],['Monto','right'],['%','right']) +
+        '<tbody>'+cartByUunn.map(([k,v])=>'<tr style="border-top:1px solid var(--border)">' +
+          '<td style="padding:8px 14px;font-weight:600;color:var(--text)">'+k+'</td>' +
+          '<td style="padding:8px 14px;text-align:right;font-weight:800;color:var(--accent)">'+fmt(v)+'</td>' +
+          '<td style="padding:8px 14px;text-align:right;color:var(--text3);font-size:11px">'+(totalCart?Math.round(v/totalCart*100)+'%':'—')+'</td>' +
+        '</tr>').join('')+
+        '<tr style="border-top:2px solid var(--border);background:var(--bg3)"><td style="padding:9px 14px;font-weight:700;color:var(--text)">TOTAL CARTERA</td><td style="padding:9px 14px;text-align:right;font-weight:900;color:var(--accent)">'+fmt(totalCart)+'</td><td style="padding:9px 14px;text-align:right;color:var(--text3)">100%</td></tr>' +
+      '</tbody></table></div>';
+    }
+    h += '<details style="margin-bottom:20px"><summary style="font-size:11px;color:var(--text3);cursor:pointer;padding:6px 2px">Ver todos los cheques ('+cart.length+')</summary>' +
+      '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
       _cgThead(['Empresa'],['Banco'],['Nro'],['Librador'],['F.Cobro','center'],['Estado'],['Importe','right']) +
       '<tbody>'+cart.map(c=>{
         const venc=(()=>{const d=new Date((c.fCobro||c.fecha||'')+'T12:00:00'); return !isNaN(d)&&d<hoy;})();
@@ -23836,28 +23894,38 @@ function cgMostrarFicha(nombre) {
           '<td style="padding:7px 12px;text-align:center;font-size:11px;color:'+(venc?'#f87171':'var(--text3)')+'">'+fmtD(c.fCobro||c.fecha)+'</td>' +
           '<td style="padding:7px 12px;font-size:11px;color:var(--text3)">'+est+'</td>' +
           '<td style="padding:7px 12px;text-align:right;font-weight:700;color:var(--accent)">'+fmt(c.importe)+'</td></tr>';
-      }).join('')+'</tbody></table></div>';
+      }).join('')+'</tbody></table></div></details>';
   }
 
-  // ── RESUMEN EJECUTIVO ─────────────────────────────────────────────
-  const saldoNet = debo.reduce((s,c)=>s+(c.saldo||0),0);
-  const montRech = rechActivos.reduce((s,r)=>s+(r.importe||0),0);
-  const montCart = cart.reduce((s,c)=>s+(c.importe||0),0);
+  // ── POSICIÓN NETA FINAL ───────────────────────────────────────────
   const peorPerfil = riesgo.length ? (riesgo.reduce((a,b)=>(b.fecha||'')>(a.fecha||'')?b:a, riesgo[0]).perfil||'—') : '—';
-  const alerta = rechActivos.length>0||['F','G','H','I'].includes(String(peorPerfil).toUpperCase())||(saldoNet<0);
-  h += '<div style="background:'+(alerta?'rgba(248,113,113,0.06)':'rgba(74,222,128,0.06)')+';border:1px solid '+(alerta?'rgba(248,113,113,0.3)':'rgba(74,222,128,0.3)')+';border-radius:12px;padding:16px 18px;margin-bottom:8px">' +
-    '<div style="font-size:12px;font-weight:700;margin-bottom:12px;color:'+(alerta?'#f87171':'#4ade80')+'">'+( alerta?'⚠️ RESUMEN EJECUTIVO — REQUIERE ATENCIÓN':'✅ RESUMEN EJECUTIVO — CLIENTE EN ORDEN')+'</div>' +
+  const alerta = rechActivos.length>0||['F','G','H','I'].includes(String(peorPerfil).toUpperCase())||(saldoNet>0);
+  const deudaDebo = Math.max(0, saldoNet);
+  h += '<div style="border:2px solid '+(posNeta>=0?'rgba(74,222,128,0.4)':'rgba(248,113,113,0.4)')+';border-radius:14px;padding:18px 20px;margin-bottom:20px;background:'+(posNeta>=0?'rgba(74,222,128,0.04)':'rgba(248,113,113,0.04)')+'">' +
+    '<div style="font-size:13px;font-weight:800;margin-bottom:14px;color:'+(posNeta>=0?'#4ade80':'#f87171')+'">'+( posNeta>=0?'✅':'⚠️')+' POSICIÓN NETA DEL CLIENTE</div>' +
+    '<div style="display:flex;flex-direction:column;gap:6px;font-size:13px;margin-bottom:14px">' +
+      '<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(108,143,255,0.08);border-radius:8px">' +
+        '<span style="color:var(--text3)">📂 Cartera vigente (por cobrar)</span>' +
+        '<span style="font-weight:800;color:var(--accent)">+ '+fmt(montCart)+'</span>' +
+      '</div>' +
+      (saldoNet>0?'<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(248,113,113,0.08);border-radius:8px"><span style="color:var(--text3)">💰 Deuda en cuenta corriente (DEBO)</span><span style="font-weight:800;color:#f87171">− '+fmt(deudaDebo)+'</span></div>':'<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(74,222,128,0.06);border-radius:8px"><span style="color:var(--text3)">💰 Saldo cuenta corriente</span><span style="font-weight:800;color:#4ade80">'+fmt(saldoNet)+' (saldo a favor)</span></div>') +
+      (montRech?'<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(248,113,113,0.08);border-radius:8px"><span style="color:var(--text3)">❌ Cheques rechazados activos</span><span style="font-weight:800;color:#f87171">− '+fmt(montRech)+'</span></div>':'<div style="display:flex;justify-content:space-between;padding:8px 14px;background:rgba(74,222,128,0.06);border-radius:8px"><span style="color:var(--text3)">❌ Cheques rechazados</span><span style="font-weight:800;color:#4ade80">$0 — sin rechazos</span></div>') +
+      '<div style="display:flex;justify-content:space-between;padding:10px 14px;background:'+(posNeta>=0?'rgba(74,222,128,0.12)':'rgba(248,113,113,0.12)')+';border-radius:8px;border:1px solid '+(posNeta>=0?'rgba(74,222,128,0.3)':'rgba(248,113,113,0.3)')+';margin-top:4px">' +
+        '<span style="font-weight:800;font-size:14px;color:var(--text)">= RESULTADO NETO</span>' +
+        '<span style="font-weight:900;font-size:16px;color:'+(posNeta>=0?'#4ade80':'#f87171')+'">'+fmt(posNeta)+'</span>' +
+      '</div>' +
+    '</div>' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">' +
-      _cgKpi('Saldo neto DEBO', fmt(saldoNet), saldoNet<0?'#f87171':'#4ade80') +
-      _cgKpi('Riesgo activo', fmt(montRech), montRech?'#f87171':'#4ade80') +
       _cgKpi('Cartera vigente', fmt(montCart), 'var(--accent)') +
+      _cgKpi('Deuda DEBO', fmt(deudaDebo), deudaDebo?'#f87171':'#4ade80') +
+      _cgKpi('Rechazos activos', fmt(montRech), montRech?'#f87171':'#4ade80') +
       _cgKpi('Perfil crediticio', peorPerfil, (PERFILES[String(peorPerfil).toUpperCase()]||{c:'var(--text2)'}).c) +
     '</div></div>';
 
   res.innerHTML = h;
 
-  // Lanzar análisis IA
-  cgFichaIA({ nombre, debo, riesgo, rech, rechActivos, cart, saldoNet, montRech, montCart, peorPerfil, PERFILES });
+  // Lanzar análisis IA con todos los datos
+  cgFichaIA({ nombre, debo, riesgo, rech, rechActivos, cart, saldoNet, montRech, montCart, peorPerfil, posNeta, deudaDebo, PERFILES });
 }
 
 async function cgFichaIA(d) {
@@ -23868,34 +23936,41 @@ async function cgFichaIA(d) {
 
   const ultimo = d.riesgo.length ? d.riesgo.reduce((a,b)=>(b.fecha||'')>(a.fecha||'')?b:a,d.riesgo[0]) : null;
 
+  const fmt2 = n => '$'+(n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const groupTxt = (arr, kFn, vFn) => {
+    const m={};arr.forEach(x=>{const k=kFn(x)||'S/D';if(!m[k])m[k]=0;m[k]+=vFn(x)||0;});
+    return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+': '+fmt2(v)).join(', ');
+  };
   const resumen = [
     '=== FICHA DE CLIENTE: '+d.nombre+' ===',
     '',
+    '--- POSICIÓN NETA ---',
+    'Cartera vigente (por cobrar): '+fmt2(d.montCart),
+    'Deuda en cuenta corriente (DEBO): '+fmt2(d.deudaDebo||0),
+    'Rechazos activos sin recuperar: '+fmt2(d.montRech),
+    'RESULTADO NETO: '+fmt2(d.posNeta||0)+(d.posNeta>=0?' (favorable)':' (desfavorable)'),
+    '',
     '--- CUENTA CORRIENTE (DEBO) ---',
-    d.debo.length ? d.debo.map(c=>'Empresa '+c.emp+': saldo '+fmt(c.saldo)+', débitos '+fmt(c.debitos)+', créditos '+fmt(c.creditos)).join(' | ') : 'Sin datos de cuenta corriente.',
-    'Saldo neto total: '+fmt(d.saldoNet),
+    d.debo.length ? 'Saldo neto total: '+fmt2(d.saldoNet)+' | Por estación: '+groupTxt(d.debo,c=>c.uunn||c.apies||c.emp,c=>c.saldo) : 'Sin datos.',
     '',
     '--- RIESGO CREDITICIO (NOSIS) ---',
     ultimo ? [
       'Perfil: '+ultimo.perfil+' — '+(d.PERFILES[String(ultimo.perfil||'').toUpperCase()]||{l:'desconocido'}).l,
-      'Score: '+(ultimo.score||'—'),
-      'CUIT: '+(ultimo.cuit||'—'),
-      'Tipo: '+(ultimo.tipo||'—'), 'Sector: '+(ultimo.sector||'—'),
-      'Verificación: '+(ultimo.verif||'—'),
-      'Último informe: '+fmtD(ultimo.fecha),
+      'Score: '+(ultimo.score||'—'), 'CUIT: '+(ultimo.cuit||'—'),
+      'Sector: '+(ultimo.sector||'—'), 'Verificación: '+(ultimo.verif||'—'),
       'Alertas: '+(ultimo.alertas&&ultimo.alertas!=='—'?ultimo.alertas:'Ninguna'),
     ].join(' | ') : 'Sin datos de Riesgo Crediticio.',
-    d.riesgo.length>1 ? 'Historial de perfiles: '+d.riesgo.map(r=>r.perfil+'('+fmtD(r.fecha)+')').join(', ') : '',
+    d.riesgo.length>1 ? 'Historial: '+d.riesgo.map(r=>r.perfil+'('+fmtD(r.fecha)+')').join(', ') : '',
     '',
     '--- CHEQUES RECHAZADOS ---',
     d.rech.length ? [
-      'Total rechazados: '+d.rech.length+' cheques',
-      'Activos sin cobrar: '+d.rechActivos.length+' cheques por '+fmt(d.montRech),
-      'Histórico total: '+fmt(d.rech.reduce((s,r)=>s+(r.importe||0),0)),
-    ].join(' | ') : 'Sin cheques rechazados. Historial limpio.',
+      'Activos: '+d.rechActivos.length+' cheques por '+fmt2(d.montRech),
+      'Por APIES: '+groupTxt(d.rechActivos,r=>r.apies,r=>r.importe),
+      'Total histórico: '+fmt2(d.rech.reduce((s,r)=>s+(r.importe||0),0)),
+    ].join(' | ') : 'Sin rechazos. Historial limpio.',
     '',
     '--- CHEQUES EN CARTERA ---',
-    d.cart.length ? 'Total en cartera: '+d.cart.length+' cheques por '+fmt(d.montCart) : 'Sin cheques en cartera.',
+    d.cart.length ? 'Total: '+d.cart.length+' cheques por '+fmt2(d.montCart)+' | Por empresa: '+groupTxt(d.cart,c=>c.uunn||c.subempresa||c._empName,c=>c.importe) : 'Sin cheques en cartera.',
   ].filter(Boolean).join('\n');
 
   const prompt = 'Sos analista financiero de Grupo La Plaza, empresa de combustibles y agro en Patagonia Argentina. Analizá este cliente y hacé un informe ejecutivo CLARO y DIRECTO en español rioplatense. Sé concreto: decí si es un cliente confiable o no, y por qué. Mencioná los puntos clave de riesgo o de solidez. Usá frases cortas. Máximo 5 oraciones. No uses markdown ni bullets, solo texto corrido.\n\n'+resumen;
