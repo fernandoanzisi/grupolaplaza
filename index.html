@@ -2613,12 +2613,31 @@ let _supaUser=null,_supaRol=null;
       </div>
     </div>
 
-    <!-- Saldo inicial -->
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding:12px 16px;background:var(--bg3);border-radius:10px;border:1px solid rgba(74,159,212,0.2)">
-      <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;white-space:nowrap">💰 Saldo inicial</span>
-      <input type="number" id="cfp-saldo-inicio" placeholder="0" oninput="renderCFPresupuesto()"
-        style="background:var(--bg);border:1px solid rgba(74,159,212,0.4);border-radius:8px;padding:7px 12px;font-size:14px;font-family:var(--mono);font-weight:700;color:var(--accent);width:200px;outline:none">
-      <span style="font-size:10px;color:var(--text3)">Ingresá el efectivo / saldo bancario disponible como punto de partida</span>
+    <!-- Saldo inicial + Período -->
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:12px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--bg3);border-radius:10px;border:1px solid rgba(74,159,212,0.2)">
+        <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;white-space:nowrap">💰 Saldo inicial</span>
+        <input type="number" id="cfp-saldo-inicio" placeholder="0" onchange="renderCFPresupuesto()"
+          style="background:var(--bg);border:1px solid rgba(74,159,212,0.4);border-radius:8px;padding:6px 10px;font-size:14px;font-family:var(--mono);font-weight:700;color:var(--accent);width:180px;outline:none">
+      </div>
+      <div style="padding:10px 16px;background:var(--bg3);border-radius:10px;border:1px solid var(--border)">
+        <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px">📅 Ver período</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button onclick="cfPresSetPeriodo('todo',this)"   id="cfpp-todo"  class="rate-btn active" style="font-size:10px;padding:3px 9px">Todo</button>
+          <button onclick="cfPresSetPeriodo('hoy',this)"    id="cfpp-hoy"   class="rate-btn" style="font-size:10px;padding:3px 9px">Hoy</button>
+          <button onclick="cfPresSetPeriodo('sem',this)"    id="cfpp-sem"   class="rate-btn" style="font-size:10px;padding:3px 9px">Esta semana</button>
+          <button onclick="cfPresSetPeriodo('mes',this)"    id="cfpp-mes"   class="rate-btn" style="font-size:10px;padding:3px 9px">Este mes</button>
+          <button onclick="cfPresSetPeriodo('psem',this)"   id="cfpp-psem"  class="rate-btn" style="font-size:10px;padding:3px 9px">Próx. semana</button>
+          <button onclick="cfPresSetPeriodo('pmes',this)"   id="cfpp-pmes"  class="rate-btn" style="font-size:10px;padding:3px 9px">Próx. mes</button>
+          <button onclick="cfPresSetPeriodo('custom',this)" id="cfpp-custom" class="rate-btn" style="font-size:10px;padding:3px 9px">Personalizado</button>
+          <span id="cfp-periodo-label" style="font-size:10px;color:var(--accent);font-weight:700;align-self:center;margin-left:4px"></span>
+        </div>
+        <div id="cfp-custom-range" style="display:none;margin-top:7px;display:none;gap:8px;align-items:center">
+          <input type="date" id="cfp-desde" onchange="_cfPresUpdateTotals()" style="background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);outline:none">
+          <span style="font-size:10px;color:var(--text3)">hasta</span>
+          <input type="date" id="cfp-hasta" onchange="_cfPresUpdateTotals()" style="background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);outline:none">
+        </div>
+      </div>
     </div>
 
     <!-- Ingresos + Egresos lado a lado -->
@@ -2626,28 +2645,40 @@ let _supaUser=null,_supaRol=null;
 
       <!-- INGRESOS -->
       <div style="background:rgba(74,222,128,0.05);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div style="font-size:11px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:1px">📈 Ingresos</div>
           <button onclick="cfPresAgregarFila('ingreso')"
             style="padding:3px 10px;border-radius:6px;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.12);color:var(--green);font-size:11px;font-weight:700;cursor:pointer">＋ Agregar</button>
         </div>
-        <div id="cfp-lista-ing" style="display:flex;flex-direction:column;gap:6px;min-height:40px"></div>
+        <div style="display:grid;grid-template-columns:100px 1fr 130px 26px;gap:4px;margin-bottom:4px">
+          <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Fecha</div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Concepto</div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:right">Importe</div>
+          <div></div>
+        </div>
+        <div id="cfp-lista-ing" style="display:flex;flex-direction:column;gap:5px;min-height:40px"></div>
         <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(74,222,128,0.15);display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:10px;color:var(--text3)">TOTAL INGRESOS</span>
+          <span style="font-size:10px;color:var(--text3)">TOTAL PERÍODO</span>
           <span id="cfp-tot-ing" style="font-size:14px;font-weight:800;font-family:var(--mono);color:var(--green)">$ 0</span>
         </div>
       </div>
 
       <!-- EGRESOS -->
       <div style="background:rgba(248,113,113,0.05);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div style="font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:1px">📉 Egresos</div>
           <button onclick="cfPresAgregarFila('egreso')"
             style="padding:3px 10px;border-radius:6px;border:1px solid rgba(248,113,113,0.4);background:rgba(248,113,113,0.12);color:var(--red);font-size:11px;font-weight:700;cursor:pointer">＋ Agregar</button>
         </div>
-        <div id="cfp-lista-egr" style="display:flex;flex-direction:column;gap:6px;min-height:40px"></div>
+        <div style="display:grid;grid-template-columns:100px 1fr 130px 26px;gap:4px;margin-bottom:4px">
+          <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Fecha</div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Concepto</div>
+          <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:right">Importe</div>
+          <div></div>
+        </div>
+        <div id="cfp-lista-egr" style="display:flex;flex-direction:column;gap:5px;min-height:40px"></div>
         <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(248,113,113,0.15);display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:10px;color:var(--text3)">TOTAL EGRESOS</span>
+          <span style="font-size:10px;color:var(--text3)">TOTAL PERÍODO</span>
           <span id="cfp-tot-egr" style="font-size:14px;font-weight:800;font-family:var(--mono);color:var(--red)">$ 0</span>
         </div>
       </div>
@@ -12033,16 +12064,58 @@ function extImportarEmp(file, empTag) {
 // ═══════════════════════════════════════════════════════════════
 // CASH FLOW — Presupuesto Rápido (manual)
 // ═══════════════════════════════════════════════════════════════
-let _cfPresEmp = 'grupo';
-let _cfPresFilas = [];
-let _cfPresCharts = {};
-const _CFP_KEY = 'cfp_presupuesto_v1';
+let _cfPresEmp      = 'grupo';
+let _cfPresFilas    = [];
+let _cfPresCharts   = {};
+let _cfPresPeriodo  = 'todo';
+const _CFP_KEY      = 'cfp_presupuesto_v1';
 
 function _cfPresLoad() {
   try { const s = localStorage.getItem(_CFP_KEY); if (s) { const d = JSON.parse(s); _cfPresFilas = d.filas||[]; } } catch(e){}
 }
 function _cfPresSave() {
   try { localStorage.setItem(_CFP_KEY, JSON.stringify({ filas: _cfPresFilas })); } catch(e){}
+}
+
+// Calcula [desde, hasta] según el período elegido (strings YYYY-MM-DD o null)
+function _cfPresRango() {
+  const hoy = new Date();
+  const iso  = d => d.toISOString().slice(0,10);
+  const addD = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+  if (_cfPresPeriodo === 'hoy')   return [iso(hoy), iso(hoy)];
+  if (_cfPresPeriodo === 'sem') {
+    const lunes = addD(hoy, 1-((hoy.getDay()||7)));
+    return [iso(lunes), iso(addD(lunes,6))];
+  }
+  if (_cfPresPeriodo === 'mes')   return [iso(hoy).slice(0,7)+'-01', iso(new Date(hoy.getFullYear(), hoy.getMonth()+1, 0))];
+  if (_cfPresPeriodo === 'psem') {
+    const lunes = addD(hoy, 8-((hoy.getDay()||7)));
+    return [iso(lunes), iso(addD(lunes,6))];
+  }
+  if (_cfPresPeriodo === 'pmes') {
+    const y=hoy.getMonth()===11?hoy.getFullYear()+1:hoy.getFullYear(), m=((hoy.getMonth()+1)%12);
+    return [`${y}-${String(m+1).padStart(2,'0')}-01`, iso(new Date(y, m+1, 0))];
+  }
+  if (_cfPresPeriodo === 'custom') {
+    return [document.getElementById('cfp-desde')?.value||null, document.getElementById('cfp-hasta')?.value||null];
+  }
+  return [null, null]; // 'todo'
+}
+
+function cfPresSetPeriodo(p, btn) {
+  _cfPresPeriodo = p;
+  ['todo','hoy','sem','mes','psem','pmes','custom'].forEach(r => {
+    const b = document.getElementById('cfpp-'+r);
+    if (b) b.classList.toggle('active', r===p);
+  });
+  const cr = document.getElementById('cfp-custom-range');
+  if (cr) cr.style.display = p==='custom' ? 'flex' : 'none';
+  const [desde, hasta] = _cfPresRango();
+  const lbl = document.getElementById('cfp-periodo-label');
+  if (lbl) {
+    lbl.textContent = p==='todo' ? '' : desde&&hasta ? desde.slice(5).replace('-','/')+' → '+hasta.slice(5).replace('-','/') : '';
+  }
+  _cfPresUpdateTotals();
 }
 
 function cfPresSetEmp(emp, btn) {
@@ -12059,7 +12132,8 @@ function cfPresSetEmp(emp, btn) {
 
 function cfPresAgregarFila(tipo) {
   const id = Date.now();
-  _cfPresFilas.push({ id, tipo, concepto: '', importe: 0, empresa: _cfPresEmp==='grupo'?'RS':_cfPresEmp });
+  const hoy = new Date().toISOString().slice(0,10);
+  _cfPresFilas.push({ id, tipo, fecha: hoy, concepto: '', importe: 0, empresa: _cfPresEmp==='grupo'?'RS':_cfPresEmp });
   _cfPresSave();
   renderCFPresupuesto();
   setTimeout(() => {
@@ -12074,7 +12148,6 @@ function cfPresEditFila(id, field, value) {
   if (!f) return;
   f[field] = field === 'importe' ? (parseFloat(value)||0) : value;
   _cfPresSave();
-  // Solo actualiza KPIs y gráficos — NO reconstruye las filas (mantiene el foco en el input)
   clearTimeout(_cfPresDebounce);
   _cfPresDebounce = setTimeout(_cfPresUpdateTotals, 120);
 }
@@ -12094,63 +12167,62 @@ function cfPresLimpiar() {
   renderCFPresupuesto();
 }
 
+function _cfPresInRango(f) {
+  const [desde, hasta] = _cfPresRango();
+  if (!desde && !hasta) return true;
+  const ff = f.fecha||'';
+  if (desde && ff < desde) return false;
+  if (hasta && ff > hasta) return false;
+  return true;
+}
+
 function renderCFPresupuesto() {
   _cfPresLoad();
-  const saldoInicio = parseFloat(document.getElementById('cfp-saldo-inicio')?.value||0)||0;
+  // Mostrar TODAS las filas de la empresa (sin filtro de período en la lista)
   const filasFilt = _cfPresEmp==='grupo' ? _cfPresFilas : _cfPresFilas.filter(f=>f.empresa===_cfPresEmp);
-  const filaIng = filasFilt.filter(f=>f.tipo==='ingreso');
-  const filaEgr = filasFilt.filter(f=>f.tipo==='egreso');
+  const filaIng = filasFilt.filter(f=>f.tipo==='ingreso').sort((a,b)=>(a.fecha||'')-(b.fecha||''));
+  const filaEgr = filasFilt.filter(f=>f.tipo==='egreso').sort((a,b)=>(a.fecha||'')-(b.fecha||''));
 
-  // ── Render filas ingresos ─────────────────────────────────────
+  const mkFila = (f, tipo) => {
+    const bdr = tipo==='ingreso' ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)';
+    const col = tipo==='ingreso' ? 'var(--green)' : 'var(--red)';
+    const inRango = _cfPresInRango(f);
+    return `<div style="display:grid;grid-template-columns:100px 1fr 130px 26px;gap:5px;align-items:center;opacity:${inRango?1:0.45}">
+      <input type="date" value="${f.fecha||''}"
+        data-cfp-id="${f.id}" data-cfp-field="fecha"
+        onchange="cfPresEditFila(${f.id},'fecha',this.value)"
+        style="background:var(--bg);border:1px solid ${bdr};border-radius:7px;padding:5px 6px;font-size:11px;color:var(--text);outline:none;width:100%;box-sizing:border-box">
+      <input type="text" value="${(f.concepto||'').replace(/"/g,'&quot;')}" placeholder="Concepto"
+        data-cfp-id="${f.id}" data-cfp-field="concepto"
+        onchange="cfPresEditFila(${f.id},'concepto',this.value)"
+        style="background:var(--bg);border:1px solid ${bdr};border-radius:7px;padding:5px 8px;font-size:12px;color:var(--text);outline:none;width:100%;box-sizing:border-box">
+      <input type="number" value="${f.importe||''}" placeholder="0"
+        data-cfp-id="${f.id}" data-cfp-field="importe"
+        onchange="cfPresEditFila(${f.id},'importe',this.value)"
+        style="background:var(--bg);border:1px solid ${bdr};border-radius:7px;padding:5px 8px;font-size:12px;font-family:var(--mono);color:${col};outline:none;width:100%;text-align:right;box-sizing:border-box">
+      <button onclick="cfPresEliminarFila(${f.id})"
+        style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0;line-height:1;width:26px;text-align:center" title="Eliminar">×</button>
+    </div>`;
+  };
+
   const ingEl = document.getElementById('cfp-lista-ing');
-  if (ingEl) {
-    if (!filaIng.length) {
-      ingEl.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px 0">Sin ingresos — hacé clic en ＋ Agregar</div>';
-    } else {
-      ingEl.innerHTML = filaIng.map(f => `
-        <div style="display:grid;grid-template-columns:1fr 140px 28px;gap:6px;align-items:center">
-          <input type="text" value="${(f.concepto||'').replace(/"/g,'&quot;')}" placeholder="Concepto (ej: Cobro cliente)"
-            data-cfp-id="${f.id}" data-cfp-field="concepto"
-            onchange="cfPresEditFila(${f.id},'concepto',this.value)"
-            style="background:var(--bg);border:1px solid rgba(74,222,128,0.25);border-radius:7px;padding:6px 10px;font-size:12px;color:var(--text);outline:none;width:100%;box-sizing:border-box">
-          <input type="number" value="${f.importe||''}" placeholder="Importe"
-            data-cfp-id="${f.id}" data-cfp-field="importe"
-            onchange="cfPresEditFila(${f.id},'importe',this.value)"
-            style="background:var(--bg);border:1px solid rgba(74,222,128,0.25);border-radius:7px;padding:6px 10px;font-size:12px;font-family:var(--mono);color:var(--green);outline:none;width:100%;text-align:right;box-sizing:border-box">
-          <button onclick="cfPresEliminarFila(${f.id})"
-            style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0;line-height:1;border-radius:4px;width:28px;text-align:center" title="Eliminar">×</button>
-        </div>`).join('');
-    }
-  }
+  if (ingEl) ingEl.innerHTML = filaIng.length
+    ? filaIng.map(f=>mkFila(f,'ingreso')).join('')
+    : '<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px 0">Sin ingresos — hacé clic en ＋ Agregar</div>';
 
-  // ── Render filas egresos ──────────────────────────────────────
   const egrEl = document.getElementById('cfp-lista-egr');
-  if (egrEl) {
-    if (!filaEgr.length) {
-      egrEl.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px 0">Sin egresos — hacé clic en ＋ Agregar</div>';
-    } else {
-      egrEl.innerHTML = filaEgr.map(f => `
-        <div style="display:grid;grid-template-columns:1fr 140px 28px;gap:6px;align-items:center">
-          <input type="text" value="${(f.concepto||'').replace(/"/g,'&quot;')}" placeholder="Concepto (ej: Pago proveedor)"
-            data-cfp-id="${f.id}" data-cfp-field="concepto"
-            onchange="cfPresEditFila(${f.id},'concepto',this.value)"
-            style="background:var(--bg);border:1px solid rgba(248,113,113,0.25);border-radius:7px;padding:6px 10px;font-size:12px;color:var(--text);outline:none;width:100%;box-sizing:border-box">
-          <input type="number" value="${f.importe||''}" placeholder="Importe"
-            data-cfp-id="${f.id}" data-cfp-field="importe"
-            onchange="cfPresEditFila(${f.id},'importe',this.value)"
-            style="background:var(--bg);border:1px solid rgba(248,113,113,0.25);border-radius:7px;padding:6px 10px;font-size:12px;font-family:var(--mono);color:var(--red);outline:none;width:100%;text-align:right;box-sizing:border-box">
-          <button onclick="cfPresEliminarFila(${f.id})"
-            style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0;line-height:1;border-radius:4px;width:28px;text-align:center" title="Eliminar">×</button>
-        </div>`).join('');
-    }
-  }
+  if (egrEl) egrEl.innerHTML = filaEgr.length
+    ? filaEgr.map(f=>mkFila(f,'egreso')).join('')
+    : '<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px 0">Sin egresos — hacé clic en ＋ Agregar</div>';
 
   _cfPresUpdateTotals();
 }
 
 function _cfPresUpdateTotals() {
   const saldoInicio = parseFloat(document.getElementById('cfp-saldo-inicio')?.value||0)||0;
-  const filasFilt = _cfPresEmp==='grupo' ? _cfPresFilas : _cfPresFilas.filter(f=>f.empresa===_cfPresEmp);
+  // Filtrar por empresa + período para KPIs y gráficos
+  const filasFilt = (_cfPresEmp==='grupo' ? _cfPresFilas : _cfPresFilas.filter(f=>f.empresa===_cfPresEmp))
+    .filter(f => _cfPresInRango(f));
   const filaIng = filasFilt.filter(f=>f.tipo==='ingreso');
   const filaEgr = filasFilt.filter(f=>f.tipo==='egreso');
   const totIng = filaIng.reduce((s,f)=>s+(f.importe||0),0);
@@ -12162,73 +12234,64 @@ function _cfPresUpdateTotals() {
   if (totIngEl) totIngEl.textContent = '$ ' + fmtARS(totIng);
   if (totEgrEl) totEgrEl.textContent = '$ ' + fmtARS(totEgr);
 
-  const kI  = document.getElementById('cfp-k-inicio');
+  const kI = document.getElementById('cfp-k-inicio');
   const kIn = document.getElementById('cfp-k-ing');
   const kEg = document.getElementById('cfp-k-egr');
   const kFi = document.getElementById('cfp-k-final');
   if (kI)  kI.textContent = '$ ' + fmtARS(saldoInicio);
   if (kIn) kIn.textContent = '$ ' + fmtARS(totIng);
   if (kEg) kEg.textContent = '$ ' + fmtARS(totEgr);
-  if (kFi) { kFi.textContent = '$ ' + fmtARS(saldoFinal); kFi.style.color = saldoFinal >= 0 ? 'var(--green)' : 'var(--red)'; }
+  if (kFi) { kFi.textContent = '$ ' + fmtARS(saldoFinal); kFi.style.color = saldoFinal>=0?'var(--green)':'var(--red)'; }
 
-  // ── Line chart ────────────────────────────────────────────────
+  // ── Line chart: ordenado por fecha ────────────────────────────
   const ctxL = document.getElementById('chart-cfp-line');
   if (ctxL) {
     if (_cfPresCharts.line) { _cfPresCharts.line.destroy(); _cfPresCharts.line = null; }
-    const puntos = [{label:'Inicio', val:saldoInicio}];
+    const todas = [
+      ...filaIng.map(f=>({...f,sign:1})),
+      ...filaEgr.map(f=>({...f,sign:-1}))
+    ].sort((a,b) => (a.fecha||'9999') < (b.fecha||'9999') ? -1 : 1);
+
+    const puntos = [{label:'Inicio', val:saldoInicio, fecha:''}];
     let acum = saldoInicio;
-    const todas = [...filaIng.map(f=>({...f,sign:1})), ...filaEgr.map(f=>({...f,sign:-1}))];
-    todas.sort((a,b)=>(a.concepto||'').localeCompare(b.concepto||''));
     todas.forEach(f => {
-      acum += (f.importe||0) * f.sign;
-      puntos.push({ label: (f.concepto||'Item').slice(0,16), val: Math.round(acum) });
+      acum += (f.importe||0)*f.sign;
+      const lbl = (f.fecha ? f.fecha.slice(5).replace('-','/') + ' ' : '') + (f.concepto||'').slice(0,12);
+      puntos.push({ label:lbl, val:Math.round(acum) });
     });
-    puntos.push({ label:'Final', val: Math.round(saldoFinal) });
-    const lineColors = puntos.map((p,i) => i===0 ? '#4a9fd4' : p.val >= saldoInicio ? 'rgba(74,222,128,0.8)' : 'rgba(248,113,113,0.8)');
+    puntos.push({ label:'Final', val:Math.round(saldoFinal) });
+
+    const lc = puntos.map((p,i) => i===0?'#4a9fd4':p.val>=saldoInicio?'rgba(74,222,128,0.9)':'rgba(248,113,113,0.9)');
     _cfPresCharts.line = new Chart(ctxL, {
       type:'line',
       data:{ labels:puntos.map(p=>p.label), datasets:[{ label:'Saldo', data:puntos.map(p=>p.val),
         borderColor:'#4a9fd4', backgroundColor:'rgba(74,159,212,0.08)',
-        fill:true, tension:0.35, pointRadius:5, pointBackgroundColor:lineColors,
+        fill:true, tension:0.3, pointRadius:5, pointBackgroundColor:lc,
         pointBorderColor:'transparent', borderWidth:2 }] },
       options:{ responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>' $ '+fmtARS(c.raw) } } },
-        scales:{ x:{ ticks:{color:'#888',font:{size:10}}, grid:{color:'rgba(255,255,255,0.04)'} },
+        scales:{ x:{ ticks:{color:'#888',font:{size:9},maxRotation:35}, grid:{color:'rgba(255,255,255,0.04)'} },
           y:{ ticks:{color:'#888',font:{size:10}, callback:v=>v>=1e6?'$'+(v/1e6).toFixed(1)+'M':'$'+(v/1e3).toFixed(0)+'k'}, grid:{color:'rgba(255,255,255,0.06)'} } } }
     });
   }
 
-  // ── Donut ingresos ────────────────────────────────────────────
-  const ctxI = document.getElementById('chart-cfp-ing');
-  if (ctxI) {
-    if (_cfPresCharts.ing) { _cfPresCharts.ing.destroy(); _cfPresCharts.ing = null; }
-    if (filaIng.length) {
-      const CI = ['#4ade80','#34d399','#6ee7b7','#a7f3d0','#86efac','#bbf7d0','#d1fae5'];
-      _cfPresCharts.ing = new Chart(ctxI, { type:'doughnut',
-        data:{ labels:filaIng.map(f=>(f.concepto||'—').slice(0,18)),
-          datasets:[{ data:filaIng.map(f=>f.importe||0), backgroundColor:filaIng.map((_,i)=>CI[i%CI.length]), borderWidth:0 }] },
-        options:{ responsive:true, maintainAspectRatio:false, cutout:'58%',
-          plugins:{ legend:{position:'bottom', labels:{color:'#aaa',font:{size:9},boxWidth:8,padding:6}},
-            tooltip:{callbacks:{label:c=>' $ '+fmtARS(c.raw)}} } }
-      });
-    }
-  }
-
-  // ── Donut egresos ─────────────────────────────────────────────
-  const ctxE = document.getElementById('chart-cfp-egr');
-  if (ctxE) {
-    if (_cfPresCharts.egr) { _cfPresCharts.egr.destroy(); _cfPresCharts.egr = null; }
-    if (filaEgr.length) {
-      const CE = ['#f87171','#fb923c','#fbbf24','#f472b6','#a78bfa','#60a5fa','#38bdf8'];
-      _cfPresCharts.egr = new Chart(ctxE, { type:'doughnut',
-        data:{ labels:filaEgr.map(f=>(f.concepto||'—').slice(0,18)),
-          datasets:[{ data:filaEgr.map(f=>f.importe||0), backgroundColor:filaEgr.map((_,i)=>CE[i%CE.length]), borderWidth:0 }] },
-        options:{ responsive:true, maintainAspectRatio:false, cutout:'58%',
-          plugins:{ legend:{position:'bottom', labels:{color:'#aaa',font:{size:9},boxWidth:8,padding:6}},
-            tooltip:{callbacks:{label:c=>' $ '+fmtARS(c.raw)}} } }
-      });
-    }
-  }
+  // ── Donuts ────────────────────────────────────────────────────
+  const CI = ['#4ade80','#34d399','#6ee7b7','#86efac','#bbf7d0','#a7f3d0','#d1fae5'];
+  const CE = ['#f87171','#fb923c','#fbbf24','#f472b6','#a78bfa','#60a5fa','#38bdf8'];
+  const mkDonut = (ctx, key, filas, colors) => {
+    if (!ctx) return;
+    if (_cfPresCharts[key]) { _cfPresCharts[key].destroy(); _cfPresCharts[key]=null; }
+    if (!filas.length) return;
+    _cfPresCharts[key] = new Chart(ctx, { type:'doughnut',
+      data:{ labels:filas.map(f=>(f.concepto||'—').slice(0,18)),
+        datasets:[{ data:filas.map(f=>f.importe||0), backgroundColor:filas.map((_,i)=>colors[i%colors.length]), borderWidth:0 }] },
+      options:{ responsive:true, maintainAspectRatio:false, cutout:'58%',
+        plugins:{ legend:{position:'bottom', labels:{color:'#aaa',font:{size:9},boxWidth:8,padding:6}},
+          tooltip:{callbacks:{label:c=>' $ '+fmtARS(c.raw)}} } }
+    });
+  };
+  mkDonut(document.getElementById('chart-cfp-ing'), 'ing', filaIng, CI);
+  mkDonut(document.getElementById('chart-cfp-egr'), 'egr', filaEgr, CE);
 }
 
 // ─── Exportar Presupuesto Rápido ────────────────────────────────
