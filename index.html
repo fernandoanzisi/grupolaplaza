@@ -23659,7 +23659,7 @@ function cgFichaSearch() {
   (appState.clientesDebo||[]).forEach(c => add(c.nombre));
   (appState.riesgoData||[]).forEach(r => add(r.nombre));
   (appState.rechazadosData||[]).forEach(r => add(r.cliente||r.librador));
-  (appState.empresas||[]).forEach(e => (e.cheques||[]).forEach(c => add(c.cliente||c.librador)));
+  (appState.empresas||[]).forEach(e => (e.cheques||[]).forEach(c => add(c.cliente)));
   if (!hits.length) { dd.innerHTML='<div style="padding:14px 16px;font-size:12px;color:var(--text3)">Sin resultados</div>'; dd.style.display='block'; return; }
   hits.sort();
   dd.innerHTML = hits.map(n =>
@@ -23688,7 +23688,7 @@ function cgMostrarFicha(nombre) {
   const rechActivos = rech.filter(r => (r.estado||'').toUpperCase() !== 'COBRADO');
   // Cheques en cartera — de Dinero/Cheques (empresas[].cheques[])
   const allCheques = (appState.empresas||[]).flatMap(e => (e.cheques||[]).map(c=>({...c,_empName:e.name||''})));
-  const cart = allCheques.filter(c => match(c.cliente||c.librador));
+  const cart = allCheques.filter(c => match(c.cliente));
 
   // Helpers de agrupación
   const groupBy = (arr, keyFn, valFn) => {
