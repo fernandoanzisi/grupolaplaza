@@ -4245,7 +4245,7 @@ function renderDashboard() {
           style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:2px 6px;border-radius:6px;line-height:1">👁</button>
       </div>
       <div id="dash-total-grupo" style="font-family:var(--mono);font-size:clamp(22px,3vw,36px);font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">$ —</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:5px;margin-bottom:18px">ARS (C71 Minuta, o B50+D50+F50) · USD al costado</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:5px;margin-bottom:18px">ARS (B50+D50+F50+B152+I40+I41 Minuta) · USD al costado</div>
       <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch" id="dash-emp-chips"></div>
     </div>
     <div style="display:flex;flex-direction:column">
@@ -4565,8 +4565,9 @@ function dashSetView(view) {
       const last=balD||(emp.estaciones||[]).reduce((m,e)=>e.fecha>m?e.fecha:m,'');
       return (emp.estaciones||[]).filter(e=>!last||e.fecha===last).reduce((s,e)=>s+(e.chqCartera||0),0);
     }
-    // sumCartGrupo: B152 total grupo
+    // sumCartGrupo: B152 total grupo — prioridad historial > live > fallback estaciones
     function sumCartGrupo(empRS, empSC){
+      if (histRS && histRS.carteraGrupo) return histRS.carteraGrupo;
       if (empRS && empRS.diaCarteraGrupo) return empRS.diaCarteraGrupo;
       return sumCart(empRS) + sumCart(empSC);
     }
@@ -4582,9 +4583,13 @@ function dashSetView(view) {
     const scIngUSD = histSC ? (histSC.usd||0)  : scUSD;
     const totalGrupoARS = rsIngARS + scIngARS + lpIngARS;
     const totalGrupoUSD = rsIngUSD + scIngUSD;
-    // C71 = total grupo directo desde la minuta (tiene prioridad sobre suma B50+D50+F50)
+    // C71 queda disponible pero ya no define el total
     const c71val = histRS ? (histRS.c71||0) : (empRS ? empRS.diaC71||0 : 0);
-    const totalGrupo = c71val > 0 ? c71val : totalGrupoARS;
+    // I40 (RS) e I41 (SC) — líneas de financiación / descuento de cheques
+    const rsI40val = histRS ? (histRS.i40||0) : (empRS ? empRS.diaI40||0 : 0);
+    const scI41val = histSC ? (histSC.i41||0) : (empSC ? empSC.diaI41||0 : 0);
+    // TOTAL GRUPO = B50 + D50 + F50 + B152 (cartera) + I40 + I41
+    const totalGrupo = totalGrupoARS + totalCart + rsI40val + scI41val;
     // C74 = dólar oficial desde la minuta (prioridad sobre API)
     const c74val = histRS ? (histRS.c74||0) : (empRS ? empRS.diaC74||0 : 0);
     const tcOficial = c74val > 0 ? c74val : tcBlue;
@@ -6729,6 +6734,7 @@ function parseMinutaDiaria(wb) {
       b41:oRS?oRS.diaB41||0:0, b42:oRS?oRS.diaB42||0:0, b43:oRS?oRS.diaB43||0:0,
       b44:oRS?oRS.diaB44||0:0, b45:oRS?oRS.diaB45||0:0, b46:oRS?oRS.diaB46||0:0,
       usd:oRS?oRS.diaUSD||0:0, rsCart:oRS?oRS.diaRSCart||0:0, i40:oRS?oRS.diaI40||0:0,
+      carteraGrupo:oRS?oRS.diaCarteraGrupo||0:0,
       rendPrem:oRS?oRS.diaRendPremRS||0:0, rendAhorr:oRS?oRS.diaRendAhorrRS||0:0,
       c71:oRS?oRS.diaC71||0:0,
       c74:oRS?oRS.diaC74||0:0,
@@ -20796,9 +20802,16 @@ function renderGuardia() {
   const empLP = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Plaza'));
   const _h = (emp) => (emp&&emp.diaHistory&&lastDate) ? (emp.diaHistory[lastDate]||null) : null;
   const hRS = _h(empRS), hSC = _h(empSC);
-  const totalGrupo = hRS ? (hRS.c71||0) : (empRS ? empRS.diaC71||0 : 0);
+  const _b50g = hRS ? (hRS.b50||0) : (empRS?empRS.diaB50||0:0);
+  const _d50g = hSC ? (hSC.d50||0) : (empSC?empSC.diaD50||0:0);
+  const _f50g = empLP ? (empLP.diaF50||0) : 0;
+  const _cartG = (hRS&&hRS.carteraGrupo) ? hRS.carteraGrupo : (empRS?empRS.diaCarteraGrupo||0:0);
+  const _i40g  = hRS ? (hRS.i40||0) : (empRS?empRS.diaI40||0:0);
+  const _i41g  = hSC ? (hSC.i41||0) : (empSC?empSC.diaI41||0:0);
+  // TOTAL GRUPO = B50 + D50 + F50 + B152 + I40 + I41
+  const totalGrupo = _b50g + _d50g + _f50g + _cartG + _i40g + _i41g;
   const hoyTotal = (hoy&&hoy.byEmp) ? Object.values(hoy.byEmp).reduce((s,e)=>s+(e.ing||0),0) : 0;
-  const cartera  = empRS ? (empRS.diaCarteraGrupo||0) : 0;
+  const cartera  = _cartG;
   const invPesos = (hRS?(hRS.b34||0):(empRS?empRS.diaB34||0:0))
                  + (hRS?(hRS.b35||0):(empRS?empRS.diaB35||0:0))
                  + (hSC?(hSC.d34||0):(empSC?empSC.diaD34||0:0))
