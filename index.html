@@ -2904,14 +2904,6 @@ let _supaUser=null,_supaRol=null;
 
 <!-- DETALLE OBRA — overlay profesional -->
 <div id="ob-det-ov" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:5500;overflow-y:auto">
-  <!-- Barra fija de exportación — siempre visible arriba del detalle -->
-  <div style="position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-    <span style="font-size:11px;font-weight:700;color:var(--text3);margin-right:4px">📤 Exportar:</span>
-    <button onclick="obraExportPDF(window._obDetId)" style="padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(251,191,36,0.5);background:rgba(251,191,36,0.12);color:#fbbf24;cursor:pointer">📄 PDF</button>
-    <button onclick="obraExportPPT(window._obDetId)" style="padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(251,191,36,0.5);background:rgba(251,191,36,0.12);color:#fbbf24;cursor:pointer">📑 PowerPoint</button>
-    <button onclick="obraExportVideo(window._obDetId)" style="padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(251,191,36,0.5);background:rgba(251,191,36,0.12);color:#fbbf24;cursor:pointer">🎥 Video</button>
-    <button onclick="cerrarDetObra()" style="margin-left:auto;padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;border:none;background:var(--bg3);color:var(--text3);cursor:pointer">✕ Cerrar</button>
-  </div>
   <div style="max-width:980px;margin:0 auto;padding:20px 16px 60px">
     <div id="ob-det-body"></div>
   </div>
@@ -15936,14 +15928,6 @@ function verDetalleObra(id) {
           '<span style="padding:4px 14px;border-radius:99px;font-size:12px;font-weight:700;background:'+eColor+'22;color:'+eColor+'">'+o.estado+'</span>' +
           (diasInfo?'<div style="font-size:11px">'+diasInfo+'</div>':'') +
           '<button onclick="abrirModalObra(\''+id+'\')" style="padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:11px;cursor:pointer">✏️ Editar</button>' +
-          '<div style="position:relative">' +
-            '<button onclick="var m=document.getElementById(\'obExpDrop\');m.style.display=m.style.display===\'block\'?\'none\':\'block\'" style="padding:6px 14px;border-radius:8px;border:1px solid rgba(251,191,36,0.35);background:rgba(251,191,36,0.1);color:#fbbf24;font-size:11px;font-weight:700;cursor:pointer">📤 Exportar ▾</button>' +
-            '<div id="obExpDrop" style="display:none;position:absolute;top:110%;right:0;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:6px;min-width:175px;z-index:300;box-shadow:0 8px 32px rgba(0,0,0,0.5)">' +
-              '<button onclick="obraExportPDF(\''+id+'\');document.getElementById(\'obExpDrop\').style.display=\'none\'" style="display:block;width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;border-radius:7px;font-family:var(--font)">📄 PDF</button>' +
-              '<button onclick="obraExportPPT(\''+id+'\');document.getElementById(\'obExpDrop\').style.display=\'none\'" style="display:block;width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;border-radius:7px;font-family:var(--font)">📑 PowerPoint</button>' +
-              '<button onclick="obraExportVideo(\''+id+'\');document.getElementById(\'obExpDrop\').style.display=\'none\'" style="display:block;width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;border-radius:7px;font-family:var(--font)">🎥 Video (.webm)</button>' +
-            '</div>' +
-          '</div>' +
           '<button onclick="cerrarDetObra()" style="padding:6px 14px;border-radius:8px;border:none;background:var(--accent);color:white;font-size:11px;font-weight:700;cursor:pointer">✕ Cerrar</button>' +
         '</div>' +
       '</div>' +
@@ -16887,20 +16871,6 @@ function obDetTab(tab) {
     if (btn) btn.style.color = t===tab ? 'white' : 'var(--text2)';
     if (sec) sec.style.display = t===tab ? 'block' : 'none';
   });
-  // Asegurar que los botones de exportación estén visibles en la barra sticky
-  var bar = document.getElementById('ob-export-bar');
-  if (bar) { bar.style.display = 'flex'; return; }
-  // Si no existe la barra (version vieja cacheada), crearla ahora
-  var ov = document.getElementById('ob-det-ov');
-  if (!ov) return;
-  var newBar = document.createElement('div');
-  newBar.id = 'ob-export-bar';
-  newBar.style.cssText = 'position:sticky;top:0;z-index:99;background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap';
-  newBar.innerHTML = '<span style="font-size:11px;font-weight:700;color:var(--text3)">📤 Exportar:</span>'
-    + '<button onclick="obraExportPDF(window._obDetId)" style="padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(251,191,36,0.5);background:rgba(251,191,36,0.15);color:#fbbf24;cursor:pointer">📄 PDF</button>'
-    + '<button onclick="obraExportPPT(window._obDetId)" style="padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(251,191,36,0.5);background:rgba(251,191,36,0.15);color:#fbbf24;cursor:pointer">📑 PowerPoint</button>'
-    + '<button onclick="obraExportVideo(window._obDetId)" style="padding:6px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(251,191,36,0.5);background:rgba(251,191,36,0.15);color:#fbbf24;cursor:pointer">🎥 Video</button>';
-  ov.insertBefore(newBar, ov.firstChild);
 }
 
 </script>
