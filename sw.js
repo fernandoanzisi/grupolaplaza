@@ -1,4 +1,4 @@
-const CACHE = 'finanzasapp-gla-v3';
+const CACHE = 'finanzasapp-gla-v5';
 const CDN = [
   'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
@@ -19,6 +19,8 @@ self.addEventListener('activate', e => {
     caches.keys()
       .then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window' }))
+      .then(clients => clients.forEach(c => c.postMessage({ type: 'SW_UPDATED' })))
   );
 });
 
@@ -41,6 +43,19 @@ self.addEventListener('fetch', e => {
         }
         return r;
       }))
+    );
+    return;
+  }
+  // Network-first para index.html — siempre carga la versión más reciente
+  const isHTML = e.request.url.endsWith('.html') || e.request.url.endsWith('/') || !e.request.url.includes('.');
+  if (isHTML) {
+    e.respondWith(
+      fetch(e.request).then(r => {
+        if (r && r.status === 200 && r.type !== 'opaque') {
+          caches.open(CACHE).then(c => c.put(e.request, r.clone()));
+        }
+        return r;
+      }).catch(() => caches.match(e.request))
     );
     return;
   }
