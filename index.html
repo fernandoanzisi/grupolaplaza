@@ -4251,7 +4251,7 @@ function renderDashboard() {
           style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:2px 6px;border-radius:6px;line-height:1">👁</button>
       </div>
       <div id="dash-total-grupo" style="font-family:var(--mono);font-size:clamp(22px,3vw,36px);font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">$ —</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:5px;margin-bottom:18px">ARS (C71 Minuta = B50+D50+F50+B152+I40+I41) · USD al costado</div>
+      <div style="margin-bottom:18px"></div>
       <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch" id="dash-emp-chips"></div>
     </div>
     <div style="display:flex;flex-direction:column">
@@ -4612,7 +4612,7 @@ function dashSetView(view) {
         .map(x=>'<div style="background:rgba(251,191,36,0.08);border-radius:10px;padding:11px 13px;border:1px solid rgba(251,191,36,0.3);opacity:'+(x.v>0?'1':'0.4')+'"><div style="font-size:9px;font-weight:700;color:var(--yellow);text-transform:uppercase;margin-bottom:4px">'+x.n+'</div><div style="font-family:var(--mono);font-size:clamp(12px,1.6vw,16px);font-weight:800;color:var(--yellow)">U$S '+fmtARS(x.v)+'</div></div>').join('')+
       '</div>';
     if(g('dash-usd-total')) g('dash-usd-total').textContent='U$S '+fmtARS(totalUSD);
-    if(g('dash-usd-tc')) g('dash-usd-tc').textContent='TC Oficial $'+fmtARS(tcOficial)+(c74val>0?' (C74 Minuta)':' (API)')+' · ≈ $ '+fmtARS(totalUSDenARS);
+    if(g('dash-usd-tc')) g('dash-usd-tc').textContent='TC Oficial $'+fmtARS(tcOficial)+' · ≈ $ '+fmtARS(totalUSDenARS);
     if(g('dash-usd-detail')) g('dash-usd-detail').innerHTML='<span style="color:#4a9fd4">RS U$S '+fmtARS(rsUSD)+'</span> &nbsp; <span style="color:#3aaa2a">SC U$S '+fmtARS(scUSD)+'</span>';
     if(g('dash-cartera-total')) g('dash-cartera-total').textContent='$ '+fmtARS(totalCart);
     if(g('dash-cartera-detail')) g('dash-cartera-detail').innerHTML='<span style="color:#4a9fd4">RS $ '+fmtARS(rsCart)+'</span> &nbsp; <span style="color:#3aaa2a">SC $ '+fmtARS(scCart)+'</span>';
@@ -7373,6 +7373,19 @@ function handleFile(input) {
         const logDiv = document.getElementById('import-log');
         if (logDiv) { logDiv.innerHTML = result.log.join('<br>'); logDiv.style.display='block'; }
         cacheGuardar('clientesDebo', appState.clientesDebo);
+        // Guardar también en tabla clientes_debo para persistencia al recargar
+        (async()=>{
+          if(!_supaUser||!appState.clientesDebo||!appState.clientesDebo.length)return;
+          try{
+            await supa.from('clientes_debo').delete().gte('id',0);
+            const _rows=appState.clientesDebo.map(c=>({
+              empresa:c.emp,uunn:c.uunn,apies:c.apies,codigo:c.codigo,nombre:c.nombre,
+              rem_pend:c.remPend,debitos:c.debitos,creditos:c.creditos,saldo:c.saldo,
+              fec_up:c.fecUp||null,imp_up:c.impUp,aut_cc:c.autCC,importado_by:_supaUser.id
+            }));
+            for(let _i=0;_i<_rows.length;_i+=500)await supa.from('clientes_debo').insert(_rows.slice(_i,_i+500));
+          }catch(e){console.warn('saveClientesDebo:',e);}
+        })();
         showToast('✅ Clientes DEBO — ' + result.total + ' registros');
         if (typeof renderClientesDebo === 'function') renderClientesDebo();
         if (typeof navGo === 'function') navGo('clientes', null);
