@@ -11791,10 +11791,24 @@ p{color:var(--text2)}
 
   /* Ocultar columnas menos importantes en tablas */
   .hide-mobile { display: none !important; }
+
+  /* NLP KPIs grid */
+  #nlp-kpis { grid-template-columns: 1fr 1fr !important; }
+
+  /* Notification panel */
+  #notif-panel { width: 100% !important; }
+
+  /* Dashboard export buttons wrap */
+  #dash-export-row { flex-wrap: wrap !important; }
+
+  /* Inline grid filters (NLP, FCI, etc.) */
+  [style*="grid-template-columns:1fr 1fr 1fr"] { display: flex !important; flex-wrap: wrap; gap: 8px !important; }
+  [style*="grid-template-columns: 1fr 1fr 1fr"] { display: flex !important; flex-wrap: wrap; gap: 8px !important; }
 }
 
 @media (max-width: 480px) {
   .grid-4 { grid-template-columns: 1fr !important; }
+  #nlp-kpis { grid-template-columns: 1fr !important; }
   #ob-kpis, #cf-kpis, #cli-kpis, #cart-kpis {
     grid-template-columns: 1fr !important;
   }
@@ -14447,7 +14461,7 @@ function renderCarteraDebo(){
   // Tabla
   const tbody=document.getElementById('cart-tabla-debo');
   const cntEl=document.getElementById('cart-count');
-  if(cntEl)cntEl.textContent=`${data.length.toLocaleString('es-AR')} cheques · $ ${fmtARS(tot)}`;
+  if(cntEl)cntEl.textContent=`${data.length.toLocaleString('es-AR')} cheques · $ ${fmtARS(tot)}${data.length>500?' · ⚠️ Mostrando primeros 500 — usá los filtros para reducir':''}`;
   if(tbody){
     const vis=data.slice(0,500);
     if(!vis.length){tbody.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:32px">Sin resultados</td></tr>';}
@@ -19360,7 +19374,7 @@ function renderFci() {
   filtered.sort((a,b) => b.fechaOp.localeCompare(a.fechaOp));
 
   const count = document.getElementById('fci-count');
-  if (count) count.textContent = filtered.length.toLocaleString() + ' movimientos';
+  if (count) count.textContent = filtered.length.toLocaleString() + ' movimientos' + (filtered.length>500?' · ⚠️ Mostrando primeros 500 — filtrá por empresa/fondo':'');
 
   // KPIs
   const kpis = document.getElementById('fci-kpis');
@@ -23901,7 +23915,7 @@ function gastosRender() {
 
   // Tabla
   const title = document.getElementById('gastos-table-title');
-  if (title) title.textContent = `📋 Movimientos (${filtered.length.toLocaleString('es-AR')}${filtered.length!==data.length?' de '+data.length.toLocaleString('es-AR'):''})`;
+  if (title) title.textContent = `📋 Movimientos (${filtered.length.toLocaleString('es-AR')}${filtered.length!==data.length?' de '+data.length.toLocaleString('es-AR'):''})${filtered.length>500?' · ⚠️ Tabla muestra primeros 500':''}`;
 
   const tbody = document.getElementById('gastos-tbody');
   if (!tbody) return;
