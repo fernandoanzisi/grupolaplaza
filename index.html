@@ -7507,7 +7507,34 @@ function handleFile(input) {
         if (typeof navGo === 'function') navGo('dashboard', null);
         return;
       }
-      // 2. Riesgo Crediticio (Nosis — hoja BASE clientes-libradores)
+      // 2a. Gastos — detectar antes de Riesgo para evitar falso positivo (ambos tienen hoja "base")
+      if (typeof isGastosXls === 'function' && isGastosXls(wb)) {
+        const parsed = [];
+        const sn = wb.SheetNames.find(s => s.toLowerCase().includes('base') || s.toLowerCase() === 'hoja1') || wb.SheetNames[0];
+        const ws = wb.Sheets[sn];
+        const rows = XLSX.utils.sheet_to_json(ws, {defval:null});
+        rows.forEach(row => {
+          const desc  = row['Descripción'] || row['Descripcion'] || row['descripción'] || row['descripcion'] || '';
+          const cuenta= row['Cuenta'] || row['cuenta'] || row['CUENTA'] || '';
+          const debe  = parseFloat(row['Debe'] || row['debe'] || row['DEBE'] || 0) || 0;
+          const haber = parseFloat(row['Haber'] || row['haber'] || row['HABER'] || 0) || 0;
+          const saldo = parseFloat(row['Saldo'] || row['saldo'] || row['SALDO'] || 0) || 0;
+          const uunn  = String(row['Unidad de negocio'] || row['Unidad de Negocio'] || row['UUNN'] || '').trim();
+          let mes = row['Mes'] || row['mes'] || row['MES'] || '';
+          if (mes instanceof Date) mes = mes.toISOString().slice(0,7);
+          else if (mes) mes = String(mes).slice(0,7);
+          if (cuenta || uunn) parsed.push({ desc:String(desc).trim(), cuenta:String(cuenta).trim(), debe, haber, saldo, uunn, mes:String(mes) });
+        });
+        if (typeof gastosSaveData === 'function') gastosSaveData(parsed);
+        statusEl.innerHTML = `<div class="alert green">✅ Gastos — ${parsed.length.toLocaleString()} filas importadas</div>`;
+        const logDiv = document.getElementById('import-log');
+        if (logDiv) { logDiv.innerHTML = `<span style="color:var(--green)">✅ Gastos: ${parsed.length.toLocaleString()} filas desde hoja "${sn}"</span>`; logDiv.style.display='block'; }
+        showToast('✅ Gastos importados — ' + parsed.length.toLocaleString() + ' filas');
+        if (typeof gastosRender === 'function') gastosRender();
+        if (typeof navGo === 'function') navGo('gastos', null);
+        return;
+      }
+      // 2b. Riesgo Crediticio (Nosis — hoja BASE clientes-libradores)
       if (typeof isRiesgoXls === 'function' && isRiesgoXls(wb)) {
         const result = parseRiesgoXls(wb);
         const logDiv = document.getElementById('import-log');
@@ -17263,12 +17290,35 @@ const RIESGO_PERFILES = {
 };
 
 // Detectar archivo Nosis
+function isGastosXls(wb) {
+  // Detecta Excel de Gastos: hoja "base" o "Hoja1" con columnas Debe/Haber/Cuenta/UUNN
+  const sn = wb.SheetNames.find(s => s.toLowerCase().includes('base') || s.toLowerCase() === 'hoja1');
+  if (!sn) return false;
+  const ws = wb.Sheets[sn];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, sheetRows:2});
+  if (!rows || rows.length < 1) return false;
+  const hdr = (rows[0]||[]).map(h=>String(h||'').toLowerCase());
+  return (hdr.some(h=>h.includes('debe')||h.includes('haber')) && hdr.some(h=>h.includes('cuenta')));
+}
+
 function isRiesgoXls(wb) {
   if (isMinutaDiaria(wb)) return false;
-  return wb.SheetNames.some(s => {
+  if (isGastosXls(wb)) return false; // evitar falso positivo con Excel de Gastos
+  const hasSheet = wb.SheetNames.some(s => {
     const sl = s.toLowerCase();
-    return sl.includes('base') || sl.includes('librador') || sl.includes('nosis') || sl.includes('ranking');
+    return sl.includes('librador') || sl.includes('nosis') || sl.includes('ranking') || sl.includes('base');
   });
+  if (!hasSheet) return false;
+  // Verificar además que tenga columnas típicas de Nosis (cuit, informe, librador)
+  const sn = wb.SheetNames.find(s => {
+    const sl = s.toLowerCase();
+    return sl.includes('librador') || sl.includes('nosis') || sl.includes('base');
+  }) || wb.SheetNames[0];
+  const ws = wb.Sheets[sn];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, sheetRows:2});
+  if (!rows || rows.length < 1) return true; // sin encabezado, confiar en el nombre de hoja
+  const hdr = (rows[0]||[]).map(h=>String(h||'').toLowerCase());
+  return hdr.some(h=>h.includes('cuit')||h.includes('nosis')||h.includes('librador')||h.includes('informe'));
 }
 
 // Parser Nosis — acumula historial por CUIT
