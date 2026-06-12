@@ -3841,6 +3841,10 @@ function showSaveIndicator(status) {
 
 // Toast notification
 let _toastTimer = null;
+// Helper: fecha local argentina (evita bug UTC donde toISOString da día siguiente después de las 21hs)
+function _localDateStr(){const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');}
+function _localDateAddDays(d){const n=new Date();n.setDate(n.getDate()+d);return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');}
+
 function showToast(msg, duration) {
   const el = document.getElementById('app-toast');
   if (!el) { console.log('[Toast]', msg); return; }
@@ -6524,7 +6528,7 @@ function importCarteraDeValores(wb) {
         id:              Date.now() + ri + Math.random(),
         _key:            key,
         _fromCarteraXls: true,
-        fecha:           cobro || emision || new Date().toISOString().slice(0,10),
+        fecha:           cobro || emision || _localDateStr(),
         nro, banco: banco || cfg.tipo,
         fEmision:        emision,
         fCobro:          cobro,
@@ -6672,7 +6676,7 @@ function importChequesRechazados(wb) {
       id:           Date.now() + ri + Math.random(),
       _key:         key,
       _fromRechXls: true,
-      fecha:        fRechazo || fEmision || new Date().toISOString().slice(0,10),
+      fecha:        fRechazo || fEmision || _localDateStr(),
       nro:          nro,
       banco:        banco,
       fEmision,
@@ -8025,7 +8029,7 @@ function handleFile(input) {
           const nro      = clean(getF(r, ['nrocheque','nro cheque','nro','number','numero']) || '');
           const importe  = parseNum(getF(r, ['importe','amount','monto','valor']) || 0);
           if (!importe) return;
-          const fecha    = clean(getF(r, ['fecha','date']) || new Date().toISOString().slice(0,10));
+          const fecha    = clean(getF(r, ['fecha','date']) || _localDateStr());
           const librador = clean(getF(r, ['librador','emisor','from']) || '');
           const banco    = clean(getF(r, ['banco','bank']) || '');
           const sub      = clean(getF(r, ['subempresaest','subempresa/est','subempresa','estacion','station']) || '');
@@ -8850,7 +8854,7 @@ function subExportExcel() {
   XLSX.utils.book_append_sheet(wb2, XLSX.utils.json_to_sheet(detalle),            'Detalle UUNN');
   XLSX.utils.book_append_sheet(wb2, XLSX.utils.json_to_sheet(Object.values(porEmpresa)), 'Por empresa');
   XLSX.utils.book_append_sheet(wb2, XLSX.utils.json_to_sheet(resumen),            'Resumen grupo');
-  const fecha = new Date().toISOString().slice(0,10);
+  const fecha = _localDateStr();
   XLSX.writeFile(wb2, 'UUNN_' + fecha + '.xlsx');
   showToast('📥 Excel exportado — 3 hojas');
 }
@@ -9093,7 +9097,7 @@ async function subExportPPTX() {
     } catch(e) {}
   }
 
-  const fechaFile = new Date().toISOString().slice(0,10);
+  const fechaFile = _localDateStr();
   await pptx.writeFile({fileName:'UUNN_'+fechaFile+'.pptx'});
   showToast('📑 PowerPoint generado — ' + (3 + (data.some(r=>(r.erogaciones||0)>0)?2:1)) + ' slides');
 }
@@ -9400,7 +9404,7 @@ function chequesHistorialGuardar() {
     });
     const total   = all.length;
     const monto   = all.reduce((s,c)=>s+(c.importe||0),0);
-    const hoy     = new Date().toISOString().slice(0,10);
+    const hoy     = _localDateStr();
     const hora    = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
     const venc    = all.filter(c=>{const f=c.fCobro||c.fVto||c.fPres||'';return f&&f<hoy;}).reduce((s,c)=>s+(c.importe||0),0);
     const cliMap  = {};
@@ -9511,7 +9515,7 @@ function renderCheques() {
   const fElect       = document.getElementById('chq-f-elect')?.value||'';
   const fUunn        = document.getElementById('chq-f-uunn')?.value||'';
   const fApies       = document.getElementById('chq-f-apies')?.value||'';
-  const todayDate    = new Date().toISOString().slice(0,10);
+  const todayDate    = _localDateStr();
 
   // Filtrar
   let filtered = all.filter(c => {
@@ -9600,7 +9604,7 @@ function renderCheques() {
   // ── GRÁFICOS ────────────────────────────────────────────────
   const grafDiv = document.getElementById('chq-graficos');
   if (grafDiv && filtered.length) {
-    const td = new Date().toISOString().slice(0,10);
+    const td = _localDateStr();
     // Cascada vencimientos (sobre filtered en cartera)
     const enCartera = filtered.filter(c=>(c.estadoActual||c.estado||'').toUpperCase()==='EN CARTERA');
     const buckets = [
@@ -9668,7 +9672,7 @@ function renderCheques() {
   });
 
   // KPIs — solo sobre EN CARTERA para coherencia con la cascada
-  const today2 = new Date().toISOString().slice(0,10);
+  const today2 = _localDateStr();
   const enCarteraFilt = filtered.filter(c=>(c.estadoActual||c.estado||'').toUpperCase()==='EN CARTERA');
   const totCart    = enCarteraFilt.reduce((s,c)=>s+(c.importe||0),0);
   const totVencidos= enCarteraFilt.filter(c=>{const f=c.fCobro||c.fVto||''; return f && f<today2;}).reduce((s,c)=>s+(c.importe||0),0);
@@ -9692,7 +9696,7 @@ function renderCheques() {
     'EN CARTERA': 'color:var(--accent);background:rgba(108,143,255,0.12)',
     'COBRADO':    'color:var(--green);background:rgba(62,207,142,0.12)',
   };
-  const today = new Date().toISOString().slice(0,10);
+  const today = _localDateStr();
 
   const tbody = document.getElementById('cheques-table');
   if (!tbody) return;
@@ -9961,7 +9965,7 @@ function renderRechazados() {
   // Gráficos
   const grafDiv=document.getElementById('rech-graficos');
   if(grafDiv&&filtered.length){
-    const td=new Date().toISOString().slice(0,10);
+    const td=_localDateStr();
     const bucks=[{l:'+180d',c:'var(--red)',fn:r=>r.dias>180},{l:'91-180',c:'var(--yellow)',fn:r=>r.dias>=91&&r.dias<=180},{l:'31-90',c:'var(--accent)',fn:r=>r.dias>=31&&r.dias<=90},{l:'0-30',c:'var(--green)',fn:r=>r.dias>=0&&r.dias<=30}];
     const bD=bucks.map(b=>({...b,tot:filtered.filter(b.fn).reduce((s,r)=>s+r.importe,0)}));
     const bMax=Math.max(...bD.map(b=>b.tot),1);
@@ -11234,7 +11238,7 @@ function openAddCheque() {
   const emp = empresa();
   if (!emp.cheques) emp.cheques = [];
   emp.cheques.push({
-    id: Date.now(), fecha: new Date().toISOString().slice(0,10),
+    id: Date.now(), fecha: _localDateStr(),
     nro, librador, banco, importe, subempresa: sub, estado, notas: ''
   });
   saveState(); renderCheques();
@@ -12396,7 +12400,7 @@ function cfPresSetEmp(emp, btn) {
 
 function cfPresAgregarFila(tipo) {
   const id = Date.now();
-  const hoy = new Date().toISOString().slice(0,10);
+  const hoy = _localDateStr();
   _cfPresFilas.push({ id, tipo, fecha: hoy, concepto: '', importe: 0, empresa: _cfPresEmp==='grupo'?'RS':_cfPresEmp });
   _cfPresSave();
   renderCFPresupuesto();
@@ -12881,7 +12885,7 @@ function cfSetEmp(emp, btn) {
 
 function cfAgregarFila() {
   if (!appState.cfFilas) appState.cfFilas = [];
-  const hoy = new Date().toISOString().slice(0,10);
+  const hoy = _localDateStr();
   const id = Date.now();
   appState.cfFilas.push({ id, fecha: hoy, empresa: _cfEmp==='grupo'?'RS':_cfEmp, concepto: '', tipo: 'ingreso', importe: 0 });
   saveState();
@@ -12915,7 +12919,7 @@ function cfLimpiarManuales() {
 }
 
 function _cfGetCheques(empFilter) {
-  const today = new Date().toISOString().slice(0,10);
+  const today = _localDateStr();
   const result = [];
   appState.empresas.forEach(emp => {
     const tag = emp.name.includes('Rio') ? 'RS' : emp.name.includes('Cipolletti') ? 'SC' : 'LP';
@@ -12943,7 +12947,7 @@ function cfSetRango(rango) {
     const b = document.getElementById('cf-q-'+r);
     if (b) { b.classList.remove('active'); if (r === rango) b.classList.add('active'); }
   });
-  const today = new Date().toISOString().slice(0,10);
+  const today = _localDateStr();
   const desdeEl = document.getElementById('cf-f-desde');
   const hastaEl = document.getElementById('cf-f-hasta');
   if (!desdeEl || !hastaEl) { renderCashFlow(); return; }
@@ -12979,7 +12983,7 @@ function cfGetValue(date, emp, rowIdx, template) {
   if (dayData && dayData[emp] && dayData[emp][rowIdx] !== undefined)
     return { val: dayData[emp][rowIdx].value, source: 'minuta' };
   // Cheques projection for future dates
-  const today = new Date().toISOString().slice(0,10);
+  const today = _localDateStr();
   if (date > today && template) {
     const lbl = (template[rowIdx] && template[rowIdx].label) || '';
     // rowIdx 22 = VALORES EN CARTERA — cheques EN CARTERA
@@ -13020,7 +13024,7 @@ function cfSetOverride(date, emp, rowIdx, val) {
 }
 
 function _cfMakeDateRange(desde, hasta) {
-  const today = new Date().toISOString().slice(0,10);
+  const today = _localDateStr();
   const start = desde || today;
   let end = hasta;
   if (!end) {
@@ -13043,7 +13047,7 @@ function _cfFmtDate(d) { return d.slice(8,10) + '/' + d.slice(5,7); }
 function _renderCFMinutaTable(dates, emps, template) {
   const container = document.getElementById('cf-minuta-table');
   if (!container) return;
-  const today = new Date().toISOString().slice(0,10);
+  const today = _localDateStr();
   const cols = 1 + dates.length;
 
   // Sección EGRESOS: índice de la fila divisoria
@@ -13380,7 +13384,7 @@ function renderCashFlow() {
       tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:40px;font-size:13px">Sin filas. Hace clic en + Agregar fila para ingresar proyecciones.<br><span style="font-size:11px;display:block;margin-top:6px">Los cheques en cartera con vencimiento futuro se agregan automaticamente.</span></td></tr>';
     } else {
       let acum = saldoInicial;
-      const today2 = new Date().toISOString().slice(0,10);
+      const today2 = _localDateStr();
       let rows = '';
       dates.forEach(fecha => {
         const d = byDate[fecha];
@@ -13453,7 +13457,7 @@ function renderCashFlow() {
       if (template) {
         const mdDates = Object.keys(appState.cfMinutaData).sort();
         const futureDates = _cfMakeDateRange(
-          cfDesde || (mdDates[0] || new Date().toISOString().slice(0,10)),
+          cfDesde || (mdDates[0] || _localDateStr()),
           cfHasta || (() => { const d = new Date(); d.setDate(d.getDate()+14); return d.toISOString().slice(0,10); })()
         ).filter(d => !appState.cfMinutaData[d]);
         const allDates = [...new Set([...mdDates, ...futureDates])].sort();
@@ -14079,7 +14083,7 @@ function parseCarteraDebo(wb) {
   if (!appState.galiciaDepositos) appState.galiciaDepositos = [];
   if (!appState.rechazadosData)   appState.rechazadosData   = [];
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = _localDateStr();
 
   function pd(v) {
     if (!v) return null;
@@ -14353,7 +14357,7 @@ function cartLimpiarFiltros(){
 }
 
 function _cartFiltered(){
-  const today=new Date().toISOString().slice(0,10);
+  const today=_localDateStr();
   const q=(document.getElementById('cart-search')?.value||'').toLowerCase();
   const fD=document.getElementById('cart-f-desde')?.value||'';
   const fH=document.getElementById('cart-f-hasta')?.value||'';
@@ -14394,7 +14398,7 @@ function renderCarteraDebo(){
   const data=_cartFiltered();
   _cartUpdFilters();
   // KPIs
-  const today=new Date().toISOString().slice(0,10);
+  const today=_localDateStr();
   // Helper: calcula dias desde hoy a fPres (ignora el valor cacheado en el objeto)
   const calcDias=(c)=>c.fPres?Math.round((new Date(c.fPres)-new Date(today))/86400000):null;
   const tot=data.reduce((s,c)=>s+c.importe,0);
@@ -15059,7 +15063,7 @@ async function loadFromSupabase() {
         page++;
       }
       if (allCartera.length) {
-      const _hoy = new Date().toISOString().slice(0,10);
+      const _hoy = _localDateStr();
       appState.cartDebo = allCartera.map(r => {
         const fPres = r.f_pres||'';
         const dias  = fPres ? Math.round((new Date(fPres)-new Date(_hoy))/86400000) : null;
@@ -16047,7 +16051,7 @@ function obRenderFacturas(facturas) {
 
 function obAgregarFactura() {
   if (!window._obFacturasTemp) window._obFacturasTemp = [];
-  const today = new Date().toISOString().slice(0,10);
+  const today = _localDateStr();
   window._obFacturasTemp.push({fecha:today,proveedor:'',concepto:'',rubro:'Materiales varios',nota:'',nroFC:'',importe:0,estadoPago:'Pendiente'});
   obRefreshFacturas();
 }
@@ -16106,7 +16110,7 @@ function guardarObra() {
     etapas:     window._obEtapasTemp||[],
     facturas:   window._obFacturasTemp||[],
     presupuestos: window._obPresupuestosTemp||[],
-    fechaFinReal: get('ob-estado')==='Finalizada' ? (new Date().toISOString().slice(0,10)) : '',
+    fechaFinReal: get('ob-estado')==='Finalizada' ? (_localDateStr()) : '',
   };
 
   if (_obObraId) {
@@ -16735,7 +16739,7 @@ async function obraExportPPT(id) {
     if(o.ubicacion) su.addText('📌 '+o.ubicacion,{x:0.4,y:5.1,w:9.2,h:0.2,fontSize:9,color:TEXT2+'80',fontFace:'Arial'});
   }
 
-  const fechaFile=new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const fechaFile=_localDateStr().replace(/-/g,'');
   await pptx.writeFile({fileName:'Obra_'+o.nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]/g,'_')+'_'+fechaFile+'.pptx'});
   showToast('📑 PowerPoint generado — '+o.nombre);
 }
@@ -17004,7 +17008,7 @@ async function obProcesarFotos(input) {
     window._obFotosTemp.push({
       id: 'foto_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
       data, tipo,
-      fecha: new Date().toISOString().slice(0,10),
+      fecha: _localDateStr(),
       descripcion: ''
     });
   }
@@ -19774,7 +19778,7 @@ function conciliarAhora() {
     if (r.hoja === 'CHQ') {
       const nroCheq = String(r.nro || '').trim();
       const vto = r.fechaPago || '';
-      const hoy = new Date().toISOString().slice(0,10);
+      const hoy = _localDateStr();
       // Buscar en extracto por número de cheque en detalle/descripcion
       let matchExt = null;
       if (nroCheq) {
@@ -20268,7 +20272,7 @@ function renderPetrolerasPage() {
   fillSel('petro-moneda', [...new Set(data.map(r=>r.moneda).filter(Boolean))].sort());
 
   // KPIs
-  const hoy = new Date().toISOString().slice(0,10);
+  const hoy = _localDateStr();
   const pagos  = filtered.filter(r=>r.origARS>0).reduce((s,r)=>s+r.origARS,0);
   const deuda  = filtered.filter(r=>r.origARS<0).reduce((s,r)=>s+r.origARS,0);
   const saldo  = pagos + deuda;
@@ -20499,7 +20503,7 @@ function pasivosRender() {
   ).join('');
 
   // Alertas
-  const hoyStr = new Date().toISOString().slice(0,10);
+  const hoyStr = _localDateStr();
   const en7 = new Date(); en7.setDate(en7.getDate()+7);
   const en7Str = en7.toISOString().slice(0,10);
   const en30 = new Date(); en30.setDate(en30.getDate()+30);
@@ -21064,7 +21068,7 @@ function flotaSeguroEstado(v){const d=flotaDiasHasta(v.seguroVto);if(!d&&!v.segu
 function flotaRender() {
   flotaInit();
   const all=appState.flota.filter(v=>_flotaEmp==='grupo'||v.empresa===_flotaEmp);
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=_localDateStr();
   const regs=appState.flotaRegistros||[];
   const vtv_venc=all.filter(v=>v.vtv&&v.vtv<hoy).length;
   const vtv_prox=all.filter(v=>{const d=flotaDiasHasta(v.vtv);return d!==null&&d>=0&&d<=30;}).length;
@@ -21254,7 +21258,7 @@ function abrirModalFlotaRegistro(tipo,vehiculoId){
   if(!['mantenimiento','combustible','infraccion'].includes(tipo))tipo='mantenimiento';
   const titles={mantenimiento:'🔧 Service / Mantenimiento',combustible:'⛽ Carga de Combustible',infraccion:'🚫 Infracción'};
   document.getElementById('modal-flota-reg-title').textContent=titles[tipo];
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=_localDateStr();
   const body=document.getElementById('modal-flota-reg-body');
   const vSel='<div style="margin-bottom:14px">'+flotaSelect('Vehículo','flr-vehiculo',(appState.flota||[]).map(v=>[v.id,v.marca+' '+v.modelo+' · '+v.patente+' ('+v.empresa+')']),vehiculoId||'')+'</div>';
   let campos='';
@@ -21331,7 +21335,7 @@ function flotaExportExcel(){
 function renderTimelineMini() {
   const el = document.getElementById('dash-timeline-mini');
   if (!el) return;
-  const hoy = new Date().toISOString().slice(0,10);
+  const hoy = _localDateStr();
   const eventos = [];
   // Pasivos — cuotas próximas
   (appState.pasivos||[]).filter(p=>(p.estado==='Vigente'||p.estado==='En mora')&&p.proxVenc&&p.proxVenc>=hoy).sort((a,b)=>a.proxVenc.localeCompare(b.proxVenc)).slice(0,2).forEach(p=>{
@@ -21653,7 +21657,7 @@ function renderGuardia() {
 
   // Alertas
   const alertas = [];
-  const hoyStr = new Date().toISOString().slice(0,10);
+  const hoyStr = _localDateStr();
   (appState.flota||[]).filter(v=>v.vtv&&v.vtv<hoyStr).slice(0,3).forEach(v=>
     alertas.push({icon:'🚨',color:'#f87171',bg:'rgba(248,113,113,0.1)',b:'rgba(248,113,113,0.25)',t:'VTV vencida: '+v.patente,s:v.empresa}));
   (appState.pasivos||[]).filter(p=>p.proxVenc===hoyStr&&(p.estado==='Vigente'||p.estado==='En mora')).forEach(p=>
@@ -22467,7 +22471,7 @@ function lectorRender() {
     return;
   }
   const extIcon = e=>({'pdf':'📄','jpg':'🖼️','jpeg':'🖼️','png':'🖼️','xlsx':'📊','xls':'📊','csv':'📋','txt':'📝'}[e]||'📄');
-  const today = new Date().toISOString().slice(0,10);
+  const today = _localDateStr();
   tbody.innerHTML = filtered.map(d => {
     const vCol = d.vencimiento?(d.vencimiento<today?'color:#f87171;font-weight:700':d.vencimiento<=today.slice(0,7)+'-31'?'color:#fbbf24;font-weight:700':'color:var(--text)'):'';
     return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer" onclick="lectorVerDoc('${d.id}')">
@@ -23861,7 +23865,7 @@ function rechGenerarInformeApies(apies) {
     .sort((a,b) => (b.dias||0)-(a.dias||0));
   if (!cheques.length) { showToast('Sin cheques pendientes para APIES '+apies); return; }
   const payload = {
-    a: apies, f: new Date().toISOString().slice(0,10),
+    a: apies, f: _localDateStr(),
     q: cheques.map(r => ({ n:r.nro, c:r.cliente||r.librador, i:r.importe, d:r.dias, fr:r.fRech, m:r.motivo, b:r.banco }))
   };
   const enc = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
