@@ -25938,14 +25938,17 @@ function computeAlertas() {
       alertas.push({cat:'pasivos',nivel:'rojo',icon:'📉',titulo:'En mora: '+(p.descripcion||p.banco||'—'),desc:p.empresa,sub:'Saldo: $'+fmt(p.saldo),nav:'pasivos'});
   });
 
-  // ── Cartera de valores — vencimientos ──
-  (appState.cartDebo||[]).forEach(c=>{
-    if(!c.fPres) return;
-    const d=_notifDias(c.fPres);
-    if(d!==null && d<0)
-      alertas.push({cat:'cartera',nivel:'rojo',icon:'📋',titulo:'Cheque VENCIDO: '+c.numero,desc:(c.cliente||c.librador||'—')+' · '+(c.banco||'—'),sub:'$'+fmt(c.importe)+' · '+c.fPres+' · '+c.emp,nav:'cartera'});
-    else if(d!==null && d<=7)
-      alertas.push({cat:'cartera',nivel:'amarillo',icon:'📋',titulo:'Cheque vence en '+d+'d: '+c.numero,desc:(c.cliente||c.librador||'—')+' · '+(c.banco||'—'),sub:'$'+fmt(c.importe)+' · '+c.fPres+' · '+c.emp,nav:'cartera'});
+  // ── Cheques vigentes (En Cartera) ──
+  (appState.empresas||[]).forEach(e=>{
+    (e.cheques||[]).filter(c=>(c.estadoActual||c.estado||'').toUpperCase()==='EN CARTERA').forEach(c=>{
+      const fRef=c.fCobro||c.fVto||'';
+      if(!fRef) return;
+      const d=_notifDias(fRef);
+      if(d!==null && d<0)
+        alertas.push({cat:'cheques',nivel:'rojo',icon:'💵',titulo:'Cheque VENCIDO sin cobrar',desc:(c.librador||c.cliente||'—')+' · '+(c.banco||'—'),sub:'$'+fmt(c.importe)+' · '+fRef+' · '+(e.name||''),nav:'cheques'});
+      else if(d!==null && d<=7)
+        alertas.push({cat:'cheques',nivel:'amarillo',icon:'💵',titulo:'Cheque vence en '+d+'d',desc:(c.librador||c.cliente||'—')+' · '+(c.banco||'—'),sub:'$'+fmt(c.importe)+' · '+fRef+' · '+(e.name||''),nav:'cheques'});
+    });
   });
 
   // ── Rechazados sin cobrar ──
