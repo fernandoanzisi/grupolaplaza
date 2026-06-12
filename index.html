@@ -2532,7 +2532,18 @@ let _supaUser=null,_supaRol=null;
 <div class="page" id="page-nlp_comisiones">
   <div class="section-header mb" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
     <h2>💰 NLP — Comisiones</h2>
+    <div style="display:flex;gap:8px">
+      <button class="btn-sm" onclick="nlpExportExcel()" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer">📥 Excel</button>
+    </div>
   </div>
+  <!-- KPI cards -->
+  <div id="nlp-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px"></div>
+  <!-- Trend chart -->
+  <div class="card" id="nlp-chart-wrap" style="margin-bottom:14px;display:none">
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Evolución mensual</div>
+    <div id="nlp-chart" style="width:100%;overflow-x:auto"></div>
+  </div>
+  <!-- Filters -->
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:8px;margin-bottom:14px">
     <div>
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Año</div>
@@ -2551,9 +2562,10 @@ let _supaUser=null,_supaRol=null;
       <input type="text" id="nlp-search" placeholder="Estación, tipo..." oninput="renderNlpComisiones()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);outline:none">
     </div>
   </div>
+  <!-- Table -->
   <div class="card">
     <div style="font-size:12px;color:var(--text3);margin-bottom:10px" id="nlp-count">0 registros</div>
-    <div class="table-wrap" style="max-height:62vh;overflow-y:auto">
+    <div class="table-wrap" style="max-height:55vh;overflow-y:auto">
       <table style="font-size:12px">
         <thead style="position:sticky;top:0;background:var(--card);z-index:1">
           <tr><th>Año</th><th>Mes</th><th>Estación</th><th>Tipo</th><th style="text-align:right">Importe</th></tr>
@@ -19052,6 +19064,95 @@ function renderNlpComisiones() {
   const count = document.getElementById('nlp-count');
   if (count) count.textContent = filtered.length.toLocaleString() + ' registros';
 
+  // Populate selects (from full data, not filtered)
+  function fillNlpSel(id, vals, label='Todos') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const key = vals.join('|');
+    if (el.dataset.pop === key) return;
+    const cur = el.value;
+    el.innerHTML = `<option value="">${label}</option>` + vals.map(v=>`<option value="${v}">${v}</option>`).join('');
+    el.dataset.pop = key;
+    if (vals.includes(cur)) el.value = cur;
+  }
+  fillNlpSel('nlp-anio',     [...new Set(data.map(r=>r.anio).filter(Boolean))].sort().reverse());
+  fillNlpSel('nlp-estacion', [...new Set(data.map(r=>r.estacion).filter(Boolean))].sort(), 'Todas');
+  fillNlpSel('nlp-tipo',     [...new Set(data.map(r=>r.tipo).filter(Boolean))].sort());
+
+  // ── KPIs ──────────────────────────────────────────────────────
+  const kpiEl = document.getElementById('nlp-kpis');
+  if (kpiEl) {
+    if (!data.length) {
+      kpiEl.innerHTML = '';
+    } else {
+      const totalFilt  = filtered.reduce((s,r)=>s+(r.importe||0), 0);
+      const totalGlobal = data.reduce((s,r)=>s+(r.importe||0), 0);
+      // by tipo in filtered
+      const byTipo = {};
+      filtered.forEach(r=>{ byTipo[r.tipo] = (byTipo[r.tipo]||0) + r.importe; });
+      const tipos = Object.entries(byTipo).sort((a,b)=>b[1]-a[1]);
+      // best month in filtered
+      const byMes = {};
+      filtered.forEach(r=>{ const k=r.anio+'-'+r.mes; byMes[k]=(byMes[k]||0)+r.importe; });
+      const bestMes = Object.entries(byMes).sort((a,b)=>b[1]-a[1])[0];
+      const [bAnio,bMes] = bestMes ? bestMes[0].split('-') : ['--','--'];
+      const MNOMBRES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      const bLabel = bestMes ? (MNOMBRES[parseInt(bMes)]||bMes)+' '+bAnio : '--';
+
+      const kpiCard = (icon,label,val,sub='',color='var(--green)') =>
+        `<div class="card" style="padding:14px 16px">
+          <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${icon} ${label}</div>
+          <div style="font-size:20px;font-weight:800;color:${color};font-family:var(--mono)">$ ${fmtARS(val)}</div>
+          ${sub ? `<div style="font-size:11px;color:var(--text3);margin-top:3px">${sub}</div>` : ''}
+        </div>`;
+
+      const tipoCards = tipos.slice(0,2).map(([t,v])=>kpiCard('💳',t,v,`${((v/totalFilt)*100).toFixed(1)}% del total`));
+      while(tipoCards.length<2) tipoCards.push(`<div class="card" style="padding:14px 16px"></div>`);
+
+      kpiEl.innerHTML =
+        kpiCard('📊','Total filtrado', totalFilt, filtered.length.toLocaleString()+' registros') +
+        kpiCard('🏆','Mejor mes', bestMes?bestMes[1]:0, bLabel, 'var(--yellow)') +
+        tipoCards.join('');
+    }
+  }
+
+  // ── Trend chart ───────────────────────────────────────────────
+  const chartWrap = document.getElementById('nlp-chart-wrap');
+  const chartEl   = document.getElementById('nlp-chart');
+  if (chartWrap && chartEl && filtered.length) {
+    chartWrap.style.display = '';
+    // aggregate by anio-mes
+    const byMesMap = {};
+    filtered.forEach(r => {
+      const k = r.anio+'-'+r.mes;
+      byMesMap[k] = (byMesMap[k]||0) + r.importe;
+    });
+    const keys = Object.keys(byMesMap).sort();
+    const vals = keys.map(k=>byMesMap[k]);
+    const maxV = Math.max(...vals) || 1;
+    const W = Math.max(keys.length * 40, 400);
+    const H = 130;
+    const pad = {l:8,r:8,t:10,b:28};
+    const bw = Math.min(32, (W-pad.l-pad.r)/keys.length - 4);
+    const MNOMBRES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const bars = keys.map((k,i) => {
+      const v = vals[i];
+      const bh = Math.round(((H-pad.t-pad.b) * v) / maxV);
+      const x = pad.l + i*((W-pad.l-pad.r)/keys.length) + ((W-pad.l-pad.r)/keys.length - bw)/2;
+      const y = H - pad.b - bh;
+      const [ay,am] = k.split('-');
+      const lbl = MNOMBRES[parseInt(am)]||am;
+      return `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="3" fill="var(--blue)" opacity=".85">
+        <title>${lbl} ${ay}: $ ${fmtARS(v)}</title></rect>
+        <text x="${x+bw/2}" y="${H-pad.b+11}" text-anchor="middle" font-size="9" fill="var(--text3)">${lbl}</text>
+        <text x="${x+bw/2}" y="${H-pad.b+20}" text-anchor="middle" font-size="8" fill="var(--text3)">${ay}</text>`;
+    }).join('');
+    chartEl.innerHTML = `<svg width="${W}" height="${H}" style="display:block;min-width:100%">${bars}</svg>`;
+  } else if (chartWrap) {
+    chartWrap.style.display = 'none';
+  }
+
+  // ── Table ─────────────────────────────────────────────────────
   const tbody = document.getElementById('nlp-tbody');
   if (!tbody) return;
   if (!filtered.length) {
@@ -19071,21 +19172,57 @@ function renderNlpComisiones() {
     <td colspan="4" style="padding:8px 10px;text-align:right;font-size:11px">TOTAL FILTRADO:</td>
     <td style="font-family:var(--mono);text-align:right;color:var(--green);padding:8px 10px">$ ${fmtARS(totalImporte)}</td>
   </tr>`;
+}
 
-  // Populate selects
-  function fillNlpSel(id, vals) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const key = vals.join('|');
-    if (el.dataset.pop === key) return;
-    const cur = el.value;
-    el.innerHTML = '<option value="">Todos</option>' + vals.map(v=>`<option value="${v}">${v}</option>`).join('');
-    el.dataset.pop = key;
-    if (vals.includes(cur)) el.value = cur;
-  }
-  fillNlpSel('nlp-anio',     [...new Set(data.map(r=>r.anio).filter(Boolean))].sort().reverse());
-  fillNlpSel('nlp-estacion', [...new Set(data.map(r=>r.estacion).filter(Boolean))].sort());
-  fillNlpSel('nlp-tipo',     [...new Set(data.map(r=>r.tipo).filter(Boolean))].sort());
+function nlpExportExcel() {
+  const data = (appState && appState.nlpData) || [];
+  if (!data.length) { showToast('Sin datos NLP para exportar'); return; }
+  if (typeof XLSX === 'undefined') { showToast('Cargando XLSX...'); return; }
+
+  const anio     = document.getElementById('nlp-anio')?.value || '';
+  const estacion = document.getElementById('nlp-estacion')?.value || '';
+  const tipo     = document.getElementById('nlp-tipo')?.value || '';
+  const search   = (document.getElementById('nlp-search')?.value || '').toLowerCase();
+  const filtered = data
+    .filter(r => !anio     || r.anio === anio)
+    .filter(r => !estacion || r.estacion === estacion)
+    .filter(r => !tipo     || r.tipo.includes(tipo))
+    .filter(r => !search   || r.estacion.toLowerCase().includes(search) || r.tipo.toLowerCase().includes(search));
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: detalle filtrado
+  const wsData = [['Año','Mes','Estación','Tipo','Importe']].concat(
+    filtered.map(r=>[r.anio, r.mes, r.estacion, r.tipo, r.importe])
+  );
+  wsData.push(['','','','TOTAL', filtered.reduce((s,r)=>s+(r.importe||0),0)]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsData), 'Detalle');
+
+  // Sheet 2: por estación
+  const byEst = {};
+  filtered.forEach(r=>{ byEst[r.estacion]=(byEst[r.estacion]||0)+r.importe; });
+  const wsEst = [['Estación','Total']].concat(
+    Object.entries(byEst).sort((a,b)=>b[1]-a[1]).map(([e,v])=>[e,v])
+  );
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsEst), 'Por estación');
+
+  // Sheet 3: por tipo
+  const byTipo = {};
+  filtered.forEach(r=>{ byTipo[r.tipo]=(byTipo[r.tipo]||0)+r.importe; });
+  const wsTipo = [['Tipo','Total']].concat(
+    Object.entries(byTipo).sort((a,b)=>b[1]-a[1]).map(([t,v])=>[t,v])
+  );
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsTipo), 'Por tipo');
+
+  // Sheet 4: por mes
+  const byMes = {};
+  filtered.forEach(r=>{ const k=r.anio+'-'+r.mes; byMes[k]=(byMes[k]||0)+r.importe; });
+  const wsMes = [['Año-Mes','Total']].concat(
+    Object.keys(byMes).sort().map(k=>[k, byMes[k]])
+  );
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsMes), 'Por mes');
+
+  XLSX.writeFile(wb, `NLP_Comisiones_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
 function isNlpComisiones(wb) {
