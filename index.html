@@ -16242,8 +16242,33 @@ td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
   ${o.descripcion?`<div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid ${ec};border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#475569"><strong>Descripción:</strong> ${o.descripcion}</div>`:''}
 
   <h2>📅 Cronograma de etapas</h2>${etapasHTML}
+  ${(()=>{const et=(o.etapas||[]).filter(e=>e.fechaInicio&&e.fechaFin);return et.length>=2?`<div style="margin:16px 0;overflow:hidden;border-radius:8px;border:1px solid #e2e8f0">${obGanttSVG(o)}</div>`:''})()}
   <h2>💰 Ejecución por rubro</h2>${rubrosHTML}
   <h2>🧾 Facturas</h2>${facturasHTML}
+  ${(o.fotos||[]).length?`
+  <h2>📸 Registro fotográfico (${o.fotos.length} foto${o.fotos.length!==1?'s':''})</h2>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px">
+    ${o.fotos.slice(0,12).map(f=>`<div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;break-inside:avoid">
+      <img src="${f.data||''}" style="width:100%;height:130px;object-fit:cover;display:block" onerror="this.parentElement.style.display='none'">
+      ${(f.tipo||f.descripcion||f.fecha)?`<div style="padding:5px 8px;font-size:9px;color:#64748b;line-height:1.4">
+        ${f.tipo?`<strong>${f.tipo}</strong>`:''}${f.fecha?' · '+f.fecha:''}${f.descripcion?`<br>${f.descripcion}`:''}
+      </div>`:''}
+    </div>`).join('')}
+  </div>
+  ${o.fotos.length>12?`<p style="font-size:10px;color:#94a3b8;margin-top:4px">+ ${o.fotos.length-12} fotos adicionales no incluidas en este informe</p>`:''}
+  `:''}
+  ${(o.lat&&o.lng)?`
+  <h2>📍 Ubicación</h2>
+  <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:12px">
+    <img src="https://staticmap.openstreetmap.de/staticmap.php?center=${o.lat},${o.lng}&zoom=16&size=860x280&markers=${o.lat},${o.lng},red-marker-small"
+      style="width:100%;height:200px;object-fit:cover;display:block"
+      onerror="this.style.display='none'">
+    <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;background:#f8fafc">
+      <span style="font-size:11px;color:#64748b">📍 ${o.lat.toFixed(5)}, ${o.lng.toFixed(5)}${o.ubicacion?' · '+o.ubicacion:''}</span>
+      <span style="font-size:11px;color:#3b82f6">maps.google.com/?q=${o.lat},${o.lng}</span>
+    </div>
+  </div>
+  `:''}
   ${o.notas?`<h2>📝 Notas</h2><div style="background:#fffbeb;border:1px solid #fde68a;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;padding:12px 16px;font-size:12px;color:#92400e">${o.notas}</div>`:''}
 
   <div class="footer">
@@ -16394,6 +16419,57 @@ async function obraExportPPT(id) {
   ].filter(Boolean);
   s5.addText(sumLines.join('\n'),{x:0.5,y:2.65,w:9.2,h:2.4,fontSize:13,color:TEXT2,fontFace:'Arial',breakLine:true,paraSpaceAfter:4});
   s5.addText('Grupo La Plaza · '+razon+' · '+hoy,{x:0.5,y:5.18,w:9.2,h:0.25,fontSize:9,color:TEXT2+'70',fontFace:'Arial'});
+
+  // ── Slides de Fotos ─────────────────────────────────────────────
+  const fotos=(o.fotos||[]).filter(f=>f.data);
+  if(fotos.length){
+    const grupos=[];
+    for(let i=0;i<Math.min(fotos.length,16);i+=4) grupos.push(fotos.slice(i,i+4));
+    const posGrid=[{x:0.25,y:1.1},{x:5.15,y:1.1},{x:0.25,y:3.25},{x:5.15,y:3.25}];
+    grupos.forEach((grp,gi)=>{
+      const sf=pptx.addSlide();sf.background={color:BG};
+      sf.addShape(pptx.ShapeType.rect,{x:0,y:0,w:10,h:0.07,fill:{color:ACC},line:{color:ACC}});
+      sf.addText('REGISTRO FOTOGRÁFICO'+(grupos.length>1?' ('+(gi+1)+'/'+grupos.length+')':''),{x:0.4,y:0.2,w:9.2,h:0.3,fontSize:9,color:ACC,bold:true,charSpacing:3,fontFace:'Arial'});
+      sf.addText(o.nombre,{x:0.4,y:0.55,w:9.2,h:0.4,fontSize:18,color:TEXT,bold:true,fontFace:'Arial'});
+      grp.forEach((foto,fi)=>{
+        const pos=posGrid[fi];
+        try{
+          sf.addImage({data:foto.data,x:pos.x,y:pos.y,w:4.6,h:1.95,sizing:{type:'cover',w:4.6,h:1.95}});
+        }catch(imgE){
+          sf.addShape(pptx.ShapeType.rect,{x:pos.x,y:pos.y,w:4.6,h:1.95,fill:{color:'1C2128'},line:{color:'30363D'}});
+          sf.addText('📷',{x:pos.x,y:pos.y+0.7,w:4.6,h:0.5,fontSize:28,align:'center'});
+        }
+        const cap=[(foto.tipo||''),(foto.fecha||''),(foto.descripcion||'')].filter(Boolean).join(' · ');
+        if(cap) sf.addText(cap,{x:pos.x,y:pos.y+2.0,w:4.6,h:0.2,fontSize:7,color:TEXT2,fontFace:'Arial'});
+      });
+      sf.addText((gi*4+1)+' – '+(gi*4+grp.length)+' de '+fotos.length+' fotos · '+o.nombre,{x:0.4,y:5.25,w:9.2,h:0.2,fontSize:8,color:TEXT2+'80',fontFace:'Arial'});
+    });
+  }
+
+  // ── Slide Ubicación ──────────────────────────────────────────────
+  if(o.lat&&o.lng){
+    const su=pptx.addSlide();su.background={color:BG};
+    su.addShape(pptx.ShapeType.rect,{x:0,y:0,w:10,h:0.07,fill:{color:ACC},line:{color:ACC}});
+    su.addText('UBICACIÓN',{x:0.4,y:0.2,w:9.2,h:0.3,fontSize:9,color:ACC,bold:true,charSpacing:3,fontFace:'Arial'});
+    su.addText(o.nombre,{x:0.4,y:0.55,w:9.2,h:0.4,fontSize:18,color:TEXT,bold:true,fontFace:'Arial'});
+    // Intentar embeber mapa estático
+    try{
+      const mapUrl='https://staticmap.openstreetmap.de/staticmap.php?center='+o.lat+','+o.lng+'&zoom=16&size=860x350&markers='+o.lat+','+o.lng+',red-marker-small';
+      const mapResp=await fetch(mapUrl).catch(()=>null);
+      if(mapResp&&mapResp.ok){
+        const mapBlob=await mapResp.blob();
+        const mapB64=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(mapBlob);});
+        su.addImage({data:mapB64,x:0.4,y:1.1,w:9.2,h:3.5});
+      }else throw new Error('no map');
+    }catch(_){
+      su.addShape(pptx.ShapeType.rect,{x:0.4,y:1.1,w:9.2,h:3.5,fill:{color:'1C2128'},line:{color:'30363D',pt:1}});
+      su.addText('📍',{x:0.4,y:2.3,w:9.2,h:0.8,fontSize:48,align:'center'});
+      su.addText(o.lat.toFixed(5)+', '+o.lng.toFixed(5),{x:0.4,y:3.1,w:9.2,h:0.4,fontSize:18,color:TEXT2,align:'center',fontFace:'Arial'});
+    }
+    su.addText('📍 '+o.lat.toFixed(5)+', '+o.lng.toFixed(5)+(o.ubicacion?' · '+o.ubicacion:''),{x:0.4,y:4.75,w:7,h:0.25,fontSize:10,color:TEXT2,fontFace:'Arial'});
+    su.addText([{text:'Ver en Google Maps →',options:{hyperlink:{url:'https://www.google.com/maps?q='+o.lat+','+o.lng,tooltip:'Abrir Google Maps'}}}],{x:7.2,y:4.75,w:2.6,h:0.25,fontSize:10,color:'60A5FA',fontFace:'Arial',align:'right'});
+    if(o.ubicacion) su.addText('📌 '+o.ubicacion,{x:0.4,y:5.1,w:9.2,h:0.2,fontSize:9,color:TEXT2+'80',fontFace:'Arial'});
+  }
 
   const fechaFile=new Date().toISOString().slice(0,10).replace(/-/g,'');
   await pptx.writeFile({fileName:'Obra_'+o.nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]/g,'_')+'_'+fechaFile+'.pptx'});
