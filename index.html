@@ -4733,6 +4733,8 @@ function dashSetView(view) {
         '<span style="font-size:10px;color:var(--text3)">hasta</span>' +
         '<input type="date" id="dash-emp-hasta" oninput="dashEmpBtnActive(\''+view+'\')" style="background:var(--bg3);border:1px solid var(--accent);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--text);outline:none;font-family:var(--mono)">' +
         '<button onclick="dashEmpExcel(\''+view+'\')" style="padding:5px 12px;border-radius:7px;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);font-size:11px;font-weight:700;cursor:pointer">📥 Excel</button>' +
+        '<button onclick="dashEmpPDF(\''+view+'\')" style="padding:5px 12px;border-radius:7px;border:1px solid rgba(248,113,113,0.4);background:rgba(248,113,113,0.1);color:#f87171;font-size:11px;font-weight:700;cursor:pointer">📄 PDF</button>' +
+        '<button onclick="dashEmpPPT(\''+view+'\')" style="padding:5px 12px;border-radius:7px;border:1px solid rgba(251,191,36,0.4);background:rgba(251,191,36,0.1);color:#fbbf24;font-size:11px;font-weight:700;cursor:pointer">📑 PPT</button>' +
         '<div style="width:1px;height:28px;background:var(--border);margin:0 2px"></div>' +
         '<div id="dash-emp-metric-chip" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:5px 12px;display:flex;gap:2px;flex-direction:column">' +
           '<div style="font-size:8px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px" id="dash-emp-chip-label">Efectivo</div>' +
@@ -4814,6 +4816,39 @@ function dashSetView(view) {
         '</div>':'') +
       '</div>'
     ) : '') +
+
+    // Pasivos de la empresa
+    (()=>{
+      const empPasivos=(appState.pasivos||[]).filter(p=>p.empresa===view&&(p.estado==='Vigente'||p.estado==='En mora'));
+      if(!empPasivos.length)return'';
+      const saldoTot=empPasivos.reduce((s,p)=>s+(p.saldo||0),0);
+      const cuotaTot=empPasivos.reduce((s,p)=>s+(p.cuota||0),0);
+      const now2=new Date();const hoyS2=now2.getFullYear()+'-'+String(now2.getMonth()+1).padStart(2,'0')+'-'+String(now2.getDate()).padStart(2,'0');
+      const en7S2=new Date(now2);en7S2.setDate(en7S2.getDate()+7);const en7Str2=en7S2.toISOString().slice(0,10);
+      const urgentes2=empPasivos.filter(p=>p.proxVenc&&p.proxVenc>=hoyS2&&p.proxVenc<=en7Str2);
+      return '<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Pasivos Financieros</div>'+
+        (urgentes2.length?'<div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:10px;color:var(--red)">⚠️ '+urgentes2.length+' vencimiento'+(urgentes2.length>1?'s':'')+' en 7 días: '+urgentes2.map(p=>p.descripcion||p.banco).join(' · ')+'</div>':'')+
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:8px">'+
+          '<div style="background:rgba(248,113,113,0.07);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:11px 13px"><div style="font-size:8px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Saldo deuda</div><div style="font-family:var(--mono);font-size:16px;font-weight:900;color:var(--red)">$'+fmtARS(saldoTot)+'</div></div>'+
+          '<div style="background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:11px 13px"><div style="font-size:8px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Cuota mensual</div><div style="font-family:var(--mono);font-size:16px;font-weight:900;color:#fbbf24">$'+fmtARS(cuotaTot)+'</div></div>'+
+          '<div style="background:rgba(74,159,212,0.07);border:1px solid rgba(74,159,212,0.2);border-radius:10px;padding:11px 13px"><div style="font-size:8px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Operaciones</div><div style="font-family:var(--mono);font-size:16px;font-weight:900;color:var(--accent)">'+empPasivos.length+' vigentes</div></div>'+
+        '</div>'+
+        '<div style="overflow-x:auto;margin-bottom:14px"><table style="width:100%;border-collapse:collapse;font-size:10px">'+
+          '<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:5px 8px;color:var(--text3);font-size:9px;font-weight:700">BANCO</th><th style="text-align:left;padding:5px 8px;color:var(--text3);font-size:9px;font-weight:700">DESCRIPCIÓN</th><th style="text-align:right;padding:5px 8px;color:var(--text3);font-size:9px;font-weight:700">SALDO</th><th style="text-align:right;padding:5px 8px;color:var(--text3);font-size:9px;font-weight:700">CUOTA</th><th style="text-align:left;padding:5px 8px;color:var(--text3);font-size:9px;font-weight:700">TNA</th><th style="text-align:left;padding:5px 8px;color:var(--text3);font-size:9px;font-weight:700">PRÓX.VENC</th></tr>'+
+          empPasivos.sort((a,b)=>(a.proxVenc||'').localeCompare(b.proxVenc||'')).map(p=>{
+            const dv=p.proxVenc?Math.ceil((new Date(p.proxVenc)-new Date())/86400000):null;
+            const vc=dv!==null?(dv<=7?'var(--red)':dv<=30?'#fbbf24':'var(--text2)'):'var(--text3)';
+            return '<tr style="border-bottom:1px solid var(--border)22">'+
+              '<td style="padding:5px 8px;font-weight:600">'+(p.banco||'—')+'</td>'+
+              '<td style="padding:5px 8px;color:var(--text2)">'+(p.descripcion||'—')+'</td>'+
+              '<td style="padding:5px 8px;text-align:right;font-family:var(--mono);color:var(--red)">$'+fmtARS(p.saldo)+'</td>'+
+              '<td style="padding:5px 8px;text-align:right;font-family:var(--mono)">$'+fmtARS(p.cuota)+'</td>'+
+              '<td style="padding:5px 8px;color:#a78bfa">'+(p.tna?p.tna+'%':'—')+'</td>'+
+              '<td style="padding:5px 8px;color:'+vc+'">'+(dv!==null?(dv<=7?'🚨 ':dv<=30?'⏰ ':'')+p.proxVenc:'—')+'</td>'+
+            '</tr>';
+          }).join('')+
+        '</table></div>';
+    })() +
 
     // Gráfico
     '<div style="background:var(--bg3);border-radius:12px;padding:14px 16px">' +
@@ -5024,6 +5059,199 @@ function dashEmpBtn(btn) {
       }
     }
   });
+}
+
+function dashEmpPDF(view) {
+  const empMap={RS:'Rio Salado SRL',SC:'Serv. Cipolletti SRL',LP:'La Plaza SA'};
+  const empKey={RS:'Rio Salado',SC:'Cipolletti',LP:'Plaza'};
+  const col={RS:'#4a9fd4',SC:'#3aaa2a',LP:'#d4920a'};
+  const emp=appState.empresas.find(e=>e.name.includes(empKey[view]));
+  if(!emp){showToast('⚠️ Sin datos');return;}
+  const fmt=n=>(n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const now=new Date();
+  const todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const fecha=now.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const balDate=activeDateFilter||appState.lastMinutaDate||'';
+  const hist=emp.diaHistory&&emp.diaHistory[balDate]?emp.diaHistory[balDate]:null;
+  const H=(k,fb)=>hist?(hist[k]||0):(fb||0);
+  const isRS=view==='RS',isSC=view==='SC';
+  const prefB=isRS?'B':'D';
+  const b50=isRS?H('b50',emp.diaB50):isSC?H('d50',emp.diaD50):H('f50',emp.diaF50);
+  const b26=isRS?H('b26',emp.diaB26):H('d26',emp.diaD26);
+  const b33=isRS?H('b33',emp.diaB33):H('d33',emp.diaD33);
+  const b34=isRS?H('b34',emp.diaB34):H('d34',emp.diaD34);
+  const b35=isRS?H('b35',emp.diaB35):H('d35',emp.diaD35);
+  const b40=isRS?H('b40',emp.diaB40):H('d40',emp.diaD40);
+  const b41=isRS?H('b41',emp.diaB41):H('d41',emp.diaD41);
+  const totalUSD=b40+b41+(isRS?H('b42',emp.diaB42):H('d42',emp.diaD42))+(isRS?H('b43',emp.diaB43):H('d43',emp.diaD43))+(isRS?H('b44',emp.diaB44):H('d44',emp.diaD44));
+  const tcBlue=(dolar&&dolar.blue&&dolar.blue.venta)||1;
+  const empPasivos=(appState.pasivos||[]).filter(p=>p.empresa===view&&(p.estado==='Vigente'||p.estado==='En mora'));
+  const saldoPas=empPasivos.reduce((s,p)=>s+(p.saldo||0),0);
+  const cuotaPas=empPasivos.reduce((s,p)=>s+(p.cuota||0),0);
+  const ests=(()=>{const all=emp.estaciones||[];let r=balDate?all.filter(e=>e.fecha===balDate):[];if(!r.length&&all.length){const last=all.reduce((m,e)=>e.fecha>m?e.fecha:m,'');r=all.filter(e=>e.fecha===last);}const seen=new Set();return r.filter(e=>{if(seen.has(e.nombre))return false;seen.add(e.nombre);return true;});})();
+  const egresosArr=hist?(hist.egresos||[]):(isRS?(emp.diaEgresosRS||[]):(emp.diaEgresosSC||[]));
+  const totalEgr=hist?(hist.totalEgr||0):(isRS?(emp.diaTotalEgresosRS||0):(emp.diaTotalEgresosSC||0));
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8">
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;color:#1a202c;padding:28px;font-size:11px}
+  h1{font-size:20px;font-weight:900;margin-bottom:3px;color:${col[view]}}
+  .sub{font-size:10px;color:#64748b;margin-bottom:20px}.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+  .kpi{border:1px solid #e2e8f0;border-radius:8px;padding:12px;border-left:4px solid ${col[view]}}.kpi-label{font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+  .kpi-value{font-size:16px;font-weight:900;font-family:monospace;color:${col[view]}}.kpi-sub{font-size:8px;color:#94a3b8;margin-top:2px}
+  h2{font-size:12px;font-weight:700;border-bottom:2px solid #e2e8f0;padding-bottom:5px;margin:16px 0 8px}
+  table{width:100%;border-collapse:collapse;font-size:9px}th{background:#f1f5f9;font-weight:700;padding:5px 6px;text-align:left;color:#475569;font-size:8px}
+  td{padding:4px 6px;border-bottom:1px solid #f1f5f9}.est-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .est-card{border:1px solid #e2e8f0;border-radius:8px;padding:10px;border-left:3px solid ${col[view]}}
+  .footer{margin-top:24px;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;text-align:right}
+  @media print{body{padding:16px}}</style></head><body>
+  <h1>${empMap[view]}</h1>
+  <div class="sub">Informe financiero · ${fecha}${balDate?' · datos al '+new Date(balDate+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):''}</div>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Posición financiera</div><div class="kpi-value">$${fmt(b50)}</div><div class="kpi-sub">${prefB}50 Minuta</div></div>
+    <div class="kpi"><div class="kpi-label">Efectivo</div><div class="kpi-value">$${fmt(b26)}</div><div class="kpi-sub">${prefB}26 Minuta</div></div>
+    <div class="kpi" style="border-left-color:#fbbf24"><div class="kpi-label">USD total</div><div class="kpi-value" style="color:#d97706">U$S ${fmt(totalUSD)}</div><div class="kpi-sub">≈ $${fmt(totalUSD*tcBlue)}</div></div>
+    <div class="kpi" style="border-left-color:#a78bfa"><div class="kpi-label">FIMA</div><div class="kpi-value" style="color:#7c3aed">$${fmt(b34+b35)}</div><div class="kpi-sub">Premium + Ahorro</div></div>
+  </div>
+  ${empPasivos.length?`<h2>Pasivos Financieros Vigentes</h2>
+  <div class="kpi-grid">
+    <div class="kpi" style="border-left-color:#f87171"><div class="kpi-label">Saldo deuda</div><div class="kpi-value" style="color:#dc2626">$${fmt(saldoPas)}</div><div class="kpi-sub">${empPasivos.length} operaciones</div></div>
+    <div class="kpi" style="border-left-color:#fbbf24"><div class="kpi-label">Cuota mensual</div><div class="kpi-value" style="color:#d97706">$${fmt(cuotaPas)}</div><div class="kpi-sub">${now.toLocaleString('es-AR',{month:'long'})}</div></div>
+  </div>
+  <table><tr><th>BANCO</th><th>DESCRIPCIÓN</th><th>SALDO</th><th>CUOTA</th><th>TNA</th><th>SISTEMA</th><th>PRÓX.VENC.</th><th>FECHA FIN</th></tr>
+  ${empPasivos.map(p=>`<tr><td>${p.banco||'—'}</td><td>${p.descripcion||'—'}${p.bien?' · '+p.bien:''}</td><td>$${fmt(p.saldo)}</td><td>$${fmt(p.cuota)}</td><td>${p.tna?p.tna+'%':'—'}</td><td>${p.sistema||'—'}</td><td>${p.proxVenc||'—'}</td><td>${p.fechaFin||'—'}</td></tr>`).join('')}
+  </table>`:''}
+  ${egresosArr.filter(e=>e.val!==0&&e.label).length?`<h2>Egresos / Proveedores</h2>
+  <table><tr><th>CONCEPTO</th><th>IMPORTE</th></tr>
+  ${egresosArr.filter(e=>e.val!==0&&e.label).map(e=>`<tr><td>${e.label}</td><td>-$${fmt(Math.abs(e.val))}</td></tr>`).join('')}
+  ${totalEgr?`<tr style="font-weight:700;background:#f8fafc"><td>TOTAL EGRESOS</td><td>-$${fmt(Math.abs(totalEgr))}</td></tr>`:''}
+  </table>`:''}
+  ${ests.length?`<h2>Estaciones</h2><div class="est-grid">
+  ${ests.map(e=>`<div class="est-card"><div style="font-weight:700;margin-bottom:6px">${e.nombre||''}</div>
+  <div style="font-size:9px;color:#16a34a">Efectivo: $${fmt(e.efectivo)}</div>
+  ${e.cajero?`<div style="font-size:9px;color:#d97706">Cajero: $${fmt(e.cajero)}</div>`:''}
+  <div style="font-size:9px;color:#dc2626">Erogaciones: $${fmt(e.erogaciones)}</div>
+  ${e.chqCartera?`<div style="font-size:9px;color:#7c3aed">Cartera: $${fmt(e.chqCartera)}</div>`:''}
+  </div>`).join('')}
+  </div>`:''}
+  <div class="footer">Generado: ${now.toLocaleString('es-AR')} · Grupo La Plaza — Sistema Financiero Interno</div>
+  <script>window.print();<\/script></body></html>`;
+  const w=window.open('','_blank','width=1050,height=700');
+  if(w){w.document.write(html);w.document.close();}
+}
+
+async function dashEmpPPT(view) {
+  const empMap={RS:'Rio Salado SRL',SC:'Serv. Cipolletti SRL',LP:'La Plaza SA'};
+  const empKey={RS:'Rio Salado',SC:'Cipolletti',LP:'Plaza'};
+  const empColors={RS:'4a9fd4',SC:'4ade80',LP:'d4920a'};
+  const emp=appState.empresas.find(e=>e.name.includes(empKey[view]));
+  if(!emp){showToast('⚠️ Sin datos');return;}
+  showToast('⏳ Generando PPT...',3000);
+  if(!window.PptxGenJS){
+    await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';s.onload=()=>res(true);s.onerror=()=>rej();document.head.appendChild(s);}).catch(()=>{showToast('⚠️ No se pudo cargar PptxGenJS');return;});
+  }
+  const fmt=n=>(n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const now=new Date();
+  const todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const fecha=now.toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'});
+  const EC=empColors[view];
+  const balDate=activeDateFilter||appState.lastMinutaDate||'';
+  const hist=emp.diaHistory&&emp.diaHistory[balDate]?emp.diaHistory[balDate]:null;
+  const H=(k,fb)=>hist?(hist[k]||0):(fb||0);
+  const isRS=view==='RS',isSC=view==='SC';
+  const prefB=isRS?'B':'D';
+  const b50=isRS?H('b50',emp.diaB50):isSC?H('d50',emp.diaD50):H('f50',emp.diaF50);
+  const b26=isRS?H('b26',emp.diaB26):H('d26',emp.diaD26);
+  const b33=isRS?H('b33',emp.diaB33):H('d33',emp.diaD33);
+  const b34=isRS?H('b34',emp.diaB34):H('d34',emp.diaD34);
+  const b35=isRS?H('b35',emp.diaB35):H('d35',emp.diaD35);
+  const b46=isRS?H('b46',emp.diaB46):H('d46',emp.diaD46);
+  const b40=isRS?H('b40',emp.diaB40):H('d40',emp.diaD40);
+  const b41=isRS?H('b41',emp.diaB41):H('d41',emp.diaD41);
+  const b42=isRS?H('b42',emp.diaB42):H('d42',emp.diaD42);
+  const b43=isRS?H('b43',emp.diaB43):H('d43',emp.diaD43);
+  const b44=isRS?H('b44',emp.diaB44):H('d44',emp.diaD44);
+  const totalUSD=b40+b41+b42+b43+b44;
+  const tcBlue=(dolar&&dolar.blue&&dolar.blue.venta)||1;
+  const egresosArr=hist?(hist.egresos||[]):(isRS?(emp.diaEgresosRS||[]):(emp.diaEgresosSC||[]));
+  const totalEgr=hist?(hist.totalEgr||0):(isRS?(emp.diaTotalEgresosRS||0):(emp.diaTotalEgresosSC||0));
+  const empPasivos=(appState.pasivos||[]).filter(p=>p.empresa===view&&(p.estado==='Vigente'||p.estado==='En mora'));
+  const saldoPas=empPasivos.reduce((s,p)=>s+(p.saldo||0),0);
+  const cuotaPas=empPasivos.reduce((s,p)=>s+(p.cuota||0),0);
+  const ests=(()=>{const all=emp.estaciones||[];let r=balDate?all.filter(e=>e.fecha===balDate):[];if(!r.length&&all.length){const last=all.reduce((m,e)=>e.fecha>m?e.fecha:m,'');r=all.filter(e=>e.fecha===last);}const seen=new Set();return r.filter(e=>{if(seen.has(e.nombre))return false;seen.add(e.nombre);return true;});})();
+  const BG='0d1117',CARD='161b22',BORDER='30363d',TX='FFFFFF',TX2='94a3b8',RED='f87171',YEL='fbbf24',GRN='4ade80';
+  const pptx=new PptxGenJS();pptx.layout='LAYOUT_WIDE';
+  const addBg=s=>s.addShape(pptx.ShapeType.rect,{x:0,y:0,w:'100%',h:'100%',fill:{color:BG}});
+  const addCard=(s,x,y,w,h)=>s.addShape(pptx.ShapeType.rect,{x,y,w,h,fill:{color:CARD},line:{color:BORDER,width:1},rectRadius:0.1});
+  const txt=(s,t,x,y,w,h,o)=>s.addText(t,{x,y,w,h,...o});
+
+  // Slide 1 — Portada
+  const s1=pptx.addSlide();addBg(s1);
+  s1.addShape(pptx.ShapeType.rect,{x:0,y:2.85,w:'100%',h:0.05,fill:{color:EC}});
+  txt(s1,empMap[view],0.5,1.1,12,0.8,{fontSize:30,bold:true,color:TX,align:'center',fontFace:'Arial'});
+  txt(s1,'INFORME FINANCIERO',0.5,2.0,12,0.6,{fontSize:20,color:EC,align:'center',fontFace:'Arial'});
+  txt(s1,fecha,0.5,3.2,12,0.5,{fontSize:13,color:TX2,align:'center',fontFace:'Arial'});
+
+  // Slide 2 — KPIs
+  const s2=pptx.addSlide();addBg(s2);
+  txt(s2,'Posición Financiera — '+fecha,0.3,0.2,12.4,0.5,{fontSize:15,bold:true,color:TX,fontFace:'Arial'});
+  const kpis=[
+    {l:'POSICIÓN FINANCIERA',v:'$ '+fmt(b50),s:prefB+'50 Minuta',c:EC},
+    {l:'EFECTIVO',v:'$ '+fmt(b26),s:prefB+'26 · Caja',c:GRN},
+    {l:'BANCOS $',v:'$ '+fmt(b33),s:prefB+'33 · Cuentas bancarias',c:'4a9fd4'},
+    {l:'MERCADO PAGO',v:'$ '+fmt(b46),s:prefB+'46',c:'009ee3'},
+    {l:'FIMA PREMIUM',v:'$ '+fmt(b34),s:'Inversión',c:'a78bfa'},
+    {l:'FIMA AHORRO',v:'$ '+fmt(b35),s:'Inversión',c:'7c6cfa'},
+    {l:'USD TOTAL',v:'U$S '+fmt(totalUSD),s:'≈ $'+fmt(totalUSD*tcBlue),c:YEL},
+    totalEgr?{l:'EGRESOS',v:'-$ '+fmt(Math.abs(totalEgr)),s:'Proveedores del día',c:RED}:{l:'SALDO NETO',v:'$ '+fmt(b50-Math.abs(totalEgr||0)),s:'Disponibilidad neta',c:GRN},
+  ];
+  kpis.forEach((k,i)=>{
+    const col2=i%4,row=Math.floor(i/4),x=0.3+col2*3.25,y=0.85+row*1.9;
+    addCard(s2,x,y,3.1,1.7);
+    s2.addShape(pptx.ShapeType.rect,{x,y,w:0.05,h:1.7,fill:{color:k.c}});
+    txt(s2,k.l,x+0.15,y+0.15,2.8,0.3,{fontSize:8,color:TX2,bold:true,fontFace:'Arial'});
+    txt(s2,k.v,x+0.15,y+0.55,2.8,0.55,{fontSize:16,bold:true,color:k.c,fontFace:'Arial Narrow'});
+    txt(s2,k.s,x+0.15,y+1.25,2.8,0.3,{fontSize:9,color:TX2,fontFace:'Arial'});
+  });
+
+  // Slide 3 — Egresos y pasivos
+  if(egresosArr.filter(e=>e.val!==0&&e.label).length||empPasivos.length){
+    const s3=pptx.addSlide();addBg(s3);
+    txt(s3,'Egresos y Pasivos Financieros',0.3,0.2,12.4,0.5,{fontSize:15,bold:true,color:TX,fontFace:'Arial'});
+    let yi=0.85;
+    if(egresosArr.filter(e=>e.val!==0&&e.label).length){
+      txt(s3,'EGRESOS / PROVEEDORES',0.3,yi,12,0.35,{fontSize:9,color:TX2,bold:true,fontFace:'Arial'});yi+=0.4;
+      const egRows=[['CONCEPTO','IMPORTE'],...egresosArr.filter(e=>e.val!==0&&e.label).map(e=>[e.label,'-$'+fmt(Math.abs(e.val))])];
+      if(totalEgr)egRows.push(['TOTAL EGRESOS','-$'+fmt(Math.abs(totalEgr))]);
+      s3.addTable(egRows,{x:0.3,y:yi,w:6,fontSize:9,color:TX,fill:{color:CARD},border:{color:BORDER,width:0.5},fontFace:'Arial',rowH:0.32,colW:[4,2]});
+      yi+=egRows.length*0.35+0.3;
+    }
+    if(empPasivos.length){
+      txt(s3,'PASIVOS FINANCIEROS VIGENTES',0.3,yi,12,0.35,{fontSize:9,color:TX2,bold:true,fontFace:'Arial'});yi+=0.4;
+      addCard(s3,0.3,yi,3,1.0);
+      txt(s3,'Saldo deuda',0.45,yi+0.1,2.7,0.3,{fontSize:8,color:TX2,bold:true,fontFace:'Arial'});
+      txt(s3,'$'+fmt(saldoPas),0.45,yi+0.45,2.7,0.45,{fontSize:18,bold:true,color:RED,fontFace:'Arial Narrow'});yi+=1.1;
+      const pRows=[['BANCO','DESCRIPCIÓN','SALDO','CUOTA','TNA','PRÓX.VENC'],...empPasivos.slice(0,6).map(p=>[(p.banco||'—').slice(0,12),(p.descripcion||'—').slice(0,18),'$'+fmt(p.saldo),'$'+fmt(p.cuota),(p.tna?p.tna+'%':'—'),p.proxVenc||'—'])];
+      s3.addTable(pRows,{x:0.3,y:yi,w:12.4,fontSize:9,color:TX,fill:{color:CARD},border:{color:BORDER,width:0.5},fontFace:'Arial',rowH:0.32,colW:[1.8,3.0,1.8,1.6,1.0,1.8]});
+    }
+  }
+
+  // Slide 4 — Estaciones
+  if(ests.length){
+    const s4=pptx.addSlide();addBg(s4);
+    txt(s4,'Estaciones — '+empMap[view],0.3,0.2,12.4,0.5,{fontSize:15,bold:true,color:TX,fontFace:'Arial'});
+    const cols=Math.min(3,ests.length),rows2=Math.ceil(ests.length/cols);
+    const cW=12.4/cols,cH=Math.min(1.6,(6.5-0.9)/rows2);
+    ests.forEach((e,i)=>{
+      const cx=0.3+(i%cols)*cW,cy=0.9+Math.floor(i/cols)*cH;
+      addCard(s4,cx,cy,cW-0.15,cH-0.1);
+      s4.addShape(pptx.ShapeType.rect,{x:cx,y:cy,w:0.05,h:cH-0.1,fill:{color:EC}});
+      txt(s4,(e.nombre||'').slice(0,20),cx+0.15,cy+0.08,cW-0.4,0.35,{fontSize:11,bold:true,color:TX,fontFace:'Arial'});
+      const items=[['Efectivo','$'+fmt(e.efectivo),GRN],[e.cajero?'Cajero':'','$'+fmt(e.cajero),YEL],['Erogaciones','-$'+fmt(e.erogaciones),RED]].filter(x=>x[0]);
+      items.forEach((it,ii)=>txt(s4,it[0]+': '+it[1],cx+0.15,cy+0.48+ii*0.28,cW-0.4,0.25,{fontSize:9,color:it[2],fontFace:'Arial'}));
+    });
+  }
+
+  pptx.writeFile({fileName:view+'_GrupoLaPlaza_'+todayStr+'.pptx'});
+  showToast('📑 PPT '+empMap[view]+' generado');
 }
 
 function dashEmpExcel(view) {
