@@ -1994,7 +1994,7 @@ let _supaUser=null,_supaRol=null;
   <!-- IMPORTACIÓN POR EMPRESA -->
   <div class="card mb" style="padding:16px 20px">
     <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px">📂 Importar extracto bancario por empresa</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
       <!-- RS -->
       <div>
         <div style="font-size:11px;font-weight:700;color:#4a9fd4;margin-bottom:6px">🔵 Rio Salado SRL</div>
@@ -2002,12 +2002,12 @@ let _supaUser=null,_supaRol=null;
           ondragover="event.preventDefault();this.style.borderColor='#4a9fd4'"
           ondragleave="this.style.borderColor='rgba(74,159,212,0.3)'"
           ondrop="event.preventDefault();this.style.borderColor='rgba(74,159,212,0.3)';extImportarEmp(event.dataTransfer.files[0],'RS')"
-          style="border:2px dashed rgba(74,159,212,0.35);border-radius:10px;padding:20px 14px;text-align:center;cursor:pointer;background:rgba(74,159,212,0.05);transition:all .2s">
-          <div style="font-size:24px;margin-bottom:6px">📊</div>
-          <div style="font-size:12px;font-weight:600;color:var(--text2)">Arrastrá o hacé clic</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:4px">Extracto de Rio Salado · .xlsx .xls</div>
+          style="border:2px dashed rgba(74,159,212,0.35);border-radius:10px;padding:16px 10px;text-align:center;cursor:pointer;background:rgba(74,159,212,0.05);transition:all .2s">
+          <div style="font-size:22px;margin-bottom:4px">📊</div>
+          <div style="font-size:11px;font-weight:600;color:var(--text2)">Arrastrá o hacé clic</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">.xlsx · .xls</div>
         </div>
-        <input type="file" id="ext-file-rs" accept=".xlsx,.xls" style="display:none" onchange="extImportarEmp(this.files[0],'RS');this.value=''">
+        <input type="file" id="ext-file-rs" accept=".xlsx,.xls" multiple style="display:none" onchange="extImportarEmpMulti(this.files,'RS');this.value=''">
         <div id="ext-log-rs" style="font-size:11px;color:var(--text2);margin-top:6px;display:none"></div>
       </div>
       <!-- SC -->
@@ -2016,14 +2016,29 @@ let _supaUser=null,_supaRol=null;
         <div onclick="document.getElementById('ext-file-sc').click()"
           ondragover="event.preventDefault();this.style.borderColor='#3aaa2a'"
           ondragleave="this.style.borderColor='rgba(58,170,42,0.3)'"
-          ondrop="event.preventDefault();this.style.borderColor='rgba(58,170,42,0.3)';extImportarEmp(event.dataTransfer.files[0],'SC')"
-          style="border:2px dashed rgba(58,170,42,0.35);border-radius:10px;padding:20px 14px;text-align:center;cursor:pointer;background:rgba(58,170,42,0.05);transition:all .2s">
-          <div style="font-size:24px;margin-bottom:6px">📊</div>
-          <div style="font-size:12px;font-weight:600;color:var(--text2)">Arrastrá o hacé clic</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:4px">Extracto de Cipolletti · .xlsx .xls</div>
+          ondrop="event.preventDefault();this.style.borderColor='rgba(58,170,42,0.3)';extImportarEmpMulti(event.dataTransfer.files,'SC')"
+          style="border:2px dashed rgba(58,170,42,0.35);border-radius:10px;padding:16px 10px;text-align:center;cursor:pointer;background:rgba(58,170,42,0.05);transition:all .2s">
+          <div style="font-size:22px;margin-bottom:4px">📊</div>
+          <div style="font-size:11px;font-weight:600;color:var(--text2)">Arrastrá o hacé clic</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">.xlsx · .xls</div>
         </div>
-        <input type="file" id="ext-file-sc" accept=".xlsx,.xls" style="display:none" onchange="extImportarEmp(this.files[0],'SC');this.value=''">
+        <input type="file" id="ext-file-sc" accept=".xlsx,.xls" multiple style="display:none" onchange="extImportarEmpMulti(this.files,'SC');this.value=''">
         <div id="ext-log-sc" style="font-size:11px;color:var(--text2);margin-top:6px;display:none"></div>
+      </div>
+      <!-- LP -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#d4920a;margin-bottom:6px">🟡 La Plaza SA</div>
+        <div onclick="document.getElementById('ext-file-lp').click()"
+          ondragover="event.preventDefault();this.style.borderColor='#d4920a'"
+          ondragleave="this.style.borderColor='rgba(212,146,10,0.3)'"
+          ondrop="event.preventDefault();this.style.borderColor='rgba(212,146,10,0.3)';extImportarEmpMulti(event.dataTransfer.files,'LP')"
+          style="border:2px dashed rgba(212,146,10,0.35);border-radius:10px;padding:16px 10px;text-align:center;cursor:pointer;background:rgba(212,146,10,0.05);transition:all .2s">
+          <div style="font-size:22px;margin-bottom:4px">📊</div>
+          <div style="font-size:11px;font-weight:600;color:var(--text2)">Arrastrá o hacé clic</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">.xlsx · .xls</div>
+        </div>
+        <input type="file" id="ext-file-lp" accept=".xlsx,.xls" multiple style="display:none" onchange="extImportarEmpMulti(this.files,'LP');this.value=''">
+        <div id="ext-log-lp" style="font-size:11px;color:var(--text2);margin-top:6px;display:none"></div>
       </div>
     </div>
   </div>
@@ -2118,23 +2133,45 @@ let _supaUser=null,_supaRol=null;
     </div>
   </div>
 
-  <!-- GRÁFICOS (colapsable) -->
+  <!-- ANÁLISIS (colapsable) -->
   <div style="margin-bottom:14px">
     <div onclick="toggleExtractosCharts()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;background:var(--bg2);border-radius:10px;border:1px solid var(--border);user-select:none">
-      <span style="font-size:13px;font-weight:700;color:var(--text2)">📊 Gráficos</span>
+      <span style="font-size:13px;font-weight:700;color:var(--text2)">📊 Análisis completo</span>
       <span id="extractos-charts-arrow" style="font-size:11px;color:var(--text3);margin-left:auto">▼ mostrar</span>
     </div>
     <div id="extractos-charts-panel" style="display:none;margin-top:10px">
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
+      <!-- KPIs por empresa -->
+      <div id="ext-kpi-empresa" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px"></div>
+      <!-- Gráficos: barras día + dona categoría -->
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px">
         <div class="card" style="padding:16px">
-          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Ingresos vs Egresos por día</div>
-          <canvas id="chart-extractos-barras" height="160"></canvas>
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Ingresos vs Egresos — tendencia mensual</div>
+          <canvas id="chart-extractos-barras" height="140"></canvas>
         </div>
         <div class="card" style="padding:16px">
-          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Por categoría</div>
-          <canvas id="chart-extractos-dona" height="160"></canvas>
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Por categoría</div>
+          <canvas id="chart-extractos-dona" height="140"></canvas>
           <div id="chart-extractos-dona-legend" style="margin-top:10px;font-size:10px"></div>
         </div>
+      </div>
+      <!-- Top movimientos -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="card" style="padding:14px 16px">
+          <div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">⬆️ Top cobros — quién nos pagó más</div>
+          <div id="ext-top-ingresos"></div>
+        </div>
+        <div class="card" style="padding:14px 16px">
+          <div style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">⬇️ Top pagos — a quién pagamos más</div>
+          <div id="ext-top-egresos"></div>
+        </div>
+      </div>
+      <!-- Análisis IA -->
+      <div class="card" style="padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">🤖 Análisis inteligente</div>
+          <button onclick="extractosAnalisisIA()" id="ext-ia-btn" style="background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.4);color:#a78bfa;border-radius:8px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer">✨ Analizar con IA</button>
+        </div>
+        <div id="ext-ia-output" style="display:none;font-size:12px;color:var(--text2);line-height:1.7;background:var(--bg2);border-radius:8px;padding:12px 14px;margin-top:4px;white-space:pre-wrap"></div>
       </div>
     </div>
   </div>
@@ -11996,66 +12033,164 @@ function toggleExtractosCharts() {
 
 let _chartExtractosBarras = null;
 let _chartExtractosDona = null;
+let _chartExtractosMensual = null;
 
 function _renderExtractosCharts(data) {
   window._lastExtractosData = data;
   const panel = document.getElementById('extractos-charts-panel');
   if (!panel || panel.style.display === 'none') return;
 
-  // Barras: ingresos vs egresos por día (top 30 fechas)
-  const byDay = {};
+  const fmt = n => fmtARS(n||0);
+  const COLORS = ['#4a9fd4','#3aaa2a','#fbbf24','#f87171','#a78bfa','#2dd4bf','#fb923c','#e879f9'];
+
+  // ── KPIs por empresa ────────────────────────────────────────
+  const empEl = document.getElementById('ext-kpi-empresa');
+  if (empEl) {
+    const empStats = { RS:{ing:0,egr:0,n:0,color:'#4a9fd4',name:'Rio Salado'}, SC:{ing:0,egr:0,n:0,color:'#3aaa2a',name:'Cipolletti'}, LP:{ing:0,egr:0,n:0,color:'#d4920a',name:'La Plaza'} };
+    data.forEach(m => {
+      const e = empStats[m.empTag]; if (!e) return; e.n++;
+      if (m.tipo==='ingreso') e.ing += m.importe; else e.egr += m.importe;
+    });
+    empEl.innerHTML = Object.entries(empStats).map(([tag,e])=>`
+      <div class="card" style="padding:14px 16px;border-top:3px solid ${e.color}">
+        <div style="font-size:10px;font-weight:700;color:${e.color};text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${tag} · ${e.name}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px">
+          <div style="font-size:10px;color:var(--text3)">Ingresos</div>
+          <div style="font-size:11px;font-weight:700;color:var(--green);text-align:right;font-family:var(--mono)">$${fmt(e.ing)}</div>
+          <div style="font-size:10px;color:var(--text3)">Egresos</div>
+          <div style="font-size:11px;font-weight:700;color:var(--red);text-align:right;font-family:var(--mono)">$${fmt(e.egr)}</div>
+        </div>
+        <div style="padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between">
+          <span style="font-size:10px;color:var(--text3)">${e.n.toLocaleString()} mov.</span>
+          <span style="font-size:11px;font-weight:800;color:${e.ing>=e.egr?'var(--green)':'var(--red)'};font-family:var(--mono)">${e.ing>=e.egr?'+':'-'}$${fmt(Math.abs(e.ing-e.egr))}</span>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── Barras: tendencia mensual ──────────────────────────────
+  const byMes = {};
   data.forEach(m => {
-    const d = (m.fecha||'').slice(0,10);
-    if (!d) return;
-    if (!byDay[d]) byDay[d] = {ing:0, egr:0};
-    if (m.tipo === 'ingreso') byDay[d].ing += m.importe;
-    else byDay[d].egr += m.importe;
+    const mes = (m.fecha||'').slice(0,7); if (!mes) return;
+    if (!byMes[mes]) byMes[mes] = {ing:0,egr:0};
+    if (m.tipo==='ingreso') byMes[mes].ing += m.importe; else byMes[mes].egr += m.importe;
   });
-  const dias = Object.keys(byDay).sort().slice(-30);
+  const meses = Object.keys(byMes).sort().slice(-18);
+  const MNOMBRES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const mesLabel = ym => { const p=ym.split('-'); return (MNOMBRES[parseInt(p[1])-1]||p[1])+'\n'+p[0].slice(2); };
   const ctx1 = document.getElementById('chart-extractos-barras');
   if (ctx1) {
     if (_chartExtractosBarras) { _chartExtractosBarras.destroy(); _chartExtractosBarras = null; }
     _chartExtractosBarras = new Chart(ctx1, {
       type: 'bar',
       data: {
-        labels: dias.map(d => d.slice(5)),
+        labels: meses.map(mesLabel),
         datasets: [
-          { label: 'Ingresos', data: dias.map(d=>byDay[d].ing), backgroundColor: 'rgba(74,222,128,0.7)', borderRadius: 4 },
-          { label: 'Egresos',  data: dias.map(d=>byDay[d].egr), backgroundColor: 'rgba(248,113,113,0.7)', borderRadius: 4 },
+          { label: 'Ingresos', data: meses.map(m=>byMes[m].ing), backgroundColor: 'rgba(74,222,128,0.75)', borderRadius: 4 },
+          { label: 'Egresos',  data: meses.map(m=>byMes[m].egr), backgroundColor: 'rgba(248,113,113,0.75)', borderRadius: 4 },
         ]
       },
       options: {
         responsive: true, maintainAspectRatio: true,
-        plugins: { legend: { labels: { color: '#c8cede', font: { size: 11 } } } },
+        plugins: { legend: { labels: { color:'#c8cede', font:{size:11} } } },
         scales: {
-          x: { ticks: { color: '#7a8399', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
-          y: { ticks: { color: '#7a8399', font: { size: 10 }, callback: v => '$'+fmtARS(v) }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          x: { ticks:{color:'#7a8399',font:{size:9}}, grid:{color:'rgba(255,255,255,0.05)'} },
+          y: { ticks:{color:'#7a8399',font:{size:9}, callback:v=>'$'+fmtARS(v)}, grid:{color:'rgba(255,255,255,0.05)'} }
         }
       }
     });
   }
 
-  // Dona: por categoría
+  // ── Dona: por categoría ───────────────────────────────────
   const byCat = {};
   data.forEach(m => { const c = m.cat||'Otros'; byCat[c] = (byCat[c]||0) + m.importe; });
   const cats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const COLORS = ['#4a9fd4','#3aaa2a','#fbbf24','#f87171','#a78bfa','#2dd4bf','#fb923c','#e879f9'];
   const ctx2 = document.getElementById('chart-extractos-dona');
   if (ctx2) {
     if (_chartExtractosDona) { _chartExtractosDona.destroy(); _chartExtractosDona = null; }
     _chartExtractosDona = new Chart(ctx2, {
       type: 'doughnut',
-      data: {
-        labels: cats.map(c=>c[0]),
-        datasets: [{ data: cats.map(c=>c[1]), backgroundColor: COLORS, borderWidth: 0, hoverOffset: 6 }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: true, cutout: '60%',
-        plugins: { legend: { display: false } }
-      }
+      data: { labels: cats.map(c=>c[0]), datasets:[{ data:cats.map(c=>c[1]), backgroundColor:COLORS, borderWidth:0, hoverOffset:6 }] },
+      options: { responsive:true, maintainAspectRatio:true, cutout:'60%', plugins:{legend:{display:false}} }
     });
     const leg = document.getElementById('chart-extractos-dona-legend');
-    if (leg) leg.innerHTML = cats.map((c,i)=>'<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px"><div style="width:8px;height:8px;border-radius:2px;background:'+COLORS[i]+'"></div><span style="color:var(--text2);font-size:10px">'+c[0]+'</span><span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3)">$'+fmtARS(c[1])+'</span></div>').join('');
+    if (leg) leg.innerHTML = cats.map((c,i)=>`<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px"><div style="width:8px;height:8px;border-radius:2px;background:${COLORS[i]}"></div><span style="color:var(--text2);font-size:10px">${c[0]}</span><span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3)">$${fmt(c[1])}</span></div>`).join('');
+  }
+
+  // ── Top cobros / pagos ────────────────────────────────────
+  const topIng = {}, topEgr = {};
+  data.forEach(m => {
+    const key = (m.denominacion||m.detalle||m.descripcion||'Sin descripción').slice(0,40).trim();
+    if (!key||key==='-') return;
+    if (m.tipo==='ingreso') topIng[key]=(topIng[key]||0)+m.importe;
+    else topEgr[key]=(topEgr[key]||0)+m.importe;
+  });
+  const mkTopList = (obj, color) => {
+    const rows = Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const max = rows[0]?.[1]||1;
+    return rows.map(([k,v])=>`<div style="margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
+        <span style="color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k}</span>
+        <span style="font-family:var(--mono);font-weight:700;color:${color}">$${fmt(v)}</span>
+      </div>
+      <div style="height:3px;border-radius:2px;background:var(--bg3);overflow:hidden">
+        <div style="height:100%;background:${color};opacity:.7;width:${Math.round((v/max)*100)}%"></div>
+      </div>
+    </div>`).join('') || '<div style="font-size:11px;color:var(--text3)">Sin datos</div>';
+  };
+  const topIngEl = document.getElementById('ext-top-ingresos');
+  const topEgrEl = document.getElementById('ext-top-egresos');
+  if (topIngEl) topIngEl.innerHTML = mkTopList(topIng, 'var(--green)');
+  if (topEgrEl) topEgrEl.innerHTML = mkTopList(topEgr, 'var(--red)');
+}
+
+async function extractosAnalisisIA() {
+  const data = window._lastExtractosData || appState.extractoBancario || [];
+  if (!data.length) { showToast('Sin datos para analizar'); return; }
+  const btn = document.getElementById('ext-ia-btn');
+  const out  = document.getElementById('ext-ia-output');
+  if (btn) { btn.textContent = '⏳ Analizando...'; btn.disabled = true; }
+  if (out)   { out.style.display='block'; out.textContent='Procesando...'; }
+
+  // Resumir datos para la IA (no mandar los 91k registros)
+  const byMes = {}, byEmp = {RS:{ing:0,egr:0}, SC:{ing:0,egr:0}, LP:{ing:0,egr:0}};
+  const byCat = {}, topIng = {}, topEgr = {};
+  data.forEach(m => {
+    const mes = (m.fecha||'').slice(0,7); if (mes) { if(!byMes[mes]) byMes[mes]={ing:0,egr:0}; if(m.tipo==='ingreso') byMes[mes].ing+=m.importe; else byMes[mes].egr+=m.importe; }
+    const e = byEmp[m.empTag]; if(e){ if(m.tipo==='ingreso') e.ing+=m.importe; else e.egr+=m.importe; }
+    const c = m.cat||'Otros'; byCat[c]=(byCat[c]||0)+m.importe;
+    const k = (m.denominacion||m.detalle||'').slice(0,35).trim(); if(k&&k!=='-'){if(m.tipo==='ingreso') topIng[k]=(topIng[k]||0)+m.importe; else topEgr[k]=(topEgr[k]||0)+m.importe;}
+  });
+  const meses = Object.keys(byMes).sort();
+  const fmtM = n => '$'+Math.round(n).toLocaleString('es-AR');
+  let resumen = `ANÁLISIS EXTRACTOS BANCARIOS — GRUPO LA PLAZA (Combustibles/Agro/Logística, Patagonia Argentina)\n`;
+  resumen += `Período: ${meses[0]||'?'} a ${meses[meses.length-1]||'?'} · ${data.length.toLocaleString()} movimientos\n\n`;
+  resumen += `POR EMPRESA:\n`;
+  Object.entries(byEmp).forEach(([e,v])=>{ resumen+=`  ${e}: Ingresos ${fmtM(v.ing)}, Egresos ${fmtM(v.egr)}, Neto ${fmtM(v.ing-v.egr)}\n`; });
+  resumen += `\nTENDENCIA MENSUAL (últimos 12 meses):\n`;
+  meses.slice(-12).forEach(m=>{ const v=byMes[m]; resumen+=`  ${m}: +${fmtM(v.ing)} / -${fmtM(v.egr)} = ${fmtM(v.ing-v.egr)}\n`; });
+  resumen += `\nPOR CATEGORÍA:\n`;
+  Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,8).forEach(([c,v])=>{ resumen+=`  ${c}: ${fmtM(v)}\n`; });
+  resumen += `\nTOP 5 FUENTES DE INGRESO:\n`;
+  Object.entries(topIng).sort((a,b)=>b[1]-a[1]).slice(0,5).forEach(([k,v])=>{ resumen+=`  ${k}: ${fmtM(v)}\n`; });
+  resumen += `\nTOP 5 DESTINOS DE EGRESO:\n`;
+  Object.entries(topEgr).sort((a,b)=>b[1]-a[1]).slice(0,5).forEach(([k,v])=>{ resumen+=`  ${k}: ${fmtM(v)}\n`; });
+
+  try {
+    const resp = await fetch('/api/claude', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6', max_tokens:800,
+        system:'Sos analista financiero senior especializado en pymes argentinas del sector combustibles y agro. Respondé en español rioplatense, directo y concreto. Sin markdown, sin bullets, texto corrido. Máximo 6 oraciones.',
+        messages:[{role:'user',content:'Analizá estos extractos bancarios y decime: 1) ¿Cómo está la posición financiera del grupo? 2) ¿Hay algo preocupante o llamativo? 3) ¿Qué empresa tiene mejor desempeño financiero? Datos:\n\n'+resumen}]
+      })
+    });
+    const json = await resp.json();
+    const texto = json.content?.find(b=>b.type==='text')?.text || 'Sin respuesta';
+    if (out) out.textContent = texto;
+  } catch(e) {
+    if (out) out.textContent = '⚠️ Error al analizar: '+e.message;
+  } finally {
+    if (btn) { btn.textContent = '✨ Analizar con IA'; btn.disabled = false; }
   }
 }
 
@@ -12344,42 +12479,52 @@ function exportExtractosExcel() {
 // ═══════════════════════════════════════════════════════════════
 function extImportarEmp(file, empTag) {
   if (!file) return;
+  extImportarEmpMulti([file], empTag);
+}
+
+async function extImportarEmpMulti(files, empTag) {
+  if (!files || !files.length) return;
   const logEl = document.getElementById('ext-log-' + empTag.toLowerCase());
-  if (logEl) { logEl.textContent = '⏳ Procesando...'; logEl.style.display = 'block'; logEl.style.color = 'var(--text3)'; }
-  const reader = new FileReader();
-  reader.onload = function(ev) {
-    try {
-      const wb = XLSX.read(new Uint8Array(ev.target.result), { type:'array', cellDates:true });
-      const fileName = file.name || '';
-      const _MESES_MAP = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12};
-      let _mesNum = null, _anioNum = null;
-      const _fnLow = fileName.toLowerCase();
-      const _fnMatch = _fnLow.match(/extractos?\s+(\w+)\s+(\d{4})/i);
-      if (_fnMatch) {
-        _mesNum  = _MESES_MAP[(_fnMatch[1]||'').toLowerCase()] || null;
-        _anioNum = parseInt(_fnMatch[2]) || null;
-      }
-      const result = parseExtractoBancario(wb, _mesNum, _anioNum, empTag);
-      const mesLabel = _mesNum && _anioNum ? ' — ' + (_fnMatch[1]||'').charAt(0).toUpperCase() + (_fnMatch[1]||'').slice(1) + ' ' + _anioNum : '';
-      if (logEl) {
-        logEl.innerHTML = result.log.join('<br>');
-        logEl.style.color = 'var(--text2)';
-      }
-      showToast('✅ Extracto ' + empTag + mesLabel + ' — ' + result.total.toLocaleString() + ' movimientos');
-      if (typeof renderExtractos === 'function') renderExtractos();
-      if (appState.extractoBancario && appState.extractoBancario.length) {
-        setTimeout(() => {
-          _saveExtractosSupabase(appState.extractoBancario, _mesNum, _anioNum).then(ok => {
-            if (ok) showToast('☁️ Guardado en Supabase');
-          });
-        }, 500);
-      }
-    } catch(e) {
-      if (logEl) { logEl.textContent = '❌ Error: ' + e.message; logEl.style.color = 'var(--red)'; }
-      showToast('❌ Error al importar: ' + e.message);
-    }
-  };
-  reader.readAsArrayBuffer(file);
+  const fileArr = Array.from(files);
+  let totalMov = 0, errs = 0;
+  if (logEl) { logEl.textContent = `⏳ Procesando ${fileArr.length} archivo(s)...`; logEl.style.display = 'block'; logEl.style.color = 'var(--text3)'; }
+  const _MESES_MAP = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12};
+
+  for (const file of fileArr) {
+    await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        try {
+          const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array', cellDates:true});
+          const fn = (file.name||'').toLowerCase();
+          let _mesNum=null, _anioNum=null;
+          // Detectar mes/año del nombre: "extracto enero 2025", "RS_2025-01", "H1_2025", "semestre1 2024"
+          const m1 = fn.match(/extractos?\s+(\w+)\s+(\d{4})/i);
+          const m2 = fn.match(/(\d{4})[_-](\d{2})/);
+          if (m1) { _mesNum=_MESES_MAP[(m1[1]||'').toLowerCase()]||null; _anioNum=parseInt(m1[2])||null; }
+          else if (m2) { _anioNum=parseInt(m2[1])||null; _mesNum=parseInt(m2[2])||null; }
+          const result = parseExtractoBancario(wb, null, null, empTag);
+          totalMov += result.total;
+          if (logEl) { logEl.innerHTML = result.log.join('<br>'); logEl.style.color='var(--text2)'; }
+        } catch(e) {
+          errs++;
+          if (logEl) { logEl.textContent = `❌ Error en "${file.name}": ${e.message}`; logEl.style.color='var(--red)'; }
+          console.error('extImportarEmpMulti:', e);
+        }
+        resolve();
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+  showToast(`✅ ${empTag}: ${totalMov.toLocaleString()} movimientos de ${fileArr.length} archivo(s)${errs?' · '+errs+' errores':''}`);
+  if (typeof renderExtractos === 'function') renderExtractos();
+  if (appState.extractoBancario && appState.extractoBancario.length) {
+    setTimeout(() => {
+      _saveExtractosSupabase(appState.extractoBancario, null, null).then(ok => {
+        if (ok) showToast('☁️ Supabase actualizado — '+appState.extractoBancario.length.toLocaleString()+' mov. totales');
+      });
+    }, 800);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -13918,19 +14063,22 @@ async function _saveExtractosSupabase(data, mesNum, anioNum) {
         importado_by: _supaUser.id,
       })));
     }
-    // Enviar en grupos de PARALLEL chunks simultáneos
+    // Enviar con retry por chunk fallido (hasta 3 intentos)
+    async function insertChunkWithRetry(chunk, retries=3) {
+      for (let attempt=0; attempt<retries; attempt++) {
+        const {error} = await supa.from('extracto_bancario').insert(chunk);
+        if (!error) return null;
+        if (attempt < retries-1) await new Promise(r=>setTimeout(r,500*(attempt+1)));
+        if (attempt===retries-1) return error;
+      }
+    }
     for (let i = 0; i < chunks.length; i += PARALLEL) {
       const grupo = chunks.slice(i, i+PARALLEL);
-      const resultados = await Promise.all(grupo.map(chunk => supa.from('extracto_bancario').insert(chunk)));
-      let _firstExtErr = '';
-      resultados.forEach(({ error }) => {
-        if (error) {
-          errCount++;
-          if (!_firstExtErr) { _firstExtErr = error.message; console.error('Supabase extracto error:', error.message); }
-        }
+      const resultados = await Promise.all(grupo.map(chunk => insertChunkWithRetry(chunk)));
+      resultados.forEach(err => {
+        if (err) { errCount++; console.error('Supabase extracto error (3 reintentos agotados):', err.message); }
       });
-      if (_firstExtErr && errCount === 1) showToast('⚠️ Error guardando extractos: ' + _firstExtErr.slice(0,100));
-      // Pequeña pausa cada 10 grupos para no saturar Supabase
+      // Pausa y progreso cada 10 grupos
       if (i > 0 && i % (PARALLEL * 10) === 0) {
         showToast('⏳ Guardando... ' + Math.min(100, Math.round((i/chunks.length)*100)) + '%');
         await new Promise(r => setTimeout(r, 200));
