@@ -7117,12 +7117,12 @@ function parseMinutaDiaria(wb) {
   // Al cerrar el día pasa al histórico y el día siguiente abre una nueva hoja.
   appState.hoyData = null;
   if (dateSheets.length > 0) {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const _tn=new Date();const todayStr=_tn.getFullYear()+'-'+String(_tn.getMonth()+1).padStart(2,'0')+'-'+String(_tn.getDate()).padStart(2,'0');
     const lastSheet = dateSheets[dateSheets.length - 1];
-    const lastDateStr = lastSheet.dt.toISOString().slice(0, 10);
+    const _ld=lastSheet.dt;const lastDateStr=_ld.getFullYear()+'-'+String(_ld.getMonth()+1).padStart(2,'0')+'-'+String(_ld.getDate()).padStart(2,'0');
     if (lastDateStr === todayStr) {
       const prevSheet = dateSheets.length > 1 ? dateSheets[dateSheets.length - 2] : null;
-      const lastClosedStr = prevSheet ? prevSheet.dt.toISOString().slice(0, 10) : todayStr;
+      const lastClosedStr = prevSheet ? (()=>{const _ps=prevSheet.dt;return _ps.getFullYear()+'-'+String(_ps.getMonth()+1).padStart(2,'0')+'-'+String(_ps.getDate()).padStart(2,'0')})() : todayStr;
       appState.hoyData = {
         fecha: todayStr,
         lastClosed: lastClosedStr,
@@ -9175,7 +9175,7 @@ function chequesHistorialRender() {
     } else if (i === hist.length-1) {
       varHtml = '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px;background:rgba(251,191,36,0.1);color:#fbbf24">— base</span>';
     }
-    const esHoy = h.fecha === new Date().toISOString().slice(0,10);
+    const _eh=new Date();const esHoy = h.fecha === (_eh.getFullYear()+'-'+String(_eh.getMonth()+1).padStart(2,'0')+'-'+String(_eh.getDate()).padStart(2,'0'));
     return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'+
       '<td style="padding:8px 10px;font-size:10px;color:'+(esHoy?'#4ade80':'#c8cede')+';font-weight:'+(esHoy?'700':'400')+'">'+(esHoy?'Hoy — ':'')+h.fecha+(h.hora?' '+h.hora:'')+'</td>'+
       '<td style="padding:8px 10px;font-size:10px;font-family:var(--mono);color:var(--text)">'+h.total.toLocaleString('es-AR')+'</td>'+
@@ -14931,7 +14931,7 @@ async function cacheCargarTodo() {
           case 'minuta':
             if (val && val.empresas) {
               const _hoyGuardado = val.hoyData || null;
-              const _hoyFechaHoy = new Date().toISOString().slice(0,10);
+              const _hfn=new Date();const _hoyFechaHoy=_hfn.getFullYear()+'-'+String(_hfn.getMonth()+1).padStart(2,'0')+'-'+String(_hfn.getDate()).padStart(2,'0');
               appState.hoyData = (_hoyGuardado && _hoyGuardado.fecha === _hoyFechaHoy) ? _hoyGuardado : null;
               val.empresas.forEach(e => {
                 if (!e.transactions) e.transactions = [];
