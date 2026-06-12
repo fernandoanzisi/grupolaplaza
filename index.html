@@ -3171,6 +3171,8 @@ let _supaUser=null,_supaRol=null;
       <button onclick="pasivosSetEmp('LP',this)" class="pasivos-emp-btn" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:var(--bg3);color:var(--text2);font-family:var(--font)">🟡 LP</button>
       <button onclick="abrirModalPasivo()" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);cursor:pointer;font-family:var(--font)">＋ Nuevo</button>
       <button onclick="pasivosExportExcel()" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);cursor:pointer;font-family:var(--font)">📥 Excel</button>
+      <button onclick="pasivosExportPDF()" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);color:#f87171;cursor:pointer;font-family:var(--font)">📄 PDF</button>
+      <button onclick="pasivosExportPPT()" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(251,191,36,0.3);background:rgba(251,191,36,0.08);color:#fbbf24;cursor:pointer;font-family:var(--font)">📑 PPT</button>
     </div>
   </div>
 
@@ -4242,6 +4244,11 @@ function renderDashboard() {
 <style>@keyframes hoyPulse{0%,100%{opacity:1}50%{opacity:0.25}}</style>
 
 <div id="dash-view-grupo">
+  <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:10px">
+    <button onclick="dashExportExcel()" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:var(--green);cursor:pointer;font-family:var(--font)">📥 Excel</button>
+    <button onclick="dashExportPDF()" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);color:#f87171;cursor:pointer;font-family:var(--font)">📄 PDF</button>
+    <button onclick="dashExportPPT()" style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(251,191,36,0.3);background:rgba(251,191,36,0.08);color:#fbbf24;cursor:pointer;font-family:var(--font)">📑 PPT</button>
+  </div>
   <div style="display:grid;grid-template-columns:1.1fr 0.9fr;background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow)">
     <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#4a9fd4,#3aaa2a,#d4920a)"></div>
     <div style="padding:22px 24px;border-right:1px solid var(--border)" id="dash-left-col">
@@ -25153,6 +25160,467 @@ async function rechSubmitSeguimiento() {
     if(btn) { btn.disabled=false; btn.textContent='✅ Enviar informe'; }
   }
 }
+
+// ==================== DASHBOARD EXPORTS ====================
+function _dashGetData() {
+  const empRS = appState.empresas.find(e=>e.name.includes('Rio'));
+  const empSC = appState.empresas.find(e=>e.name.includes('Cipolletti'));
+  const empLP = appState.empresas.find(e=>e.name.includes('Plaza'));
+  const now = new Date();
+  const todayStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const histRS = appState.minutaHistory && appState.minutaHistory.find(h=>{const d=new Date(h.date+'T12:00:00');return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')===todayStr;});
+  const H = (field, fallback) => histRS ? (histRS[field]||0) : (fallback||0);
+  const b50 = H('b50', empRS?empRS.diaB50:0);
+  const d50 = (empSC?empSC.diaD50:0);
+  const f50 = H('f50', empLP?empLP.diaF50:0);
+  const c71 = H('c71', empRS?empRS.diaC71:0);
+  const c74 = H('c74', empRS?empRS.diaC74:0);
+  const tcBlue = (dolar&&dolar.blue&&dolar.blue.venta)||1;
+  const tcOficial = c74>0?c74:tcBlue;
+  const rsUSD = empRS?(empRS.transactions||[]).filter(t=>t.moneda==='USD'&&t.type==='ingreso').reduce((s,t)=>s+(t.amount||0),0):0;
+  const scUSD = empSC?(empSC.transactions||[]).filter(t=>t.moneda==='USD'&&t.type==='ingreso').reduce((s,t)=>s+(t.amount||0),0):0;
+  const totalUSD = rsUSD+scUSD;
+  const totalGrupoARS = b50+d50+f50;
+  const totalGrupo = c71>0?c71:totalGrupoARS;
+  const totalCart = (appState.cartDebo||[]).reduce((s,c)=>s+(c.importe||0),0);
+  const rsCart = (appState.cartDebo||[]).filter(c=>c.emp==='RS').reduce((s,c)=>s+(c.importe||0),0);
+  const scCart = (appState.cartDebo||[]).filter(c=>c.emp==='SC').reduce((s,c)=>s+(c.importe||0),0);
+  const fciData = appState.fciData;
+  const totalFIMA = fciData ? Object.values(fciData).reduce((s,v)=>s+(v.valorActual||0),0) : 0;
+  const pasivos = appState.pasivos||[];
+  const deudaTotal = pasivos.filter(p=>p.estado==='Vigente'||p.estado==='En mora').reduce((s,p)=>s+(p.saldo||0),0);
+  const cuotaMes = (()=>{
+    const fin=new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().slice(0,10);
+    return pasivos.filter(p=>p.proxVenc&&p.proxVenc>=todayStr&&p.proxVenc<=fin&&(p.estado==='Vigente'||p.estado==='En mora')).reduce((s,p)=>s+(p.cuota||0),0);
+  })();
+  const hoy = appState.hoyData;
+  return {totalGrupo,totalUSD,tcOficial,totalCart,rsCart,scCart,totalFIMA,b50,d50,f50,c71,deudaTotal,cuotaMes,hoy,empRS,empSC,empLP,todayStr,rsUSD,scUSD};
+}
+
+function dashExportExcel() {
+  const d = _dashGetData();
+  if (!d.totalGrupo&&!d.totalUSD&&!d.totalCart) { showToast('⚠️ Sin datos de minuta — importá primero'); return; }
+  const now = new Date();
+  const fmt = n => Math.round(n||0);
+  const wb = XLSX.utils.book_new();
+  // Hoja 1: Resumen grupo
+  const ws1 = XLSX.utils.aoa_to_sheet([
+    ['GRUPO LA PLAZA — RESUMEN FINANCIERO'],
+    ['Fecha','Hora',''],
+    [d.todayStr, now.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}),''],
+    [''],
+    ['INDICADOR','VALOR ARS','VALOR USD'],
+    ['Disponibilidad Financiera (ARS)', fmt(d.totalGrupo), ''],
+    ['Posición en USD', '', fmt(d.totalUSD)],
+    ['TC Oficial',fmt(d.tcOficial),''],
+    ['Cartera de Valores (ARS)',fmt(d.totalCart),''],
+    ['Inversiones FIMA (ARS)',fmt(d.totalFIMA),''],
+    [''],
+    ['DEUDA FINANCIERA','',''],
+    ['Pasivos vigentes (saldo)',fmt(d.deudaTotal),''],
+    ['Cuotas este mes',fmt(d.cuotaMes),''],
+    [''],
+    ['POR EMPRESA','ARS','FUENTE'],
+    ['Rio Salado SRL',fmt(d.b50),'B50 Minuta'],
+    ['Serv. Cipolletti SRL',fmt(d.d50),'D50 Minuta'],
+    ['La Plaza SA',fmt(d.f50),'F50 Minuta'],
+    ['Total calculado',fmt(d.b50+d.d50+d.f50),''],
+    ['C71 Minuta (oficial)',fmt(d.c71),'Celda C71'],
+    [''],
+    ...(d.hoy?[
+      ['HOY EN CURSO','',''],
+      ['Empresa','Ingresos','Egresos'],
+      ...Object.entries(d.hoy.byEmp||{}).map(([k,v])=>[k,fmt(v.ing),fmt(v.egr)]),
+    ]:[]),
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumen Grupo');
+  // Hoja 2: Cartera de valores
+  if ((appState.cartDebo||[]).length) {
+    const ws2_data = [['Empresa','Banco','Número','Cliente','Librador','Importe','F.Emisión','F.Presentación','UUNN']];
+    (appState.cartDebo||[]).forEach(c=>ws2_data.push([c.emp,c.banco,c.numero,c.cliente,c.librador,c.importe,c.fEmi,c.fPres,c.uunn]));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws2_data), 'Cartera Valores');
+  }
+  // Hoja 3: Pasivos
+  if ((appState.pasivos||[]).length) {
+    const ws3_data = [['Tipo','Empresa','Banco','Descripción','Capital Orig.','Saldo','Cuota','TNA%','Sistema','Próx.Venc.','Estado']];
+    (appState.pasivos||[]).filter(p=>p.estado!=='Cancelado').forEach(p=>ws3_data.push([
+      p.tipo,p.empresa,p.banco,p.descripcion,p.capitalOrig,p.saldo,p.cuota,p.tna,p.sistema,p.proxVenc,p.estado
+    ]));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws3_data), 'Pasivos');
+  }
+  XLSX.writeFile(wb, 'GrupoLaPlaza_Resumen_'+d.todayStr+'.xlsx');
+  showToast('📥 Excel exportado — 3 hojas');
+}
+
+function dashExportPDF() {
+  const d = _dashGetData();
+  if (!d.totalGrupo&&!d.totalUSD&&!d.totalCart) { showToast('⚠️ Sin datos de minuta — importá primero'); return; }
+  const fmt = n => (n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const fecha = new Date(d.todayStr+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const pas = (appState.pasivos||[]).filter(p=>p.estado==='Vigente'||p.estado==='En mora');
+  const proxPagoOp = pas.filter(p=>p.proxVenc).sort((a,b)=>a.proxVenc.localeCompare(b.proxVenc))[0];
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;background:#fff;color:#1a202c;padding:32px;font-size:12px}
+    h1{font-size:22px;font-weight:900;color:#0f172a;margin-bottom:4px}
+    .sub{font-size:11px;color:#64748b;margin-bottom:24px}
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+    .kpi{border:1px solid #e2e8f0;border-radius:10px;padding:14px;border-left:4px solid #4a9fd4}
+    .kpi-label{font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+    .kpi-value{font-size:18px;font-weight:900;font-family:monospace}
+    .kpi-sub{font-size:9px;color:#94a3b8;margin-top:3px}
+    .section{margin-bottom:20px}
+    h2{font-size:13px;font-weight:700;color:#334155;border-bottom:2px solid #e2e8f0;padding-bottom:6px;margin-bottom:10px}
+    table{width:100%;border-collapse:collapse;font-size:10px}
+    th{background:#f1f5f9;font-weight:700;padding:6px 8px;text-align:left;color:#475569}
+    td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
+    tr:last-child td{border-bottom:none}
+    .emp-rs{color:#4a9fd4;font-weight:700} .emp-sc{color:#3aaa2a;font-weight:700} .emp-lp{color:#d4920a;font-weight:700}
+    .footer{margin-top:32px;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px;text-align:right}
+    .hoy{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;margin-bottom:16px}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <h1>Grupo La Plaza — Resumen Financiero</h1>
+  <div class="sub">${fecha} · TC Oficial: $${fmt(d.tcOficial)}</div>
+  ${d.hoy?`<div class="hoy"><strong style="color:#16a34a">HOY EN CURSO — </strong>${Object.entries(d.hoy.byEmp||{}).map(([k,v])=>`<strong>${k}</strong>: Ing $${fmt(v.ing)} / Egr $${fmt(v.egr)}`).join(' &nbsp;|&nbsp; ')}</div>`:''}
+  <div class="kpi-grid">
+    <div class="kpi" style="border-left-color:#4a9fd4">
+      <div class="kpi-label">Disponibilidad Financiera</div>
+      <div class="kpi-value" style="color:#4a9fd4">$${fmt(d.totalGrupo)}</div>
+      <div class="kpi-sub">ARS · Grupo consolidado</div>
+    </div>
+    <div class="kpi" style="border-left-color:#d4920a">
+      <div class="kpi-label">Posición USD</div>
+      <div class="kpi-value" style="color:#d4920a">U$S ${fmt(d.totalUSD)}</div>
+      <div class="kpi-sub">≈ $${fmt(d.totalUSD*d.tcOficial)} ARS</div>
+    </div>
+    <div class="kpi" style="border-left-color:#a78bfa">
+      <div class="kpi-label">Cartera de Valores</div>
+      <div class="kpi-value" style="color:#a78bfa">$${fmt(d.totalCart)}</div>
+      <div class="kpi-sub">RS $${fmt(d.rsCart)} · SC $${fmt(d.scCart)}</div>
+    </div>
+    <div class="kpi" style="border-left-color:#4ade80">
+      <div class="kpi-label">Inversiones FIMA</div>
+      <div class="kpi-value" style="color:#4ade80">$${fmt(d.totalFIMA)}</div>
+      <div class="kpi-sub">Premium + Ahorro Plus</div>
+    </div>
+  </div>
+  <div class="section">
+    <h2>Por empresa — Disponibilidad diaria</h2>
+    <table>
+      <tr><th>Empresa</th><th>ARS</th><th>USD</th><th>Fuente</th></tr>
+      <tr><td class="emp-rs">Rio Salado SRL</td><td>$${fmt(d.b50)}</td><td>U$S ${fmt(d.rsUSD)}</td><td>B50 Minuta</td></tr>
+      <tr><td class="emp-sc">Serv. Cipolletti SRL</td><td>$${fmt(d.d50)}</td><td>U$S ${fmt(d.scUSD)}</td><td>D50 Minuta</td></tr>
+      <tr><td class="emp-lp">La Plaza SA</td><td>$${fmt(d.f50)}</td><td>—</td><td>F50 Minuta</td></tr>
+      <tr style="font-weight:700;background:#f8fafc"><td>TOTAL GRUPO</td><td>$${fmt(d.c71>0?d.c71:d.b50+d.d50+d.f50)}</td><td>U$S ${fmt(d.totalUSD)}</td><td>${d.c71>0?'C71 Minuta':'Suma directa'}</td></tr>
+    </table>
+  </div>
+  ${pas.length?`<div class="section">
+    <h2>Pasivos Financieros Vigentes</h2>
+    <table>
+      <tr><th>Tipo</th><th>Empresa</th><th>Banco</th><th>Descripción</th><th>Saldo</th><th>Cuota</th><th>TNA</th><th>Próx.Venc.</th></tr>
+      ${pas.map(p=>`<tr><td>${p.tipo}</td><td class="emp-${(p.empresa||'').toLowerCase()}">${p.empresa}</td><td>${p.banco||'—'}</td><td>${p.descripcion||'—'}</td><td>$${fmt(p.saldo)}</td><td>$${fmt(p.cuota)}</td><td>${p.tna||'—'}%</td><td>${p.proxVenc||'—'}</td></tr>`).join('')}
+      <tr style="font-weight:700;background:#f8fafc"><td colspan="4">TOTAL DEUDA</td><td>$${fmt(d.deudaTotal)}</td><td>$${fmt(d.cuotaMes)}</td><td colspan="2"></td></tr>
+    </table>
+    ${proxPagoOp?`<div style="margin-top:8px;font-size:10px;color:#dc2626">⏰ Próximo pago: <strong>${proxPagoOp.descripcion||proxPagoOp.banco}</strong> · $${fmt(proxPagoOp.cuota)} · ${proxPagoOp.proxVenc}</div>`:''}
+  </div>`:''}
+  ${(appState.cartDebo||[]).length?`<div class="section">
+    <h2>Cartera de Valores — Resumen</h2>
+    <table>
+      <tr><th>Empresa</th><th>Cantidad</th><th>Total</th></tr>
+      ${['RS','SC','LP'].map(e=>{const items=(appState.cartDebo||[]).filter(c=>c.emp===e);const tot=items.reduce((s,c)=>s+(c.importe||0),0);return items.length?`<tr><td class="emp-${e.toLowerCase()}">${{RS:'Rio Salado',SC:'Serv.Cipolletti',LP:'La Plaza'}[e]}</td><td>${items.length} cheques</td><td>$${fmt(tot)}</td></tr>`:''}).join('')}
+      <tr style="font-weight:700;background:#f8fafc"><td>TOTAL</td><td>${(appState.cartDebo||[]).length} cheques</td><td>$${fmt(d.totalCart)}</td></tr>
+    </table>
+  </div>`:''}
+  <div class="footer">Generado: ${new Date().toLocaleString('es-AR')} · Grupo La Plaza — Sistema Financiero Interno</div>
+  <script>window.print();<\/script>
+  </body></html>`;
+  const w = window.open('','_blank','width=1000,height=700');
+  if (w) { w.document.write(html); w.document.close(); }
+}
+
+async function dashExportPPT() {
+  const d = _dashGetData();
+  if (!d.totalGrupo&&!d.totalUSD&&!d.totalCart) { showToast('⚠️ Sin datos de minuta — importá primero'); return; }
+  showToast('⏳ Generando PPT...', 3000);
+  if (!window.PptxGenJS) {
+    await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';s.onload=()=>res(true);s.onerror=()=>rej();document.head.appendChild(s);}).catch(()=>{showToast('⚠️ No se pudo cargar PptxGenJS');return;});
+  }
+  const fmt = n => (n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const fecha = new Date(d.todayStr+'T12:00:00').toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'});
+  const pptx = new PptxGenJS();
+  pptx.layout='LAYOUT_WIDE'; pptx.author='Grupo La Plaza';
+  const BG='#0d1117', CARD='#161b22', BORDER='#30363d', ACC='#4a9fd4', GRN='#4ade80', YEL='#fbbf24', RED='#f87171', PUR='#a78bfa', TX='FFFFFF', TX2='94a3b8';
+  const addBg=(s)=>s.addShape(pptx.ShapeType.rect,{x:0,y:0,w:'100%',h:'100%',fill:{color:BG.replace('#','')}});
+  const addCard=(s,x,y,w,h,fill)=>s.addShape(pptx.ShapeType.rect,{x,y,w,h,fill:{color:(fill||CARD).replace('#','')},line:{color:BORDER.replace('#',''),width:1},rectRadius:0.1});
+  const txt=(s,t,x,y,w,h,opts)=>s.addText(t,{x,y,w,h,...opts});
+
+  // Slide 1 — Portada
+  const s1=pptx.addSlide();
+  addBg(s1);
+  s1.addShape(pptx.ShapeType.rect,{x:0,y:2.8,w:'100%',h:0.04,fill:{color:ACC.replace('#','')}});
+  txt(s1,'GRUPO LA PLAZA',0.5,1.2,12,0.7,{fontSize:36,bold:true,color:TX,align:'center',fontFace:'Arial'});
+  txt(s1,'RESUMEN FINANCIERO',0.5,2.0,12,0.6,{fontSize:22,color:ACC,align:'center',fontFace:'Arial'});
+  txt(s1,fecha,0.5,3.2,12,0.5,{fontSize:14,color:TX2,align:'center',fontFace:'Arial'});
+  txt(s1,'TC Oficial: $'+fmt(d.tcOficial),0.5,3.8,12,0.4,{fontSize:12,color:TX2,align:'center',fontFace:'Arial'});
+  if(d.hoy){txt(s1,'HOY EN CURSO',0.5,4.5,12,0.4,{fontSize:11,color:GRN,align:'center',bold:true,fontFace:'Arial'});}
+
+  // Slide 2 — KPIs principales
+  const s2=pptx.addSlide();
+  addBg(s2);
+  txt(s2,'KPIs Financieros — '+fecha,0.3,0.2,12.4,0.5,{fontSize:16,bold:true,color:TX,fontFace:'Arial'});
+  const kpis=[
+    {l:'DISPONIBILIDAD FINANCIERA',v:'$ '+fmt(d.totalGrupo),s:'ARS · Grupo consolidado',c:ACC},
+    {l:'POSICIÓN USD',v:'U$S '+fmt(d.totalUSD),s:'≈ $'+fmt(d.totalUSD*d.tcOficial)+' ARS',c:YEL},
+    {l:'CARTERA DE VALORES',v:'$ '+fmt(d.totalCart),s:'RS $'+fmt(d.rsCart)+' · SC $'+fmt(d.scCart),c:PUR},
+    {l:'INVERSIONES FIMA',v:'$ '+fmt(d.totalFIMA),s:'Premium + Ahorro Plus',c:GRN},
+  ];
+  kpis.forEach((k,i)=>{
+    const col=i%2, row=Math.floor(i/2);
+    const x=0.3+col*6.6, y=1.0+row*2.2;
+    addCard(s2,x,y,6.2,2.0);
+    s2.addShape(pptx.ShapeType.rect,{x,y,w:0.05,h:2.0,fill:{color:k.c.replace('#','')}});
+    txt(s2,k.l,x+0.2,y+0.2,5.8,0.35,{fontSize:9,color:TX2,bold:true,fontFace:'Arial'});
+    txt(s2,k.v,x+0.2,y+0.7,5.8,0.7,{fontSize:22,bold:true,color:k.c,fontFace:'Arial Narrow'});
+    txt(s2,k.s,x+0.2,y+1.5,5.8,0.35,{fontSize:10,color:TX2,fontFace:'Arial'});
+  });
+
+  // Slide 3 — Por empresa
+  const s3=pptx.addSlide();
+  addBg(s3);
+  txt(s3,'Disponibilidad por Empresa',0.3,0.2,12.4,0.5,{fontSize:16,bold:true,color:TX,fontFace:'Arial'});
+  const emps=[
+    {n:'Rio Salado SRL',ars:d.b50,usd:d.rsUSD,c:'4a9fd4',src:'B50 Minuta'},
+    {n:'Serv. Cipolletti SRL',ars:d.d50,usd:d.scUSD,c:'4ade80',src:'D50 Minuta'},
+    {n:'La Plaza SA',ars:d.f50,usd:0,c:'d4920a',src:'F50 Minuta'},
+  ];
+  const totalARS=d.c71>0?d.c71:d.b50+d.d50+d.f50;
+  emps.forEach((e,i)=>{
+    const y=0.9+i*1.5;
+    addCard(s3,0.3,y,12.4,1.3);
+    s3.addShape(pptx.ShapeType.rect,{x:0.3,y,w:0.06,h:1.3,fill:{color:e.c}});
+    txt(s3,e.n,0.5,y+0.1,4,0.4,{fontSize:13,bold:true,color:'ff'+e.c.slice(2)||TX,fontFace:'Arial'});
+    txt(s3,'$ '+fmt(e.ars),4.5,y+0.05,4,0.55,{fontSize:24,bold:true,color:e.c,fontFace:'Arial Narrow'});
+    if(e.usd>0)txt(s3,'U$S '+fmt(e.usd),4.5,y+0.7,4,0.35,{fontSize:12,color:YEL,fontFace:'Arial'});
+    const pct=totalARS>0?(e.ars/totalARS*100).toFixed(1):'0';
+    txt(s3,pct+'%',10.0,y+0.3,2,0.5,{fontSize:20,bold:true,color:TX2,align:'right',fontFace:'Arial'});
+    txt(s3,e.src,10.0,y+0.9,2,0.3,{fontSize:9,color:TX2,align:'right',fontFace:'Arial'});
+  });
+  addCard(s3,0.3,5.5,12.4,0.8);
+  txt(s3,'TOTAL GRUPO: $ '+fmt(totalARS)+(d.c71>0?' (C71 Minuta)':' (Suma directa)'),0.5,5.6,9,0.5,{fontSize:16,bold:true,color:TX,fontFace:'Arial'});
+  txt(s3,'U$S '+fmt(d.totalUSD),10,5.6,2.5,0.5,{fontSize:14,bold:true,color:YEL,align:'right',fontFace:'Arial'});
+
+  // Slide 4 — Pasivos (si hay)
+  const pas=(appState.pasivos||[]).filter(p=>p.estado==='Vigente'||p.estado==='En mora');
+  if(pas.length){
+    const s4=pptx.addSlide();
+    addBg(s4);
+    txt(s4,'Pasivos Financieros Vigentes',0.3,0.2,12.4,0.5,{fontSize:16,bold:true,color:TX,fontFace:'Arial'});
+    const kp=[
+      {l:'DEUDA TOTAL',v:'$ '+fmt(d.deudaTotal),c:RED},
+      {l:'CUOTAS ESTE MES',v:'$ '+fmt(d.cuotaMes),c:YEL},
+      {l:'OPERACIONES',v:pas.length+' vigentes',c:ACC},
+    ];
+    kp.forEach((k,i)=>{
+      addCard(s4,0.3+i*4.3,0.9,4.0,1.2);
+      txt(s4,k.l,0.5+i*4.3,1.0,3.6,0.35,{fontSize:9,bold:true,color:TX2,fontFace:'Arial'});
+      txt(s4,k.v,0.5+i*4.3,1.45,3.6,0.5,{fontSize:18,bold:true,color:k.c,fontFace:'Arial Narrow'});
+    });
+    const rows=[['TIPO','EMPRESA','BANCO','DESCRIPCIÓN','SALDO','CUOTA','TNA','PRÓX.VENC.'],...pas.slice(0,8).map(p=>[p.tipo,p.empresa,p.banco||'—',(p.descripcion||'—').slice(0,20),'$'+fmt(p.saldo),'$'+fmt(p.cuota),(p.tna?p.tna+'%':'—'),p.proxVenc||'—'])];
+    s4.addTable(rows,{x:0.3,y:2.3,w:12.4,fontSize:9,color:TX.replace('#',''),fill:{color:CARD.replace('#','')},border:{color:BORDER.replace('#',''),width:0.5},fontFace:'Arial',rowH:0.32,colW:[1.2,0.9,1.5,2.5,1.3,1.2,0.8,1.5]});
+  }
+
+  // Slide 5 — HOY (si hay)
+  if(d.hoy){
+    const s5=pptx.addSlide();
+    addBg(s5);
+    txt(s5,'HOY EN CURSO — Operativo del día',0.3,0.2,12.4,0.5,{fontSize:16,bold:true,color:GRN,fontFace:'Arial'});
+    const byEmp=d.hoy.byEmp||{};
+    let yi=0.9;
+    Object.entries(byEmp).forEach(([k,v])=>{
+      addCard(s5,0.3,yi,12.4,1.0);
+      txt(s5,{RS:'Rio Salado',SC:'Serv.Cipolletti',LP:'La Plaza'}[k]||k,0.5,yi+0.1,3,0.4,{fontSize:13,bold:true,color:TX,fontFace:'Arial'});
+      txt(s5,'Ingresos: $'+fmt(v.ing),3.8,yi+0.1,3.5,0.35,{fontSize:12,color:GRN,fontFace:'Arial'});
+      txt(s5,'Egresos: $'+fmt(v.egr),7.5,yi+0.1,3.5,0.35,{fontSize:12,color:RED,fontFace:'Arial'});
+      txt(s5,'Saldo: $'+fmt(v.saldo||v.ing-v.egr),10.5,yi+0.1,2,0.35,{fontSize:12,color:ACC,align:'right',fontFace:'Arial'});
+      yi+=1.15;
+    });
+  }
+
+  pptx.writeFile({fileName:'GrupoLaPlaza_Resumen_'+d.todayStr+'.pptx'});
+  showToast('📑 PPT generado correctamente');
+}
+
+// ==================== FIN DASHBOARD EXPORTS ====================
+
+// ==================== PASIVOS EXPORTS PDF/PPT ====================
+function pasivosExportPDF() {
+  if(!appState.pasivos||!appState.pasivos.length){showToast('⚠️ Sin pasivos para exportar');return;}
+  const pas=pasivosGetFiltered();
+  const fmt=n=>(n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const now=new Date();
+  const todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const fecha=now.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const vigentes=pas.filter(p=>p.estado==='Vigente'||p.estado==='En mora');
+  const deudaTotal=vigentes.reduce((s,p)=>s+(p.saldo||0),0);
+  const cuotaTotal=vigentes.reduce((s,p)=>s+(p.cuota||0),0);
+  const tnaProm=vigentes.filter(p=>p.tna>0).length?(vigentes.filter(p=>p.tna>0).reduce((s,p)=>s+p.tna,0)/vigentes.filter(p=>p.tna>0).length):0;
+  const proxOp=vigentes.filter(p=>p.proxVenc).sort((a,b)=>a.proxVenc.localeCompare(b.proxVenc))[0];
+  const en7=new Date();en7.setDate(en7.getDate()+7);const en7Str=en7.toISOString().slice(0,10);
+  const urgentes=vigentes.filter(p=>p.proxVenc&&p.proxVenc>=todayStr&&p.proxVenc<=en7Str);
+  const PAS_TIPO_LBL={prestamo:'Préstamo',leasing:'Leasing',tarjeta:'Tarjeta',descubierto:'Descubierto'};
+  const PAS_SIS_LBL={frances:'Francés',aleman:'Alemán',americano:'Americano',directo:'Directo'};
+  const calcCronograma=(p)=>{
+    if(!p.capitalOrig||!p.tna||!p.plazoTotal)return[];
+    const cap=p.capitalOrig,tna=p.tna,plazo=p.plazoTotal,pagadas=p.cuotasPagadas||0,sis=p.sistema||'frances';
+    const tem=tna/100/12; const rows=[];
+    let saldo=cap;
+    if(sis==='frances'){
+      const cuota=cap*(tem*Math.pow(1+tem,plazo))/(Math.pow(1+tem,plazo)-1);
+      for(let i=0;i<plazo;i++){const int=saldo*tem;const amor=cuota-int;saldo=Math.max(0,saldo-amor);rows.push({n:i+1,cuota,int,amor,saldo,pagada:i<pagadas});}
+    }else if(sis==='aleman'){
+      const amor=cap/plazo;
+      for(let i=0;i<plazo;i++){const int=saldo*tem;const cuota=amor+int;saldo=Math.max(0,saldo-amor);rows.push({n:i+1,cuota,int,amor,saldo,pagada:i<pagadas});}
+    }else if(sis==='americano'){
+      for(let i=0;i<plazo;i++){const cuota=i===plazo-1?cap*(1+tem):cap*tem;const int=cap*tem;const amor=i===plazo-1?cap:0;rows.push({n:i+1,cuota,int,amor,saldo:i<plazo-1?cap:0,pagada:i<pagadas});}
+    }else{
+      const amor=cap/plazo;const int=cap*tem;
+      for(let i=0;i<plazo;i++){saldo=Math.max(0,saldo-amor);rows.push({n:i+1,cuota:amor+int,int,amor,saldo,pagada:i<pagadas});}
+    }
+    return rows;
+  };
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;color:#1a202c;padding:28px;font-size:11px}
+    h1{font-size:20px;font-weight:900;margin-bottom:3px}
+    .sub{font-size:10px;color:#64748b;margin-bottom:20px}
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+    .kpi{border:1px solid #e2e8f0;border-radius:8px;padding:12px;border-left:4px solid #4a9fd4}
+    .kpi-label{font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+    .kpi-value{font-size:17px;font-weight:900;font-family:monospace}
+    .kpi-sub{font-size:8px;color:#94a3b8;margin-top:2px}
+    .alerta{background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:10px;color:#dc2626}
+    h2{font-size:12px;font-weight:700;border-bottom:2px solid #e2e8f0;padding-bottom:5px;margin:18px 0 8px}
+    table{width:100%;border-collapse:collapse;font-size:9px}
+    th{background:#f1f5f9;font-weight:700;padding:5px 6px;text-align:left;color:#475569;font-size:8px}
+    td{padding:4px 6px;border-bottom:1px solid #f1f5f9}
+    .pagada{color:#94a3b8;text-decoration:line-through}
+    .pend{font-weight:700;color:#1a202c}
+    .page-break{page-break-before:always}
+    .footer{margin-top:24px;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;text-align:right}
+    @media print{body{padding:16px}.page-break{page-break-before:always}}
+  </style></head><body>
+  <h1>Grupo La Plaza — Pasivos Financieros</h1>
+  <div class="sub">${fecha}</div>
+  ${urgentes.length?`<div class="alerta">⚠️ ${urgentes.length} vencimiento${urgentes.length>1?'s':''} en los próximos 7 días: ${urgentes.map(p=>`${p.descripcion||p.banco} ($${fmt(p.cuota)}) vence ${p.proxVenc}`).join(' · ')}</div>`:''}
+  <div class="kpi-grid">
+    <div class="kpi" style="border-left-color:#f87171"><div class="kpi-label">Deuda total</div><div class="kpi-value" style="color:#dc2626">$${fmt(deudaTotal)}</div><div class="kpi-sub">${vigentes.length} operaciones vigentes</div></div>
+    <div class="kpi" style="border-left-color:#fbbf24"><div class="kpi-label">Cuotas este mes</div><div class="kpi-value" style="color:#d97706">$${fmt(cuotaTotal)}</div><div class="kpi-sub">${now.toLocaleString('es-AR',{month:'long',year:'numeric'})}</div></div>
+    <div class="kpi" style="border-left-color:#a78bfa"><div class="kpi-label">TNA promedio</div><div class="kpi-value" style="color:#7c3aed">${tnaProm.toFixed(1)}%</div><div class="kpi-sub">ponderado por saldo</div></div>
+    <div class="kpi" style="border-left-color:#4ade80"><div class="kpi-label">Próximo pago</div><div class="kpi-value" style="color:#16a34a">${proxOp?'$'+fmt(proxOp.cuota):'—'}</div><div class="kpi-sub">${proxOp?proxOp.proxVenc+' · '+(proxOp.descripcion||proxOp.banco):'Sin vencimientos'}</div></div>
+  </div>
+  <h2>Detalle de operaciones</h2>
+  <table>
+    <tr><th>TIPO</th><th>EMPRESA</th><th>BANCO</th><th>DESCRIPCIÓN</th><th>CAPITAL ORIG.</th><th>SALDO</th><th>CUOTA</th><th>TNA</th><th>SISTEMA</th><th>CUOTAS PEND.</th><th>PRÓX.VENC.</th><th>FECHA FIN</th><th>ESTADO</th></tr>
+    ${pas.map(p=>`<tr><td>${PAS_TIPO_LBL[p.tipo]||p.tipo}</td><td>${p.empresa}</td><td>${p.banco||'—'}</td><td>${p.descripcion||'—'}${p.bien?' · '+p.bien:''}</td><td>$${fmt(p.capitalOrig)}</td><td>$${fmt(p.saldo)}</td><td>$${fmt(p.cuota)}</td><td>${p.tna?p.tna+'%':'—'}</td><td>${PAS_SIS_LBL[p.sistema]||'—'}</td><td>${p.cuotasPend||'—'}</td><td>${p.proxVenc||'—'}</td><td>${p.fechaFin||'—'}</td><td>${p.estado||'Vigente'}</td></tr>`).join('')}
+    <tr style="font-weight:700;background:#f8fafc"><td colspan="4">TOTALES</td><td></td><td>$${fmt(deudaTotal)}</td><td>$${fmt(cuotaTotal)}</td><td colspan="6"></td></tr>
+  </table>
+  ${pas.filter(p=>p.tipo==='prestamo'&&p.capitalOrig&&p.tna&&p.plazoTotal).map((p,pi)=>{
+    const cron=calcCronograma(p);
+    if(!cron.length)return'';
+    return `<div class="${pi>0?'page-break':''}"><h2>Cronograma: ${p.descripcion||p.banco} (${p.empresa})</h2>
+    <table><tr><th>N°</th><th>CUOTA</th><th>INTERESES</th><th>AMORTIZACIÓN</th><th>SALDO</th><th>ESTADO</th></tr>
+    ${cron.map(r=>`<tr class="${r.pagada?'pagada':'pend'}"><td>${r.n}</td><td>$${fmt(r.cuota)}</td><td>$${fmt(r.int)}</td><td>$${fmt(r.amor)}</td><td>$${fmt(r.saldo)}</td><td>${r.pagada?'PAGADA':'PENDIENTE'}</td></tr>`).join('')}
+    </table></div>`;
+  }).join('')}
+  <div class="footer">Generado: ${now.toLocaleString('es-AR')} · Grupo La Plaza — Sistema Financiero Interno</div>
+  <script>window.print();<\/script>
+  </body></html>`;
+  const w=window.open('','_blank','width=1100,height=750');
+  if(w){w.document.write(html);w.document.close();}
+}
+
+async function pasivosExportPPT() {
+  if(!appState.pasivos||!appState.pasivos.length){showToast('⚠️ Sin pasivos para exportar');return;}
+  showToast('⏳ Generando PPT...',3000);
+  if(!window.PptxGenJS){
+    await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';s.onload=()=>res(true);s.onerror=()=>rej();document.head.appendChild(s);}).catch(()=>{showToast('⚠️ No se pudo cargar PptxGenJS');return;});
+  }
+  const fmt=n=>(n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const now=new Date();
+  const todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const fecha=now.toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'});
+  const pas=pasivosGetFiltered();
+  const vigentes=pas.filter(p=>p.estado==='Vigente'||p.estado==='En mora');
+  const deudaTotal=vigentes.reduce((s,p)=>s+(p.saldo||0),0);
+  const cuotaTotal=vigentes.reduce((s,p)=>s+(p.cuota||0),0);
+  const tnaProm=vigentes.filter(p=>p.tna>0).length?(vigentes.filter(p=>p.tna>0).reduce((s,p)=>s+p.tna,0)/vigentes.filter(p=>p.tna>0).length):0;
+  const pptx=new PptxGenJS();
+  pptx.layout='LAYOUT_WIDE';
+  const BG='#0d1117',CARD='#161b22',BORDER='#30363d',RED='#f87171',YEL='#fbbf24',ACC='#4a9fd4',GRN='#4ade80',TX='FFFFFF',TX2='94a3b8',PUR='a78bfa';
+  const addBg=s=>s.addShape(pptx.ShapeType.rect,{x:0,y:0,w:'100%',h:'100%',fill:{color:BG.replace('#','')}});
+  const addCard=(s,x,y,w,h)=>s.addShape(pptx.ShapeType.rect,{x,y,w,h,fill:{color:CARD.replace('#','')},line:{color:BORDER.replace('#',''),width:1},rectRadius:0.1});
+  const txt=(s,t,x,y,w,h,o)=>s.addText(t,{x,y,w,h,...o});
+
+  // Slide 1 — Portada
+  const s1=pptx.addSlide();addBg(s1);
+  s1.addShape(pptx.ShapeType.rect,{x:0,y:2.9,w:'100%',h:0.04,fill:{color:RED.replace('#','')}});
+  txt(s1,'GRUPO LA PLAZA',0.5,1.2,12,0.7,{fontSize:34,bold:true,color:TX,align:'center',fontFace:'Arial'});
+  txt(s1,'PASIVOS FINANCIEROS',0.5,2.0,12,0.6,{fontSize:22,color:RED,align:'center',fontFace:'Arial'});
+  txt(s1,fecha,0.5,3.2,12,0.5,{fontSize:14,color:TX2,align:'center',fontFace:'Arial'});
+
+  // Slide 2 — KPIs
+  const s2=pptx.addSlide();addBg(s2);
+  txt(s2,'Resumen de Deuda — '+fecha,0.3,0.2,12.4,0.5,{fontSize:16,bold:true,color:TX,fontFace:'Arial'});
+  const kpis=[
+    {l:'DEUDA TOTAL VIGENTE',v:'$ '+fmt(deudaTotal),s:vigentes.length+' operaciones vigentes',c:RED},
+    {l:'CUOTAS ESTE MES',v:'$ '+fmt(cuotaTotal),s:now.toLocaleString('es-AR',{month:'long',year:'numeric'}),c:YEL},
+    {l:'TNA PROMEDIO',v:tnaProm.toFixed(1)+'%',s:'Tasa nominal anual pond.',c:PUR},
+    {l:'CAPITAL ORIGINAL TOTAL',v:'$ '+fmt(vigentes.reduce((s,p)=>s+(p.capitalOrig||0),0)),s:'Capital pagado: $'+fmt(vigentes.reduce((s,p)=>s+Math.max(0,(p.capitalOrig||0)-(p.saldo||0)),0)),c:ACC},
+  ];
+  kpis.forEach((k,i)=>{
+    const col=i%2,row=Math.floor(i/2),x=0.3+col*6.6,y=1.0+row*2.2;
+    addCard(s2,x,y,6.2,2.0);
+    s2.addShape(pptx.ShapeType.rect,{x,y,w:0.05,h:2.0,fill:{color:k.c.replace('#','')}});
+    txt(s2,k.l,x+0.2,y+0.2,5.8,0.35,{fontSize:9,color:TX2,bold:true,fontFace:'Arial'});
+    txt(s2,k.v,x+0.2,y+0.7,5.8,0.7,{fontSize:22,bold:true,color:k.c,fontFace:'Arial Narrow'});
+    txt(s2,k.s,x+0.2,y+1.5,5.8,0.35,{fontSize:10,color:TX2,fontFace:'Arial'});
+  });
+
+  // Slide 3 — Tabla de operaciones
+  const s3=pptx.addSlide();addBg(s3);
+  txt(s3,'Detalle de Operaciones Vigentes',0.3,0.2,12.4,0.5,{fontSize:16,bold:true,color:TX,fontFace:'Arial'});
+  const rows=[['TIPO','EMP','BANCO','DESCRIPCIÓN','SALDO','CUOTA','TNA','PRÓX.VENC','ESTADO'],
+    ...vigentes.slice(0,10).map(p=>[(p.tipo||'').slice(0,8),p.empresa||'—',(p.banco||'—').slice(0,12),(p.descripcion||'—').slice(0,20),'$'+fmt(p.saldo),'$'+fmt(p.cuota),(p.tna?p.tna+'%':'—'),p.proxVenc||'—',p.estado||'Vigente'])];
+  s3.addTable(rows,{x:0.3,y:0.9,w:12.4,fontSize:9,color:TX.replace('#',''),fill:{color:CARD.replace('#','')},border:{color:BORDER.replace('#',''),width:0.5},fontFace:'Arial',rowH:0.38,colW:[1.1,0.8,1.4,2.6,1.3,1.3,0.8,1.4,1.2]});
+  if(vigentes.length>10)txt(s3,'… y '+(vigentes.length-10)+' operaciones más',0.3,6.0,12,0.35,{fontSize:10,color:TX2,fontFace:'Arial'});
+
+  // Slide 4 — Por empresa
+  const s4=pptx.addSlide();addBg(s4);
+  txt(s4,'Deuda por Empresa',0.3,0.2,12.4,0.5,{fontSize:16,bold:true,color:TX,fontFace:'Arial'});
+  const byEmp={RS:{n:'Rio Salado SRL',c:ACC},SC:{n:'Serv. Cipolletti SRL',c:GRN},LP:{n:'La Plaza SA',c:YEL}};
+  let yi=1.0;
+  Object.entries(byEmp).forEach(([k,e])=>{
+    const items=vigentes.filter(p=>p.empresa===k);
+    if(!items.length)return;
+    const saldo=items.reduce((s,p)=>s+(p.saldo||0),0);
+    const cuota=items.reduce((s,p)=>s+(p.cuota||0),0);
+    const pct=deudaTotal>0?(saldo/deudaTotal*100).toFixed(1):'0';
+    addCard(s4,0.3,yi,12.4,1.15);
+    s4.addShape(pptx.ShapeType.rect,{x:0.3,y:yi,w:0.06,h:1.15,fill:{color:e.c.replace('#','')}});
+    txt(s4,e.n,0.5,yi+0.1,4,0.4,{fontSize:13,bold:true,color:e.c,fontFace:'Arial'});
+    txt(s4,'Saldo: $'+fmt(saldo),4.8,yi+0.1,3.5,0.35,{fontSize:13,color:RED,fontFace:'Arial'});
+    txt(s4,'Cuota mensual: $'+fmt(cuota),4.8,yi+0.55,3.5,0.35,{fontSize:11,color:YEL,fontFace:'Arial'});
+    txt(s4,pct+'% deuda',10,yi+0.25,2.2,0.5,{fontSize:18,bold:true,color:TX2,align:'right',fontFace:'Arial'});
+    txt(s4,items.length+' operac.',10,yi+0.8,2.2,0.25,{fontSize:10,color:TX2,align:'right',fontFace:'Arial'});
+    yi+=1.3;
+  });
+
+  pptx.writeFile({fileName:'Pasivos_GrupoLaPlaza_'+todayStr+'.pptx'});
+  showToast('📑 PPT de pasivos generado');
+}
+// ==================== FIN PASIVOS EXPORTS ====================
 
 // Detectar link de seguimiento: ?s=PAYLOAD (base64) o ?t=TOKEN (corto)
 (function() {
