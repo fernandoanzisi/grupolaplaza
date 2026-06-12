@@ -2804,6 +2804,8 @@ let _supaUser=null,_supaRol=null;
         style="padding:7px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,159,212,0.3);background:var(--bg3);color:var(--text2);cursor:pointer">🔵 Rio Salado</button>
       <button onclick="cfSetEmp('SC',this)" id="cf-btn-SC"
         style="padding:7px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(58,170,42,0.3);background:var(--bg3);color:var(--text2);cursor:pointer">🟢 Serv. Cipolletti</button>
+      <button onclick="cfSetEmp('LP',this)" id="cf-btn-LP"
+        style="padding:7px 16px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(212,146,10,0.3);background:var(--bg3);color:var(--text2);cursor:pointer">🟡 La Plaza</button>
       <button onclick="cfAgregarFila()"
         style="padding:7px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:var(--green);cursor:pointer">＋ Agregar fila</button>
       <button onclick="exportCashFlowExcel()"
@@ -2822,6 +2824,11 @@ let _supaUser=null,_supaRol=null;
 
   <!-- KPIs -->
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="cf-kpis"></div>
+
+  <!-- Negative balance alert -->
+  <div id="cf-negative-alert" style="display:none;margin-bottom:16px;padding:12px 18px;border-radius:12px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.4);color:var(--red);font-size:12px;font-weight:600">
+    ⚠️ <span id="cf-negative-alert-text"></span>
+  </div>
 
   <!-- Filtro fecha -->
   <div class="card mb" style="padding:10px 16px">
@@ -2849,15 +2856,23 @@ let _supaUser=null,_supaRol=null;
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:11px;color:var(--text3)">🔵 RS</span>
         <input type="number" id="cf-saldo-rs" placeholder="0" oninput="renderCashFlow()"
-          style="background:var(--bg3);border:1px solid rgba(74,159,212,0.4);border-radius:8px;padding:6px 10px;font-size:13px;font-family:var(--mono);color:var(--text);width:160px;outline:none">
+          style="background:var(--bg3);border:1px solid rgba(74,159,212,0.4);border-radius:8px;padding:6px 10px;font-size:13px;font-family:var(--mono);color:var(--text);width:150px;outline:none">
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:11px;color:var(--text3)">🟢 SC</span>
         <input type="number" id="cf-saldo-sc" placeholder="0" oninput="renderCashFlow()"
-          style="background:var(--bg3);border:1px solid rgba(58,170,42,0.4);border-radius:8px;padding:6px 10px;font-size:13px;font-family:var(--mono);color:var(--text);width:160px;outline:none">
+          style="background:var(--bg3);border:1px solid rgba(58,170,42,0.4);border-radius:8px;padding:6px 10px;font-size:13px;font-family:var(--mono);color:var(--text);width:150px;outline:none">
       </div>
-      <div style="font-size:10px;color:var(--text3)">Los cheques en cartera se agregan automáticamente como ingresos proyectados</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:11px;color:var(--text3)">🟡 LP</span>
+        <input type="number" id="cf-saldo-lp" placeholder="0" oninput="renderCashFlow()"
+          style="background:var(--bg3);border:1px solid rgba(212,146,10,0.4);border-radius:8px;padding:6px 10px;font-size:13px;font-family:var(--mono);color:var(--text);width:150px;outline:none">
+      </div>
+      <button onclick="cfAutoSaldoDesdeMinuta()"
+        style="padding:6px 14px;border-radius:8px;font-size:11px;font-weight:700;border:1px solid rgba(74,159,212,0.4);background:rgba(74,159,212,0.08);color:#4a9fd4;cursor:pointer">📊 Desde Minuta</button>
+      <div style="font-size:10px;color:var(--text3)">Los cheques en cartera y pasivos vigentes se agregan automáticamente</div>
     </div>
+    <div id="cf-saldo-minuta-detalle" style="display:none;margin-top:10px;padding:8px 12px;background:var(--bg3);border-radius:8px;font-size:10px;color:var(--text3);font-family:var(--mono)"></div>
   </div>
 
   <!-- Gráfico -->
@@ -13068,16 +13083,49 @@ let _cfEmp = 'grupo';
 
 function cfSetEmp(emp, btn) {
   _cfEmp = emp;
-  ['grupo','RS','SC'].forEach(e => {
+  ['grupo','RS','SC','LP'].forEach(e => {
     const b = document.getElementById('cf-btn-'+e);
     if (!b) return;
-    const cols = {grupo:'var(--accent)', RS:'#4a9fd4', SC:'#3aaa2a'};
+    const cols = {grupo:'var(--accent)', RS:'#4a9fd4', SC:'#3aaa2a', LP:'#d4920a'};
     if (e === emp) {
       b.style.background = cols[e]+'33'; b.style.color = cols[e]; b.style.borderColor = cols[e];
     } else {
       b.style.background = 'var(--bg3)'; b.style.color = 'var(--text2)'; b.style.borderColor = 'rgba(255,255,255,0.1)';
     }
   });
+  renderCashFlow();
+}
+
+function cfAutoSaldoDesdeMinuta() {
+  const empRS = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Rio'));
+  const empSC = (appState.empresas||[]).find(e=>e.name&&e.name.includes('Cipolletti'));
+  const empLP = (appState.empresas||[]).find(e=>e.name&&(e.name.includes('Plaza')||e.name.toUpperCase()==='LP'));
+  let found = false;
+  const detalles = [];
+  if (empRS && empRS.diaB50 != null) {
+    const el = document.getElementById('cf-saldo-rs');
+    if (el) { el.value = empRS.diaB50; found = true; }
+    detalles.push('RS $'+fmtARS(empRS.diaB50));
+  }
+  if (empSC && empSC.diaD50 != null) {
+    const el = document.getElementById('cf-saldo-sc');
+    if (el) { el.value = empSC.diaD50; found = true; }
+    detalles.push('SC $'+fmtARS(empSC.diaD50));
+  }
+  if (empLP && empLP.diaF50 != null) {
+    const el = document.getElementById('cf-saldo-lp');
+    if (el) { el.value = empLP.diaF50; found = true; }
+    detalles.push('LP $'+fmtARS(empLP.diaF50));
+  }
+  if (!found) {
+    alert('No hay datos de la Minuta Diaria cargados. Importá la minuta primero.');
+    return;
+  }
+  const det = document.getElementById('cf-saldo-minuta-detalle');
+  if (det) {
+    det.style.display = 'block';
+    det.innerHTML = '📊 Cargado desde minuta: ' + detalles.join(' &nbsp;|&nbsp; ');
+  }
   renderCashFlow();
 }
 
@@ -13130,6 +13178,30 @@ function _cfGetCheques(empFilter) {
           tipo: 'ingreso', importe: c.importe||0, _auto: true,
         });
       }
+    });
+  });
+  return result;
+}
+
+function _cfGetPasivos(empFilter) {
+  const result = [];
+  (appState.pasivos||[]).forEach(p => {
+    const estado = (p.estado||'').toLowerCase();
+    if (estado !== 'vigente' && estado !== 'en mora') return;
+    if (!p.proxVenc || !p.cuota) return;
+    const empRaw = (p.empresa||'').toUpperCase();
+    const empTag = empRaw.includes('RIO')||empRaw==='RS' ? 'RS' :
+                   empRaw.includes('CIPOLLETTI')||empRaw==='SC' ? 'SC' : 'LP';
+    if (empFilter !== 'grupo' && empTag !== empFilter) return;
+    result.push({
+      id: 'pasivo_'+(p.id||Math.random())+'_'+p.proxVenc,
+      fecha: p.proxVenc,
+      empresa: empTag,
+      concepto: 'Cuota '+(p.descripcion||p.banco||'Pasivo financiero'),
+      tipo: 'gasto',
+      importe: Math.abs(parseFloat(p.cuota)||0),
+      _auto: true,
+      _pasivo: true,
     });
   });
   return result;
@@ -13507,15 +13579,18 @@ function renderCashFlow() {
 
   const saldoRSEl = document.getElementById('cf-saldo-rs');
   const saldoSCEl = document.getElementById('cf-saldo-sc');
+  const saldoLPEl = document.getElementById('cf-saldo-lp');
   const saldoRS = parseFloat(saldoRSEl&&saldoRSEl.value||0)||0;
   const saldoSC = parseFloat(saldoSCEl&&saldoSCEl.value||0)||0;
-  const saldoInicial = _cfEmp==='RS' ? saldoRS : _cfEmp==='SC' ? saldoSC : saldoRS+saldoSC;
+  const saldoLP = parseFloat(saldoLPEl&&saldoLPEl.value||0)||0;
+  const saldoInicial = _cfEmp==='RS' ? saldoRS : _cfEmp==='SC' ? saldoSC : _cfEmp==='LP' ? saldoLP : saldoRS+saldoSC+saldoLP;
 
   const cfDesde = document.getElementById('cf-f-desde')?.value || '';
   const cfHasta = document.getElementById('cf-f-hasta')?.value || '';
   const manuales = appState.cfFilas.filter(f => (_cfEmp==='grupo' || f.empresa===_cfEmp) && (!cfDesde||f.fecha>=cfDesde) && (!cfHasta||f.fecha<=cfHasta));
   const autoCheques = _cfGetCheques(_cfEmp).filter(f => (!cfDesde||f.fecha>=cfDesde) && (!cfHasta||f.fecha<=cfHasta));
-  const todasFilas = [...manuales, ...autoCheques].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+  const autoPasivos = _cfGetPasivos(_cfEmp).filter(f => (!cfDesde||f.fecha>=cfDesde) && (!cfHasta||f.fecha<=cfHasta));
+  const todasFilas = [...manuales, ...autoCheques, ...autoPasivos].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
 
   const byDate = {};
   todasFilas.forEach(f => {
@@ -13530,6 +13605,27 @@ function renderCashFlow() {
   const totalEgr  = todasFilas.filter(f=>f.tipo==='gasto').reduce((s,f)=>s+(f.importe||0),0);
   const saldoFinal= saldoInicial + totalIng - totalEgr;
   const autoCount = autoCheques.length;
+  const pasivosCount = autoPasivos.length;
+
+  // ── Negative balance alert ─────────────────────────────────────────
+  {
+    let acumChk = saldoInicial, firstNeg = null;
+    for (const fecha of Object.keys(byDate || {}).sort()) {
+      if (!byDate[fecha]) continue;
+      acumChk += byDate[fecha].ing - byDate[fecha].egr;
+      if (acumChk < 0 && !firstNeg) { firstNeg = { fecha, val: acumChk }; break; }
+    }
+    const negAlert = document.getElementById('cf-negative-alert');
+    const negText  = document.getElementById('cf-negative-alert-text');
+    if (negAlert) {
+      if (firstNeg) {
+        negAlert.style.display = 'block';
+        if (negText) negText.textContent = 'El saldo acumulado entra en negativo el ' + firstNeg.fecha + ' ($ ' + fmtARS(firstNeg.val) + '). Revisá egresos o reforzá el saldo inicial.';
+      } else {
+        negAlert.style.display = 'none';
+      }
+    }
+  }
 
   // ── KPIs ─────────────────────────────────────────────────────────
   // If cfMinutaData has data, compute better KPIs from minuta
@@ -13564,7 +13660,7 @@ function renderCashFlow() {
     ['TOTAL INGRESOS',  kpiIng,   'var(--green)', false],
     ['TOTAL EGRESOS',   kpiEgr,   'var(--red)',   false],
     ['SALDO NETO',      kpiSaldo, kpiSaldo>=0?'var(--accent)':'var(--red)', false],
-    ['CHEQUES PROYECTADOS', kpiCheques+' cheques auto', 'var(--text2)', true],
+    ['COMPROMISOS AUTO', kpiCheques+' cheques · '+pasivosCount+' pasivos', 'var(--text2)', true],
   ].map(([l,v,c,isStr])=>
     '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;border-left:3px solid '+c+'">' +
       '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:8px">'+l+'</div>' +
@@ -13608,13 +13704,19 @@ function renderCashFlow() {
           const empCol = f.empresa==='RS'?'#4a9fd4':f.empresa==='SC'?'#3aaa2a':'#d4920a';
           const rowBg  = isToday ? 'rgba(74,159,212,0.04)' : '';
           if (f._auto) {
+            const isPasivo = !!f._pasivo;
+            const autoLabel = isPasivo ? 'PASIVO' : 'AUTO';
+            const autoColor = isPasivo ? 'var(--red)' : 'var(--green)';
+            const autoBg    = isPasivo ? 'rgba(248,113,113,0.1)' : 'rgba(74,222,128,0.1)';
+            const ingCell   = isPasivo ? '<td></td>' : '<td style="padding:5px 12px;font-family:var(--mono);font-size:11px;text-align:right;color:var(--green)">$ '+fmtARS(f.importe)+'</td>';
+            const egrCell   = isPasivo ? '<td style="padding:5px 12px;font-family:var(--mono);font-size:11px;text-align:right;color:var(--red)">$ '+fmtARS(f.importe)+'</td>' : '<td></td>';
             rows += '<tr style="background:'+rowBg+';opacity:0.85">' +
               '<td style="padding:5px 12px 5px 28px;font-size:10px;color:var(--text3)">↳</td>' +
               '<td><span style="font-size:9px;font-weight:700;color:'+empCol+';padding:1px 6px;border-radius:3px;background:'+empCol+'22">'+f.empresa+'</span></td>' +
               '<td style="padding:5px 12px;font-size:11px;color:var(--text3);font-style:italic;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+f.concepto+'</td>' +
-              '<td style="padding:5px 8px"><span style="font-size:9px;color:var(--green);background:rgba(74,222,128,0.1);padding:1px 6px;border-radius:3px">AUTO</span></td>' +
-              '<td style="padding:5px 12px;font-family:var(--mono);font-size:11px;text-align:right;color:var(--green)">$ '+fmtARS(f.importe)+'</td>' +
-              '<td></td><td></td><td></td><td></td></tr>';
+              '<td style="padding:5px 8px"><span style="font-size:9px;color:'+autoColor+';background:'+autoBg+';padding:1px 6px;border-radius:3px">'+autoLabel+'</span></td>' +
+              ingCell + egrCell +
+              '<td></td><td></td><td></td></tr>';
           } else {
             const idStr = String(f.id);
             rows += '<tr style="background:'+rowBg+'">' +
@@ -13622,6 +13724,7 @@ function renderCashFlow() {
               '<td style="padding:4px 8px"><select onchange="cfEditFila('+idStr+',\'empresa\',this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;color:var(--text);outline:none">' +
                 '<option value="RS"'+(f.empresa==='RS'?' selected':'')+'>RS</option>' +
                 '<option value="SC"'+(f.empresa==='SC'?' selected':'')+'>SC</option>' +
+                '<option value="LP"'+(f.empresa==='LP'?' selected':'')+'>LP</option>' +
               '</select></td>' +
               '<td style="padding:4px 8px"><input type="text" value="'+f.concepto.replace(/"/g,'&quot;')+'" placeholder="Concepto..." onchange="cfEditFila('+idStr+',\'concepto\',this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);outline:none;width:180px" data-cf-id="'+idStr+'" data-cf-field="concepto"></td>' +
               '<td style="padding:4px 8px"><select onchange="cfEditFila('+idStr+',\'tipo\',this.value)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;color:var(--text);outline:none">' +
@@ -13683,7 +13786,11 @@ function _renderCFChart(dates, byDate, saldoInicial) {
         datasets: [
           { type:'bar',  label:'Ingresos', data:ings,  backgroundColor:'rgba(74,222,128,0.55)', borderColor:'#4ade80', borderWidth:1, order:2 },
           { type:'bar',  label:'Egresos',  data:egrs,  backgroundColor:'rgba(248,113,113,0.55)', borderColor:'#f87171', borderWidth:1, order:2 },
-          { type:'line', label:'Acumulado',data:acums, borderColor:'#4a9fd4', backgroundColor:'rgba(74,159,212,0.08)', borderWidth:2, pointRadius:3, pointBackgroundColor:'#4a9fd4', tension:0.3, fill:true, order:1 },
+          { type:'line', label:'Acumulado',data:acums,
+            segment:{ borderColor:ctx=>ctx.p1.parsed.y<0?'#f87171':'#4a9fd4', backgroundColor:ctx=>ctx.p1.parsed.y<0?'rgba(248,113,113,0.08)':'rgba(74,159,212,0.08)' },
+            borderColor:'#4a9fd4', backgroundColor:'rgba(74,159,212,0.08)', borderWidth:2,
+            pointRadius:3, pointBackgroundColor:acums.map(v=>v<0?'#f87171':'#4a9fd4'),
+            tension:0.3, fill:true, order:1 },
         ]
       },
       options: {
