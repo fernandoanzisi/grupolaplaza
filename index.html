@@ -22474,7 +22474,7 @@ campos: incluí todos los datos relevantes (cuenta, CUIT, Nº factura, consumo k
   let response;
   response = await fetch('/api/claude', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,system:systemPrompt,messages:[{role:'user',content:userContent}]})
+    body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,system:systemPrompt,messages:[{role:'user',content:userContent}]})
   });
   if (!response.ok) {
     const errText = await response.text().catch(()=>'');
@@ -23381,7 +23381,7 @@ Total filas: ${rows.length.toLocaleString('es-AR')}
 
 DATOS:
 ${csv}${truncNote}`;
-    const resp=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2500,system,messages:[{role:'user',content:userMsg}]})});
+    const resp=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2500,system,messages:[{role:'user',content:userMsg}]})});
     if (!resp.ok) { const e=await resp.text(); throw new Error('API '+resp.status+': '+e.slice(0,200)); }
     const data=await resp.json();
     _apiPlState.analisis[key]=data.content?.find(b=>b.type==='text')?.text||'Sin respuesta';
@@ -25220,7 +25220,7 @@ async function cgFichaIA(d) {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'claude-sonnet-4-6',
         max_tokens:400,
         messages:[{role:'user',content:prompt}]
       })
